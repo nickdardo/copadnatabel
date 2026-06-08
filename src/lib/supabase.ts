@@ -1,0 +1,91 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseAnon)
+
+// ─── Types ───────────────────────────────────────────────────
+export type Player = {
+  id: string
+  nickname: string
+  is_admin: boolean
+  created_at: string
+}
+
+export type Match = {
+  id: string
+  home_team: string
+  away_team: string
+  home_flag?: string
+  away_flag?: string
+  match_date?: string
+  fase: string
+  status: 'upcoming' | 'live' | 'done'
+  score_home?: number
+  score_away?: number
+  sort_order: number
+  odds_event_id?: string
+}
+
+export type Pick = {
+  id: string
+  player_id: string
+  match_id: string
+  pick_home: number
+  pick_away: number
+  submitted_at: string
+}
+
+export type ChampionPick = {
+  id: string
+  player_id: string
+  pick_champion: string
+  pick_runner: string
+  pick_third: string
+  locked: boolean
+}
+
+export type Score = {
+  player_id: string
+  total_pts: number
+  f10_count: number
+  f7_count: number
+  f5_count: number
+  f2_count: number
+  f0_count: number
+  champion_pts: number
+  updated_at: string
+}
+
+export type ScoreWithPlayer = Score & { players: Player }
+
+// ─── Helpers ─────────────────────────────────────────────────
+export function calcFactor(
+  pickH: number, pickA: number,
+  realH: number, realA: number
+): 'F10' | 'F7' | 'F5' | 'F2' | 'F0' {
+  const pickRes = pickH > pickA ? 'H' : pickH < pickA ? 'A' : 'D'
+  const realRes = realH > realA ? 'H' : realH < realA ? 'A' : 'D'
+  if (pickH === realH && pickA === realA) return 'F10'
+  if (pickRes === realRes && (pickH === realH || pickA === realA)) return 'F7'
+  if (pickRes === realRes) return 'F5'
+  if (pickH === realH || pickA === realA) return 'F2'
+  return 'F0'
+}
+
+export const FACTOR_PTS: Record<string, number> = {
+  F10: 10, F7: 7, F5: 5, F2: 2, F0: 0,
+}
+
+export const FACTOR_COLOR: Record<string, string> = {
+  F10: 'bg-green-100 text-green-800',
+  F7:  'bg-blue-100 text-blue-800',
+  F5:  'bg-amber-100 text-amber-800',
+  F2:  'bg-pink-100 text-pink-800',
+  F0:  'bg-gray-100 text-gray-600',
+}
+
+export const FASE_ORDER = [
+  'Fase de Grupos', 'Oitavas', 'Quartas', 'Semifinais', 'Terceiro Lugar', 'Final',
+]
