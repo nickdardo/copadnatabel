@@ -5,7 +5,7 @@ import { supabase, Player } from '@/lib/supabase'
 type AuthCtx = {
   player: Player | null
   loading: boolean
-  login: (nickname: string) => Promise<{ error?: string }>
+  login: (name: string) => Promise<{ error?: string }>
   logout: () => void
   isAdmin: boolean
 }
@@ -28,16 +28,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false)
   }, [])
 
-  async function login(nickname: string): Promise<{ error?: string }> {
-    const clean = nickname.trim()
-    if (!clean) return { error: 'Digite um apelido.' }
+  async function login(name: string): Promise<{ error?: string }> {
+    const clean = name.trim()
+    if (!clean) return { error: 'Informe seu nome.' }
 
-    // Check if already exists
-    const { data: existing } = await supabase
+    // Check if already exists (case-insensitive)
+    const { data: existing, error: fetchError } = await supabase
       .from('players')
       .select('*')
       .ilike('nickname', clean)
-      .single()
+      .maybeSingle()
+
+    if (fetchError) {
+      console.error('Supabase fetch error:', fetchError)
+      return { error: 'Erro ao conectar com o servidor. Verifique sua conexão.' }
+    }
 
     if (existing) {
       setPlayer(existing)
@@ -46,13 +51,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Create new player
-    const { data: created, error } = await supabase
+    const isAdmin = clean.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
+    const { data: created, error: insertError } = await supabase
       .from('players')
-      .insert({ nickname: clean, is_admin: clean.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_NICKNAME?.toLowerCase() })
+      .insert({ nickname: clean, is_admin: isAdmin })
       .select()
       .single()
 
-    if (error || !created) return { error: 'Erro ao entrar. Tente novamente.' }
+    if (insertError) {
+      console.error('Supabase insert error:', insertError)
+      if (insertError.code === '42P01') {
+        return { error: 'Tabelas não encontradas. O schema SQL precisa ser executado no Supabase.' }
+      }
+      return { error: 'Erro ao criar seu perfil. Tente novamente.' }
+    }
+
+    if (!created) return { error: 'Erro inesperado. Tente novamente.' }
 
     setPlayer(created)
     localStorage.setItem('bolao_player', JSON.stringify(created))
@@ -64,8 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('bolao_player')
   }
 
-  const isAdmin = player?.is_admin === true ||
-    player?.nickname?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_NICKNAME?.toLowerCase()
+  const isAdmin =
+    player?.is_admin === true ||
+    player?.nickname?.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
 
   return (
     <Ctx.Provider value={{ player, loading, login, logout, isAdmin }}>
