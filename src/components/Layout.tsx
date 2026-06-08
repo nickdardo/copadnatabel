@@ -1,12 +1,12 @@
-'use client'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import Head from 'next/head'
+import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconUser } from '@/components/Icons'
 
 const NAV = [
-  { href: '/champion', icon: '🏆', label: 'Campeão' },
-  { href: '/picks',    icon: '⚽', label: 'Palpites' },
-  { href: '/ranking',  icon: '📊', label: 'Ranking'  },
+  { href: '/champion', Icon: IconTrophy,   label: 'Campeão'  },
+  { href: '/picks',    Icon: IconBall,      label: 'Palpites' },
+  { href: '/ranking',  Icon: IconBarChart,  label: 'Ranking'  },
 ]
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
 }
 
 export default function Layout({ children, title, step }: Props) {
-  const router  = useRouter()
+  const router = useRouter()
   const { player, logout, isAdmin } = useAuth()
 
   function handleLogout() {
@@ -24,43 +24,60 @@ export default function Layout({ children, title, step }: Props) {
     router.push('/')
   }
 
+  // Initials from full name
+  const initials = player?.nickname
+    ? player.nickname.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
+    : '??'
+
   return (
     <>
       <Head>
         <title>{title} · Bolão Copa 2026</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#1D9E75" />
+        <meta name="theme-color" content="#0099CC" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="manifest" href="/manifest.json" />
       </Head>
 
       <div className="min-h-screen bg-gray-50 pb-20">
+
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 sticky top-0 z-10 safe-area-top">
+        <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[#1D9E75] font-bold text-base">Bolão Copa 2026</span>
+
+            {/* Logo */}
+            <div className="flex items-center gap-2.5">
+              <img src="/dnata-logo.png" alt="dnata" className="h-6 w-auto" />
+              <div className="h-4 w-px bg-gray-200" />
+              <span className="text-[13px] text-gray-400 font-medium">Bolão Copa 2026</span>
             </div>
+
+            {/* Right side */}
             <div className="flex items-center gap-2">
               {isAdmin && (
                 <button
                   onClick={() => router.push('/admin')}
-                  className="text-xs text-amber-600 border border-amber-200 bg-amber-50 px-2 py-1 rounded-lg"
+                  className="flex items-center gap-1.5 text-[11px] text-amber-700 border border-amber-200 bg-amber-50 px-2.5 py-1 rounded-lg font-medium"
                 >
-                  ⚙️ Admin
+                  <IconSettings size={13} />
+                  Admin
                 </button>
               )}
-              <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 rounded-full bg-[#E1F5EE] flex items-center justify-center text-xs font-semibold text-[#1D9E75]">
-                  {player?.nickname?.slice(0, 2).toUpperCase()}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[11px] font-bold text-[#0099CC]">
+                  {initials}
                 </div>
-                <span className="text-sm text-gray-700 hidden sm:block">{player?.nickname}</span>
+                <span className="text-[13px] text-gray-700 font-medium hidden sm:block max-w-[120px] truncate">
+                  {player?.nickname}
+                </span>
               </div>
               <button
                 onClick={handleLogout}
-                className="text-xs text-gray-400 hover:text-gray-600 ml-1"
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors ml-1"
                 title="Sair"
               >
-                Sair
+                <IconLogout size={14} />
+                <span className="hidden sm:inline">Sair</span>
               </button>
             </div>
           </div>
@@ -69,24 +86,24 @@ export default function Layout({ children, title, step }: Props) {
         {/* Page content */}
         <main>{children}</main>
 
-        {/* Bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 safe-area-bottom z-10">
+        {/* Bottom nav */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-10">
           <div className="max-w-lg mx-auto flex">
-            {NAV.map(item => {
-              const isActive = router.pathname === item.href
+            {NAV.map(({ href, Icon, label }) => {
+              const isActive = router.pathname === href
               return (
                 <button
-                  key={item.href}
-                  onClick={() => router.push(item.href)}
-                  className={`flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-colors
-                    ${isActive ? 'text-[#1D9E75]' : 'text-gray-400 hover:text-gray-600'}`}
+                  key={href}
+                  onClick={() => router.push(href)}
+                  className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors relative
+                    ${isActive ? 'text-[#0099CC]' : 'text-gray-400 hover:text-gray-500'}`}
                 >
-                  <span className="text-xl leading-none">{item.icon}</span>
-                  <span className={`text-[10px] font-medium ${isActive ? 'text-[#1D9E75]' : 'text-gray-400'}`}>
-                    {item.label}
+                  <Icon size={20} />
+                  <span className="text-[10px] font-semibold tracking-wide">
+                    {label}
                   </span>
                   {isActive && (
-                    <div className="absolute bottom-0 w-8 h-0.5 bg-[#1D9E75] rounded-full" />
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full" />
                   )}
                 </button>
               )

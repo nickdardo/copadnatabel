@@ -1,34 +1,38 @@
-'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase, ChampionPick } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import Layout from '@/components/Layout'
+import { IconGold, IconSilver, IconBronze, IconTrophy, IconLock, IconCheck, IconArrowRight } from '@/components/Icons'
 
-// All 48 qualified teams for 2026 World Cup
 const TEAMS = [
-  '🇦🇷 Argentina','🇧🇷 Brasil','🇫🇷 França','🇪🇸 Espanha','🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra',
-  '🇵🇹 Portugal','🇩🇪 Alemanha','🇳🇱 Países Baixos','🇺🇾 Uruguai','🇧🇪 Bélgica',
-  '🇺🇸 Estados Unidos','🇲🇽 México','🇨🇦 Canadá','🇯🇵 Japão','🇰🇷 Coreia do Sul',
-  '🇲🇦 Marrocos','🇸🇳 Senegal','🇨🇴 Colômbia','🇨🇱 Chile','🇪🇨 Equador',
-  '🇵🇪 Peru','🇩🇰 Dinamarca','🇦🇹 Áustria','🇨🇭 Suíça','🇭🇷 Croácia',
-  '🇷🇸 Sérvia','🇷🇴 Romênia','🇸🇮 Eslovênia','🇦🇱 Albânia','🇹🇷 Turquia',
-  '🇰🇿 Cazaquistão','🇬🇪 Geórgia','🇮🇹 Itália','🇸🇦 Arábia Saudita',
-  '🇦🇺 Austrália','🇳🇬 Nigéria','🇨🇲 Camarões','🇨🇿 Tchéquia','🇸🇰 Eslováquia',
-  '🇭🇺 Hungria','🇸🇪 Suécia','🇳🇴 Noruega','🇮🇱 Israel','🇮🇶 Iraque',
-  '🇮🇷 Irã','🇳🇿 Nova Zelândia','🇲🇿 Moçambique','🇨🇩 RD Congo',
+  'Albania','Alemanha','Arábia Saudita','Argentina','Austrália','Áustria',
+  'Bélgica','Bolívia','Brasil','Camarões','Canadá','Cazaquistão',
+  'Chile','Colômbia','Coreia do Sul','Costa Rica','Croácia','Dinamarca',
+  'Equador','Eslováquia','Eslovênia','Espanha','Estados Unidos','França',
+  'Geórgia','Honduras','Hungria','Inglaterra','Irã','Iraque',
+  'Israel','Itália','Jamaica','Japão','Marrocos','México',
+  'Moçambique','Nigéria','Noruega','Nova Zelândia','países Baixos','Panamá',
+  'Paraguai','Peru','Portugal','RD Congo','Romênia','Sérvia',
+  'Senegal','Suécia','Suíça','Tchéquia','Turquia','Uruguai','Venezuela',
 ].sort()
+
+const POSITIONS = [
+  { key: 'champion', label: 'Campeão',       pts: '+50 pts', Icon: IconGold,   color: 'border-amber-200 bg-amber-50',  ptColor: 'text-amber-700' },
+  { key: 'runner',   label: 'Vice-campeão',   pts: '+25 pts', Icon: IconSilver, color: 'border-slate-200 bg-slate-50',  ptColor: 'text-slate-600' },
+  { key: 'third',    label: '3º lugar',       pts: '+10 pts', Icon: IconBronze, color: 'border-orange-200 bg-orange-50',ptColor: 'text-orange-700' },
+]
 
 export default function ChampionPage() {
   const { player, loading } = useAuth()
   const router = useRouter()
 
   const [champion, setChampion] = useState('')
-  const [runner, setRunner]     = useState('')
-  const [third, setThird]       = useState('')
-  const [locked, setLocked]     = useState(false)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
+  const [runner,   setRunner]   = useState('')
+  const [third,    setThird]    = useState('')
+  const [locked,   setLocked]   = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [saved,    setSaved]    = useState(false)
   const [fetching, setFetching] = useState(true)
 
   useEffect(() => {
@@ -38,10 +42,8 @@ export default function ChampionPage() {
   useEffect(() => {
     if (!player) return
     supabase
-      .from('champion_picks')
-      .select('*')
-      .eq('player_id', player.id)
-      .single()
+      .from('champion_picks').select('*')
+      .eq('player_id', player.id).maybeSingle()
       .then(({ data }) => {
         if (data) {
           setChampion(data.pick_champion)
@@ -57,146 +59,128 @@ export default function ChampionPage() {
     if (!player || !champion || !runner || !third) return
     if (champion === runner || champion === third || runner === third) return
     setSaving(true)
-
     await supabase.from('champion_picks').upsert({
       player_id: player.id,
       pick_champion: champion,
       pick_runner: runner,
       pick_third: third,
     }, { onConflict: 'player_id' })
-
     setSaving(false)
     setSaved(true)
-    setTimeout(() => {
-      router.push('/picks')
-    }, 1200)
+    setTimeout(() => router.push('/picks'), 1200)
   }
 
-  const available = (exclude1: string, exclude2: string) =>
-    TEAMS.filter(t => t !== exclude1 && t !== exclude2)
-
+  const exclude = (e1: string, e2: string) => TEAMS.filter(t => t !== e1 && t !== e2)
   const canSave = champion && runner && third &&
     champion !== runner && champion !== third && runner !== third
 
   if (loading || fetching) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="w-8 h-8 border-3 border-[#1D9E75]/30 border-t-[#1D9E75] rounded-full animate-spin" />
+      <div className="w-7 h-7 border-2 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin" />
     </div>
   )
 
   return (
     <Layout title="Palpite de Campeão" step={1}>
       <div className="max-w-md mx-auto px-4 py-6">
-        <div className="card mb-6">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-full bg-[#E1F5EE] flex items-center justify-center text-xl">🏆</div>
-            <div>
-              <h2 className="font-semibold text-gray-900">Quem vai vencer a Copa 2026?</h2>
-              <p className="text-xs text-gray-400">Escolha antes dos jogos começarem</p>
-            </div>
+
+        {/* Header card */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#E6F4FA] flex items-center justify-center flex-shrink-0">
+            <IconTrophy size={20} className="text-[#0099CC]" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900 text-[15px]">Quem vai vencer a Copa 2026?</h2>
+            <p className="text-[12px] text-gray-400 mt-0.5">Escolha antes dos jogos começarem</p>
           </div>
         </div>
 
-        {/* Pontuation explanation */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {[
-            { emoji: '🥇', label: 'Campeão', pts: '+50 pts', color: 'bg-amber-50 border-amber-200' },
-            { emoji: '🥈', label: 'Vice',    pts: '+25 pts', color: 'bg-gray-50 border-gray-200' },
-            { emoji: '🥉', label: '3º lugar',pts: '+10 pts', color: 'bg-orange-50 border-orange-200' },
-          ].map(item => (
-            <div key={item.label} className={`rounded-2xl border p-3 text-center ${item.color}`}>
-              <div className="text-2xl mb-1">{item.emoji}</div>
-              <div className="text-xs font-medium text-gray-700">{item.label}</div>
-              <div className="text-sm font-bold text-gray-900">{item.pts}</div>
+        {/* Points cards */}
+        <div className="grid grid-cols-3 gap-2.5 mb-6">
+          {POSITIONS.map(({ label, pts, Icon, color, ptColor }) => (
+            <div key={label} className={`rounded-xl border p-3 text-center ${color}`}>
+              <div className="flex justify-center mb-2">
+                <Icon size={32} />
+              </div>
+              <div className="text-[11px] font-semibold text-gray-600">{label}</div>
+              <div className={`text-[13px] font-bold mt-0.5 ${ptColor}`}>{pts}</div>
             </div>
           ))}
         </div>
 
         {/* Selects */}
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              🥇 Campeão <span className="text-[#1D9E75] font-bold">+50 pts</span>
-            </label>
-            <select
-              className="input"
-              value={champion}
-              onChange={e => setChampion(e.target.value)}
-              disabled={locked}
-            >
-              <option value="">Selecione...</option>
-              {available(runner, third).map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              🥈 Vice-campeão <span className="text-blue-600 font-bold">+25 pts</span>
-            </label>
-            <select
-              className="input"
-              value={runner}
-              onChange={e => setRunner(e.target.value)}
-              disabled={locked}
-            >
-              <option value="">Selecione...</option>
-              {available(champion, third).map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              🥉 Terceiro lugar <span className="text-orange-600 font-bold">+10 pts</span>
-            </label>
-            <select
-              className="input"
-              value={third}
-              onChange={e => setThird(e.target.value)}
-              disabled={locked}
-            >
-              <option value="">Selecione...</option>
-              {available(champion, runner).map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
+          {[
+            { state: champion, set: setChampion, ex1: runner,   ex2: third,    Icon: IconGold,   label: 'Campeão',     ptColor: 'text-amber-700', pts: '+50 pts' },
+            { state: runner,   set: setRunner,   ex1: champion, ex2: third,    Icon: IconSilver, label: 'Vice-campeão',ptColor: 'text-slate-600', pts: '+25 pts' },
+            { state: third,    set: setThird,    ex1: champion, ex2: runner,   Icon: IconBronze, label: '3º lugar',    ptColor: 'text-orange-700',pts: '+10 pts' },
+          ].map(({ state, set, ex1, ex2, Icon, label, ptColor, pts }) => (
+            <div key={label}>
+              <label className="flex items-center gap-2 text-[12px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                <Icon size={20} />
+                {label}
+                <span className={`ml-auto font-bold ${ptColor}`}>{pts}</span>
+              </label>
+              <select
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                           text-gray-900 text-[14px] focus:outline-none focus:ring-2
+                           focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
+                value={state}
+                onChange={e => set(e.target.value)}
+                disabled={locked}
+              >
+                <option value="">Selecione a seleção...</option>
+                {exclude(ex1, ex2).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          ))}
         </div>
 
+        {/* Locked warning */}
         {locked && (
-          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-            🔒 Palpites de campeão bloqueados. A Copa já começou!
+          <div className="mt-5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <IconLock size={16} className="text-amber-600 flex-shrink-0" />
+            <span className="text-[13px] text-amber-800 font-medium">
+              Palpites bloqueados — a Copa já começou!
+            </span>
           </div>
         )}
 
+        {/* Save button */}
         {!locked && (
           <button
             onClick={handleSave}
             disabled={!canSave || saving || saved}
-            className="btn btn-primary w-full justify-center mt-6 py-3 text-base"
+            className="mt-6 w-full py-3.5 rounded-xl font-semibold text-[15px] text-white
+                       flex items-center justify-center gap-2 transition-all active:scale-[.98]
+                       disabled:opacity-40 disabled:cursor-not-allowed bg-[#0099CC] hover:bg-[#007aa8]"
           >
-            {saved    ? '✅ Salvo! Indo para os jogos...' :
-             saving   ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
-             '⚽ Salvar e ir para os palpites'}
+            {saved ? (
+              <><IconCheck size={18} className="text-white" /> Salvo! Abrindo palpites...</>
+            ) : saving ? (
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>Salvar e ir para os palpites <IconArrowRight size={16} /></>
+            )}
           </button>
         )}
 
         {locked && (
           <button
             onClick={() => router.push('/picks')}
-            className="btn btn-primary w-full justify-center mt-6 py-3 text-base"
+            className="mt-5 w-full py-3.5 rounded-xl font-semibold text-[15px] text-white
+                       flex items-center justify-center gap-2 bg-[#0099CC] hover:bg-[#007aa8] transition-all"
           >
-            Ver palpites dos jogos →
+            Ver palpites dos jogos <IconArrowRight size={16} />
           </button>
         )}
 
         <div className="text-center mt-4">
           <button
             onClick={() => router.push('/picks')}
-            className="text-sm text-gray-400 underline underline-offset-2"
+            className="text-[13px] text-gray-400 hover:text-gray-500 underline underline-offset-2"
           >
             Pular por agora
           </button>
