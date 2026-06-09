@@ -54,3 +54,14 @@ export function getAvatarUrl(path:string|null|undefined):string|null {
   const { data } = supabase.storage.from('avatars').getPublicUrl(path)
   return data.publicUrl + '?v=' + Date.now()
 }
+
+// PWA BeforeInstallPromptEvent (not in default TS types)
+declare global {
+  interface BeforeInstallPromptEvent extends Event {
+    prompt(): Promise<void>
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+  }
+  interface WindowEventMap {
+    beforeinstallprompt: BeforeInstallPromptEvent
+  }
+}
