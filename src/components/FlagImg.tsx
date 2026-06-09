@@ -44,8 +44,9 @@ export default function FlagImg({ team, dbFlag, size = 48, className = '' }: Pro
 
   // flagcdn.com — tamanho disponível: w20, w40, w80, w160, w320, w640, w1280, w2560
   const cdnSize = size <= 24 ? 'w20' : size <= 48 ? 'w40' : size <= 80 ? 'w80' : 'w160'
-  const src = `https://flagcdn.com/${cdnSize}/${iso}.png`
-  const src2x = `https://flagcdn.com/${cdnSize === 'w40' ? 'w80' : 'w160'}/${iso}.png`
+  const isoLower = iso.toLowerCase()
+  const src = `https://flagcdn.com/${cdnSize}/${isoLower}.png`
+  const src2x = `https://flagcdn.com/${cdnSize === 'w40' ? 'w80' : 'w160'}/${isoLower}.png`
 
   return (
     <img
