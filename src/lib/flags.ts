@@ -1,15 +1,12 @@
-// Flag helper — uses /public/flags/<ISO>.png when available, falls back to emoji
-// PNGs go in: public/flags/BR.png, AR.png, etc.
-
-export const TEAM_ISO: Record<string,string> = {
-  // PT names
+export const TEAM_ISO: Record<string, string> = {
+  // ── Português ─────────────────────────────────────────────
   'Albania':'AL','Alemanha':'DE','Argentina':'AR','Arábia Saudita':'SA',
   'Austrália':'AU','Áustria':'AT','Bélgica':'BE','Bolívia':'BO',
   'Brasil':'BR','Camarões':'CM','Canadá':'CA','Cazaquistão':'KZ',
   'Chile':'CL','Colômbia':'CO','Coreia do Sul':'KR','Costa Rica':'CR',
   'Croácia':'HR','Dinamarca':'DK','Equador':'EC','Eslováquia':'SK',
   'Eslovênia':'SI','Espanha':'ES','Estados Unidos':'US','França':'FR',
-  'Geórgia':'GE','Honduras':'HN','Hungria':'HU','Inglaterra':'GB-ENG',
+  'Geórgia':'GE','Honduras':'HN','Hungria':'HU','Inglaterra':'gb-eng',
   'Irã':'IR','Iraque':'IQ','Israel':'IL','Itália':'IT',
   'Jamaica':'JM','Japão':'JP','Marrocos':'MA','México':'MX',
   'Moçambique':'MZ','Nigéria':'NG','Noruega':'NO','Nova Zelândia':'NZ',
@@ -17,14 +14,19 @@ export const TEAM_ISO: Record<string,string> = {
   'Portugal':'PT','RD Congo':'CD','Romênia':'RO','Sérvia':'RS',
   'Senegal':'SN','Suécia':'SE','Suíça':'CH','Tchéquia':'CZ',
   'Turquia':'TR','Uruguai':'UY','Venezuela':'VE',
-  // EN names
+  'Escócia':'gb-sct','País de Gales':'gb-wls','África do Sul':'ZA',
+  'Bósnia e Herzegovina':'BA','Haiti':'HT','Costa do Marfim':'CI',
+  'Polônia':'PL','Grécia':'GR','Ucrânia':'UA','Catar':'QA',
+  'Indonésia':'ID','Trinidad e Tobago':'TT','Gana':'GH',
+  'Tunísia':'TN','Argélia':'DZ','Egito':'EG','Finlândia':'FI','Islândia':'IS',
+  // ── English (The Odds API) ────────────────────────────────
   'Germany':'DE','Saudi Arabia':'SA','Australia':'AU','Austria':'AT',
   'Belgium':'BE','Bolivia':'BO','Brazil':'BR','Cameroon':'CM',
   'Canada':'CA','Kazakhstan':'KZ','Colombia':'CO',
   'South Korea':'KR','Korea Republic':'KR','Croatia':'HR',
   'Denmark':'DK','Ecuador':'EC','Slovakia':'SK','Slovenia':'SI',
   'Spain':'ES','United States':'US','USA':'US','France':'FR',
-  'Georgia':'GE','Hungary':'HU','England':'GB-ENG',
+  'Georgia':'GE','Hungary':'HU','England':'gb-eng',
   'Iran':'IR','Iraq':'IQ','Italy':'IT','Japan':'JP',
   'Morocco':'MA','Mexico':'MX','Mozambique':'MZ','Nigeria':'NG',
   'Norway':'NO','New Zealand':'NZ','Netherlands':'NL','Panama':'PA',
@@ -33,36 +35,33 @@ export const TEAM_ISO: Record<string,string> = {
   'Turkey':'TR','Turkiye':'TR','Uruguay':'UY',
   'Wales':'gb-wls','Scotland':'gb-sct','Poland':'PL','Greece':'GR',
   'Ukraine':'UA','Bosnia and Herzegovina':'BA','Bosnia-Herzegovina':'BA',
-  'Qatar':'QA','Haiti':'HT','South Africa':'ZA','Africa do Sul':'ZA',
-  'África do Sul':'ZA','Ivory Coast':'CI','Costa do Marfim':'CI',
-  'Bósnia e Herzegovina':'BA','Escocia':'gb-sct','Escócia':'gb-sct',
-  'País de Gales':'gb-wls','Galés':'gb-wls',
-  'Indonesia':'ID','Trinidad and Tobago':'TT',
-  "Ivory Coast":'CI',"Cote d'Ivoire":'CI','Ghana':'GH',
-  'Tunisia':'TN','Algeria':'DZ','Egypt':'EG','Finland':'FI','Iceland':'IS',
+  'Qatar':'QA','South Africa':'ZA','Indonesia':'ID',
+  'Trinidad and Tobago':'TT',"Ivory Coast":'CI',"Cote d'Ivoire":'CI',
+  'Ghana':'GH','Tunisia':'TN','Algeria':'DZ','Egypt':'EG',
+  'Finland':'FI','Iceland':'IS','Kosovo':'XK','Luxembourg':'LU',
+  'El Salvador':'SV',
 }
 
-const EMOJI_FALLBACK: Record<string,string> = {
+const EMOJI: Record<string, string> = {
   'AL':'🇦🇱','DE':'🇩🇪','AR':'🇦🇷','SA':'🇸🇦','AU':'🇦🇺','AT':'🇦🇹',
   'BE':'🇧🇪','BO':'🇧🇴','BR':'🇧🇷','CM':'🇨🇲','CA':'🇨🇦','KZ':'🇰🇿',
   'CL':'🇨🇱','CO':'🇨🇴','KR':'🇰🇷','CR':'🇨🇷','HR':'🇭🇷','DK':'🇩🇰',
   'EC':'🇪🇨','SK':'🇸🇰','SI':'🇸🇮','ES':'🇪🇸','US':'🇺🇸','FR':'🇫🇷',
-  'GE':'🇬🇪','HN':'🇭🇳','HU':'🇭🇺','GB-ENG':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','IR':'🇮🇷',
-  'IQ':'🇮🇶','IL':'🇮🇱','IT':'🇮🇹','JM':'🇯🇲','JP':'🇯🇵','MA':'🇲🇦',
-  'MX':'🇲🇽','MZ':'🇲🇿','NG':'🇳🇬','NO':'🇳🇴','NZ':'🇳🇿','NL':'🇳🇱',
-  'PA':'🇵🇦','PY':'🇵🇾','PE':'🇵🇪','PT':'🇵🇹','CD':'🇨🇩','RO':'🇷🇴',
-  'RS':'🇷🇸','SN':'🇸🇳','SE':'🇸🇪','CH':'🇨🇭','CZ':'🇨🇿','TR':'🇹🇷',
-  'UY':'🇺🇾','VE':'🇻🇪','GB-WLS':'🏴󠁧󠁢󠁷󠁬󠁳󠁿','GB-SCT':'🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'PL':'🇵🇱','GR':'🇬🇷','UA':'🇺🇦','BA':'🇧🇦','QA':'🇶🇦','ID':'🇮🇩',
-  'ZA':'🇿🇦','TT':'🇹🇹','CI':'🇨🇮','GH':'🇬🇭','TN':'🇹🇳','DZ':'🇩🇿',
-  'EG':'🇪🇬','FI':'🇫🇮','IS':'🇮🇸',
+  'GE':'🇬🇪','HN':'🇭🇳','HU':'🇭🇺','IR':'🇮🇷','IQ':'🇮🇶','IL':'🇮🇱',
+  'IT':'🇮🇹','JM':'🇯🇲','JP':'🇯🇵','MA':'🇲🇦','MX':'🇲🇽','MZ':'🇲🇿',
+  'NG':'🇳🇬','NO':'🇳🇴','NZ':'🇳🇿','NL':'🇳🇱','PA':'🇵🇦','PY':'🇵🇾',
+  'PE':'🇵🇪','PT':'🇵🇹','CD':'🇨🇩','RO':'🇷🇴','RS':'🇷🇸','SN':'🇸🇳',
+  'SE':'🇸🇪','CH':'🇨🇭','CZ':'🇨🇿','TR':'🇹🇷','UY':'🇺🇾','VE':'🇻🇪',
+  'PL':'🇵🇱','GR':'🇬🇷','UA':'🇺🇦','BA':'🇧🇦','QA':'🇶🇦','HT':'🇭🇹',
+  'ZA':'🇿🇦','ID':'🇮🇩','TT':'🇹🇹','CI':'🇨🇮','GH':'🇬🇭','TN':'🇹🇳',
+  'DZ':'🇩🇿','EG':'🇪🇬','FI':'🇫🇮','IS':'🇮🇸','XK':'🇽🇰','LU':'🇱🇺',
+  'SV':'🇸🇻',
+  'gb-eng':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','gb-sct':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','gb-wls':'🏴󠁧󠁢󠁷󠁬󠁳󠁿',
 }
 
-// Returns <img> component props (src + alt) for PNG flags
-// Falls back to emoji string if PNG not available
 export function getFlagProps(team: string, dbFlag?: string) {
   if (dbFlag && dbFlag !== '🏳️' && !dbFlag.startsWith('🏳')) {
-    return { type:'emoji' as const, value: dbFlag }
+    return { type: 'emoji' as const, value: dbFlag }
   }
   const lower = team.toLowerCase()
   let iso = TEAM_ISO[team]
@@ -77,9 +76,9 @@ export function getFlagProps(team: string, dbFlag?: string) {
     if (partial) iso = partial[1]
   }
   if (iso) {
-    return { type:'png' as const, iso, src:`/flags/${iso}.png`, alt: team, emoji: EMOJI_FALLBACK[iso] || '🏳️' }
+    return { type: 'png' as const, iso, src: `/flags/${iso}.png`, alt: team, emoji: EMOJI[iso] || '🏳️' }
   }
-  return { type:'emoji' as const, value: '🏳️' }
+  return { type: 'emoji' as const, value: '🏳️' }
 }
 
 export function getFlag(team: string, dbFlag?: string): string {
