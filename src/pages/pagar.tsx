@@ -28,7 +28,7 @@ export default function PagarPage() {
         const cfg = data[0] as PixConfig
         setPix(cfg)
         const p = generatePixPayload({
-          cpf:      cfg.cpf,
+          key: cfg.cpf, keyType: cfg.key_type || 'cpf',
           nome:     cfg.nome,
           valor:    cfg.valor,
           cidade:   'Belem',
