@@ -236,6 +236,19 @@ export default function PicksPage() {
           </div>
         )}
 
+        {/* Unpaid warning */}
+        {!player?.payment_ok && (
+          <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
+            <p className="text-[12px] text-amber-700">
+              <strong>Sem pagamento:</strong> seus palpites não contam para premiação.
+            </p>
+            <button onClick={() => router.push('/pagar')}
+              className="text-[11px] font-bold text-amber-800 bg-amber-200 hover:bg-amber-300 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors flex-shrink-0">
+              Pagar agora
+            </button>
+          </div>
+        )}
+
         <p className="text-[11px] text-gray-400 text-center mb-2">
           {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos ao vivo' : 'Resultados'}
         </p>

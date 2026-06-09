@@ -17,6 +17,7 @@ export default function OnboardingPage() {
   const [payload,    setPayload] = useState('')
   const [qrUrl,      setQrUrl]  = useState('')
   const [copied,     setCopied]  = useState(false)
+  const [showSkipWarning, setShowSkipWarning] = useState(false)
 
   useEffect(() => {
     if (!loading && !player) router.push('/')
@@ -78,8 +79,8 @@ export default function OnboardingPage() {
             </button>
           )}
           {step !== 'done' && (
-            <button onClick={() => router.push('/champion')}
-              className="ml-auto text-[12px] text-gray-400 hover:text-gray-600 transition-colors">
+            <button onClick={() => setShowSkipWarning(true)}
+              className="ml-auto text-[12px] text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">
               Pular
             </button>
           )}
@@ -291,6 +292,56 @@ export default function OnboardingPage() {
           )}
         </div>
       </div>
+      {/* Skip warning modal */}
+      {showSkipWarning && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            {/* Warning header */}
+            <div className="bg-amber-50 border-b border-amber-100 px-5 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-amber-900 text-[15px]">Atenção!</p>
+                <p className="text-[12px] text-amber-700">Sobre a premiação</p>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-[14px] text-gray-700 leading-relaxed">
+                Você pode participar do bolão e fazer seus palpites normalmente <strong>sem pagar</strong>.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                <p className="text-[13px] font-bold text-red-700 mb-1">⚠️ Porém, se ganhar:</p>
+                <p className="text-[13px] text-red-600 leading-relaxed">
+                  Sem o pagamento confirmado, você <strong>não receberá nenhuma premiação</strong>, mesmo que termine em 1º, 2º ou 3º lugar.
+                </p>
+              </div>
+              <p className="text-[12px] text-gray-400 leading-relaxed">
+                Você ainda pode pagar depois acessando o botão <strong>"Pagar R$10"</strong> no topo do app.
+              </p>
+            </div>
+
+            <div className="px-5 pb-5 space-y-2.5">
+              {/* Go back and pay */}
+              <button onClick={() => { setShowSkipWarning(false); setStep('payment') }}
+                className="w-full py-3.5 rounded-xl bg-[#0099CC] text-white font-bold text-[14px] hover:bg-[#007aa8] transition-all active:scale-[.98]">
+                Quero pagar e participar da premiação
+              </button>
+              {/* Skip anyway */}
+              <button onClick={() => { setShowSkipWarning(false); router.push('/champion') }}
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-500 text-[13px] font-medium hover:bg-gray-50 transition-colors">
+                Entendi — quero participar sem premiação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
