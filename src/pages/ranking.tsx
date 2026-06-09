@@ -82,21 +82,21 @@ export default function RankingPage() {
   }, [player])
 
   async function fetchRanking() {
-    const [{ data: sd }, { data: champData }, { count: mCount }] = await Promise.all([
-      supabase.from('scores')
-        .select('*, players!inner(*)')
-        .eq('players.is_admin', false)          // ← exclude admins
-        .order('total_pts', { ascending: false }),
+    const [{ data: sd }, { data: champData }, { count: mCount }, { data: playersData }] = await Promise.all([
+      supabase.from('scores').select('*').order('total_pts', { ascending: false }),
       supabase.from('champion_picks').select('*'),
       supabase.from('matches').select('*', { count: 'exact', head: true }),
+      supabase.from('players').select('*'),  // fresh player data with latest nickname/avatar
     ])
     if (!sd) { setFetching(false); return }
-    setTotalMatches(mCount || 104)
+    setTotalMatches(mCount || 72)
     const champMap: Record<string, ChampPick> = {}
     ;(champData || []).forEach((c: any) => { champMap[c.player_id] = c })
+    const playerMap: Record<string, any> = {}
+    ;(playersData || []).forEach((p: any) => { playerMap[p.id] = p })
     const sorted = sd
-      .map((d: any) => ({ ...d, player: d.players, champ: champMap[d.player_id] }))
-      .filter((d: any) => !d.player.is_admin)   // double-check filter
+      .map((d: any) => ({ ...d, player: playerMap[d.player_id] || {}, champ: champMap[d.player_id] }))
+      .filter((d: any) => d.player && !d.player.is_admin)   // exclude admins
       .sort((a: any, b: any) => {
         if (b.total_pts !== a.total_pts) return b.total_pts - a.total_pts
         if (b.f10_count !== a.f10_count) return b.f10_count - a.f10_count
