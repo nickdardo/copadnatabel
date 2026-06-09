@@ -242,7 +242,7 @@ export default function PicksPage() {
             </div>
 
             {/* 2-column grid */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-3">
               {dayMatches.map(m => {
                 const pick   = picks[m.id] || { home:'', away:'', saved:false, editCount:0 }
                 const locked = isLocked(m) || (tab==='upcoming' && roundLocked && pick.saved)
@@ -272,7 +272,7 @@ export default function PicksPage() {
                       <div className="flex items-center justify-between gap-1 mb-2">
                         {/* Home */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <FlagImg team={m.home_team} dbFlag={m.home_flag} size={32}/>
+                          <FlagImg team={m.home_team} dbFlag={m.home_flag} size={44}/>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.home_team.length > 8 ? m.home_team.slice(0,8)+'.' : m.home_team}
                           </span>
@@ -305,7 +305,7 @@ export default function PicksPage() {
 
                         {/* Away */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <FlagImg team={m.away_team} dbFlag={m.away_flag} size={32}/>
+                          <FlagImg team={m.away_team} dbFlag={m.away_flag} size={44}/>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.away_team.length > 8 ? m.away_team.slice(0,8)+'.' : m.away_team}
                           </span>

@@ -34,7 +34,7 @@ export const TEAM_ISO: Record<string, string> = {
   'Switzerland':'CH','Czech Republic':'CZ','Czechia':'CZ',
   'Turkey':'TR','Turkiye':'TR','Uruguay':'UY',
   'Wales':'gb-wls','Scotland':'gb-sct','Poland':'PL','Greece':'GR',
-  'Ukraine':'UA','Bosnia and Herzegovina':'BA','Bosnia-Herzegovina':'BA',
+  'Ukraine':'UA','Bosnia and Herzegovina':'BA','Bosnia-Herzegovina':'BA','Bosnia':'BA','Bosnia Herzegovina':'BA',
   'Qatar':'QA','South Africa':'ZA','Indonesia':'ID',
   'Trinidad and Tobago':'TT',"Ivory Coast":'CI',"Cote d'Ivoire":'CI',
   'Ghana':'GH','Tunisia':'TN','Algeria':'DZ','Egypt':'EG',
