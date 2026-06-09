@@ -111,9 +111,9 @@ export default function AdminPage() {
   }
 
   async function resetExtra() {
-    const { data: rows } = await supabase.from('prize_config').select('id').limit(1)
-    if (rows && rows.length > 0) {
-      await supabase.from('prize_config').update({ extra_amount: 0, extra_note: null }).eq('id', rows[0].id)
+    const { data: resetRows } = await supabase.from('prize_config').select('id').limit(1)
+    if (resetRows && resetRows.length > 0) {
+      await supabase.from('prize_config').update({ extra_amount: 0, extra_note: null }).eq('id', resetRows[0].id)
     }
     setCurrentExtra(0)
   }
