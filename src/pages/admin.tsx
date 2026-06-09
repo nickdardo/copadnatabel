@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [resH,        setResH]        = useState('')
   const [resA,        setResA]        = useState('')
   const [saving,      setSaving]      = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null) // player id to delete
 
   useEffect(() => {
     if (!loading) {
@@ -80,6 +81,19 @@ export default function AdminPage() {
 
   async function togglePayment(p: Player) {
     await supabase.from('players').update({ payment_ok: !p.payment_ok }).eq('id', p.id)
+    fetchAll()
+  }
+
+  async function deletePlayer(id: string) {
+    // Delete picks, champion_picks, scores, edit_limits first (cascade should handle but being explicit)
+    await Promise.all([
+      supabase.from('picks').delete().eq('player_id', id),
+      supabase.from('champion_picks').delete().eq('player_id', id),
+      supabase.from('scores').delete().eq('player_id', id),
+      supabase.from('pick_edit_limits').delete().eq('player_id', id),
+    ])
+    await supabase.from('players').delete().eq('id', id)
+    setConfirmDelete(null)
     fetchAll()
   }
 
@@ -311,16 +325,26 @@ export default function AdminPage() {
                         <p className="font-semibold text-gray-900 text-[14px] truncate">{name}</p>
                         <p className="text-[11px] text-gray-400">@{p.username}</p>
                       </div>
-                      <button onClick={() => togglePayment(p)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold border transition-all ${p.payment_ok
-                          ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
-                          : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
-                        {p.payment_ok ? (
-                          <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmado</>
-                        ) : (
-                          <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Confirmar pagto</>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => togglePayment(p)}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold border transition-all ${p.payment_ok
+                            ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                            : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
+                          {p.payment_ok ? (
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmado</>
+                          ) : (
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Confirmar pagto</>
+                          )}
+                        </button>
+                        {/* Delete button */}
+                        <button onClick={() => setConfirmDelete(p.id)}
+                          className="w-8 h-8 flex items-center justify-center rounded-xl border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors flex-shrink-0"
+                          title="Excluir participante">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -329,6 +353,42 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (() => {
+        const p = players.find(pl => pl.id === confirmDelete)
+        if (!p) return null
+        const name = p.nickname || p.username
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+              </div>
+              <h3 className="text-[16px] font-bold text-gray-900 text-center mb-1">Excluir participante?</h3>
+              <p className="text-[13px] text-gray-500 text-center mb-1">
+                <strong>{name}</strong> (@{p.username})
+              </p>
+              <p className="text-[12px] text-red-500 text-center mb-5">
+                Todos os palpites e dados serão apagados permanentemente.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-[14px] font-semibold hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={() => deletePlayer(p.id)}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white text-[14px] font-semibold hover:bg-red-600 transition-colors">
+                  Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }
