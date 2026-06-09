@@ -251,7 +251,7 @@ export default function OnboardingPage() {
 
                 <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 mb-3 text-[12px]">
                   <div className="flex justify-between"><span className="text-gray-400">Beneficiário</span><span className="font-semibold">{pix.nome}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-400">Chave (CPF)</span><span className="font-mono font-semibold">{formatCPF(pix.cpf)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Chave ({getKeyTypeLabel(pix.key_type || 'cpf')})</span><span className="font-mono font-semibold">{formatPixKeyDisplay(pix.cpf, pix.key_type || 'cpf')}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">Valor</span><span className="font-bold text-[#0099CC]">R$ {pix.valor.toFixed(2).replace('.', ',')}</span></div>
                 </div>
 
