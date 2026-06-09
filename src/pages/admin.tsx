@@ -36,6 +36,8 @@ export default function AdminPage() {
   const [saving,        setSaving]        = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [togglingId,    setTogglingId]    = useState<string | null>(null)
+  const [lastAutoSync,  setLastAutoSync]  = useState<string>('')
+  const [autoSyncing,   setAutoSyncing]   = useState(false)
   const [pixCpf,        setPixCpf]        = useState('')
   const [pixNome,       setPixNome]       = useState('')
   const [pixValor,      setPixValor]      = useState('10')
@@ -79,6 +81,27 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Auto-sync every 2 hours (client-side, works on Hobby plan)
+  useEffect(() => {
+    async function autoSync() {
+      setAutoSyncing(true)
+      try {
+        const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual' }) })
+        const data = await res.json()
+        if (data.ok) {
+          setLastAutoSync(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+          await fetchAll()
+        }
+      } catch {}
+      setAutoSyncing(false)
+    }
+    // Sync on mount
+    autoSync()
+    // Then every 2 hours
+    const interval = setInterval(autoSync, 2 * 60 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function triggerSync() {
     setSyncing(true); setSyncResult(null)
@@ -253,7 +276,13 @@ export default function AdminPage() {
               </button>
               {syncResult && (
                 <p className={`text-[11px] mt-2 ${syncResult.ok ? 'text-green-600' : 'text-red-500'}`}>
-                  {syncResult.ok ? `✓ +${syncResult.synced} novos · ${syncResult.updated} atualizados${syncResult.quotaRemaining != null ? ` · ${syncResult.quotaRemaining} req` : ''}` : `✗ ${syncResult.error}`}
+                  {syncResult.ok ? `✓ +${syncResult.synced} novos · ${syncResult.updated} atualizados` : `✗ ${syncResult.error}`}
+                </p>
+              )}
+              {lastAutoSync && (
+                <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                  {autoSyncing ? <span className="w-2 h-2 rounded-full bg-[#0099CC] animate-pulse inline-block"/> : '✓'}
+                  Auto-sync {autoSyncing ? 'em andamento...' : `último: ${lastAutoSync}`}
                 </p>
               )}
             </div>

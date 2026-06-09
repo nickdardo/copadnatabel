@@ -104,6 +104,12 @@ export default function Layout({ children, title }: Props) {
                 </span>
               </button>
 
+              {/* Rules */}
+              <button onClick={() => router.push('/onboarding')} title="Regras"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-[#0099CC] hover:bg-[#0099CC]/10 transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </button>
+
               <button onClick={handleLogout} title="Sair"
                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors ml-1">
                 <IconLogout size={16} />
