@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [pixNome,       setPixNome]       = useState('')
   const [pixValor,      setPixValor]      = useState('10')
   const [pixDesc,       setPixDesc]       = useState('Bolão Copa 2026 BEL')
+  const [pixWhatsApp,   setPixWhatsApp]   = useState('')
   const [savingPix,     setSavingPix]     = useState(false)
   const [pixSaved,      setPixSaved]      = useState(false)
   const [pixLoaded,     setPixLoaded]     = useState(false)
@@ -75,6 +76,7 @@ export default function AdminPage() {
       setPixNome(pixRows[0].nome || '')
       setPixValor(String(pixRows[0].valor || 10))
       setPixDesc(pixRows[0].descricao || 'Bolão Copa 2026 BEL')
+      setPixWhatsApp(pixRows[0].whatsapp || '')
     }
     setPixLoaded(true)
     // Load extra prize amount
@@ -177,10 +179,10 @@ export default function AdminPage() {
     const { data: existing } = await supabase.from('pix_config').select('id').limit(1)
     if (existing && existing[0]) {
       await supabase.from('pix_config').update({
-        cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, updated_at: new Date().toISOString()
+        cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null, updated_at: new Date().toISOString()
       }).eq('id', existing[0].id)
     } else {
-      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc })
+      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null })
     }
     setSavingPix(false); setPixSaved(true)
     setTimeout(() => setPixSaved(false), 3000)
@@ -461,6 +463,21 @@ export default function AdminPage() {
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
                     </div>
                   </div>
+                  {/* WhatsApp suporte */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                      WhatsApp de suporte (opcional)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[13px]">📱</span>
+                      <input type="tel" placeholder="(11) 99999-9999"
+                        value={pixWhatsApp}
+                        onChange={e => setPixWhatsApp(e.target.value)}
+                        className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Número que aparecerá no botão "Suporte" nas regras</p>
+                  </div>
+
                   <button onClick={savePix} disabled={savingPix || !pixCpf || !pixNome}
                     className={`w-full py-3.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 ${
                       pixSaved ? 'bg-green-500 text-white' : 'bg-[#0099CC] text-white hover:bg-[#007aa8] disabled:opacity-50'}`}>
@@ -479,6 +496,11 @@ export default function AdminPage() {
                     Tipo: <strong>{pixKeyType === 'cpf' ? 'CPF' : pixKeyType === 'telefone' ? 'Telefone' : pixKeyType === 'email' ? 'E-mail' : 'Chave aleatória'}</strong>
                     {' · '}Chave: {pixCpf} · Beneficiário: {pixNome}
                   </p>
+                  {pixWhatsApp && (
+                    <p className="text-[12px] text-green-600 mt-1">
+                      📱 Suporte WhatsApp: {pixWhatsApp}
+                    </p>
+                  )}
                 </div>
               )}
 

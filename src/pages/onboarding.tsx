@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import Head from 'next/head'
 import { generatePixPayload, formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
-type PixConfig = { cpf: string; key_type: PixKeyType; nome: string; valor: number; descricao: string }
+type PixConfig = { cpf: string; key_type: PixKeyType; nome: string; valor: number; descricao: string; whatsapp?: string }
 type Step = 'rules' | 'payment' | 'waiting'
 
 export default function OnboardingPage() {
@@ -17,7 +17,8 @@ export default function OnboardingPage() {
   const [payload, setPayload] = useState('')
   const [qrUrl,   setQrUrl]   = useState('')
   const [copied,  setCopied]  = useState(false)
-  const [checking,setChecking]= useState(false)
+  const [checking,  setChecking]  = useState(false)
+  const [whatsapp,  setWhatsapp]  = useState('')
 
   useEffect(() => {
     if (!loading && !player) router.push('/')
@@ -29,6 +30,7 @@ export default function OnboardingPage() {
       if (data?.[0]) {
         const cfg = data[0] as PixConfig
         setPix(cfg)
+        setWhatsapp(cfg.whatsapp || '')
         const p = generatePixPayload({
           key: cfg.cpf, keyType: cfg.key_type || 'cpf',
           nome: cfg.nome, valor: cfg.valor,
