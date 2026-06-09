@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [autoSyncing,   setAutoSyncing]   = useState(false)
   const [refreshing,    setRefreshing]    = useState(false)
   const [pixCpf,        setPixCpf]        = useState('')
+  const [pixKeyType,    setPixKeyType]    = useState<PixKeyType>('cpf')
   const [pixNome,       setPixNome]       = useState('')
   const [pixValor,      setPixValor]      = useState('10')
   const [pixDesc,       setPixDesc]       = useState('Bolão Copa 2026 BEL')
@@ -70,6 +71,7 @@ export default function AdminPage() {
     const { data: pixRows } = await supabase.from('pix_config').select('*').limit(1)
     if (pixRows && pixRows[0]) {
       setPixCpf(pixRows[0].cpf || '')
+      setPixKeyType((pixRows[0].key_type as PixKeyType) || 'cpf')
       setPixNome(pixRows[0].nome || '')
       setPixValor(String(pixRows[0].valor || 10))
       setPixDesc(pixRows[0].descricao || 'Bolão Copa 2026 BEL')
@@ -167,15 +169,18 @@ export default function AdminPage() {
   async function savePix() {
     if (!pixCpf || !pixNome) return
     setSavingPix(true)
-    const cpf = pixCpf.replace(/\D/g, '')
     const valor = parseFloat(pixValor) || 10
+    // Format key based on type
+    let key = pixCpf.trim()
+    if (pixKeyType === 'cpf') key = key.replace(/\D/g, '')
+    if (pixKeyType === 'telefone') { const d = key.replace(/\D/g,''); key = d.startsWith('55') ? '+'+d : '+55'+d }
     const { data: existing } = await supabase.from('pix_config').select('id').limit(1)
     if (existing && existing[0]) {
       await supabase.from('pix_config').update({
-        cpf, nome: pixNome, valor, descricao: pixDesc, updated_at: new Date().toISOString()
+        cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, updated_at: new Date().toISOString()
       }).eq('id', existing[0].id)
     } else {
-      await supabase.from('pix_config').insert({ cpf, nome: pixNome, valor, descricao: pixDesc })
+      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc })
     }
     setSavingPix(false); setPixSaved(true)
     setTimeout(() => setPixSaved(false), 3000)
@@ -407,11 +412,34 @@ export default function AdminPage() {
                 <p className="font-bold text-gray-900 text-[15px] mb-1">Configurar chave PIX</p>
                 <p className="text-[12px] text-gray-400 mb-4">Os participantes verão o QR Code para pagar a inscrição</p>
                 <div className="space-y-3">
+                  {/* Key type selector */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">CPF (chave PIX)</label>
-                    <input type="text" placeholder="000.000.000-00" value={pixCpf}
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Tipo de chave PIX</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['cpf','telefone','email','aleatoria'] as PixKeyType[]).map(type => (
+                        <button key={type} type="button"
+                          onClick={() => { setPixKeyType(type); setPixCpf('') }}
+                          className={`py-2.5 rounded-xl text-[13px] font-semibold border transition-all ${
+                            pixKeyType === type
+                              ? 'bg-[#0099CC] text-white border-[#0099CC]'
+                              : 'bg-white text-gray-500 border-gray-200 hover:border-[#0099CC]/40'
+                          }`}>
+                          {type === 'cpf' ? '🪪 CPF' : type === 'telefone' ? '📱 Telefone' : type === 'email' ? '📧 E-mail' : '🔑 Aleatória'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Key input */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                      Chave PIX ({pixKeyType === 'cpf' ? 'CPF' : pixKeyType === 'telefone' ? 'Telefone' : pixKeyType === 'email' ? 'E-mail' : 'Chave aleatória'})
+                    </label>
+                    <input
+                      type={pixKeyType === 'email' ? 'email' : 'text'}
+                      placeholder={pixKeyType === 'cpf' ? '000.000.000-00' : pixKeyType === 'telefone' ? '(11) 99999-9999' : pixKeyType === 'email' ? 'exemplo@email.com' : 'Cole a chave aleatória aqui'}
+                      value={pixCpf}
                       onChange={e => setPixCpf(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] font-mono"/>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Nome do beneficiário</label>
@@ -447,7 +475,10 @@ export default function AdminPage() {
                 <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
                   <p className="text-[13px] font-bold text-green-800 mb-1">✓ PIX configurado</p>
                   <p className="text-[12px] text-green-700">Os participantes já podem acessar <strong>/pagar</strong> para ver o QR Code e efetuar o pagamento.</p>
-                  <p className="text-[12px] text-green-600 mt-2">Chave: {pixCpf} · Beneficiário: {pixNome}</p>
+                  <p className="text-[12px] text-green-600 mt-2">
+                    Tipo: <strong>{pixKeyType === 'cpf' ? 'CPF' : pixKeyType === 'telefone' ? 'Telefone' : pixKeyType === 'email' ? 'E-mail' : 'Chave aleatória'}</strong>
+                    {' · '}Chave: {pixCpf} · Beneficiário: {pixNome}
+                  </p>
                 </div>
               )}
 

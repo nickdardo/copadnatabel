@@ -3,9 +3,9 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import Head from 'next/head'
-import { generatePixPayload, formatCPF } from '@/lib/pix'
+import { generatePixPayload, formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
-type PixConfig = { cpf: string; nome: string; valor: number; descricao: string }
+type PixConfig = { cpf: string; key_type: PixKeyType; nome: string; valor: number; descricao: string }
 
 export default function PagarPage() {
   const { player, loading } = useAuth()
@@ -131,7 +131,7 @@ export default function PagarPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[12px] text-gray-400">Chave PIX (CPF)</span>
-                <span className="text-[13px] font-semibold text-gray-800">{formatCPF(pix.cpf)}</span>
+                <span className="text-[13px] font-semibold text-gray-800">{formatPixKeyDisplay(pix.cpf, pix.key_type || 'cpf')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[12px] text-gray-400">Valor</span>
