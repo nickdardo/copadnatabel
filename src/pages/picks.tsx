@@ -169,7 +169,7 @@ export default function PicksPage() {
       <div className="max-w-lg mx-auto px-4 pt-5 pb-2">
         <div className="text-center mb-4">
           <h1 className="text-[18px] font-bold text-gray-900">Palpites</h1>
-          <p className="text-[12px] text-gray-400 mt-0.5">Bolão dnata · Copa do Mundo 2026</p>
+          <p className="text-[12px] text-gray-400 mt-0.5">Bolão Copa do Mundo 2026</p>
         </div>
 
         {/* Phase tabs */}

@@ -63,9 +63,9 @@ export default function Layout({ children, title }: Props) {
           <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
 
             <div className="flex items-center gap-2.5">
-              <img src="/dnata-logo.png" alt="dnata" className="h-6 w-auto" />
+              <img src="/copa2026-logo.jpg" alt="Copa 2026" className="h-9 w-auto rounded-lg object-contain" />
               <div className="h-4 w-px bg-gray-200" />
-              <span className="text-[13px] text-gray-400 font-medium hidden sm:block">Bolão Copa 2026</span>
+              <span className="text-[13px] text-gray-600 font-semibold hidden sm:block">Bolão Copa 2026</span>
             </div>
 
             <div className="flex items-center gap-2">

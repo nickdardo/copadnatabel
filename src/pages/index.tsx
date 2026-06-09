@@ -17,7 +17,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
         <div className="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
           <div>
             <h2 className="font-bold text-gray-900 text-[16px]">Como funciona</h2>
-            <p className="text-[11px] text-gray-400">Bolão dnata · Copa 2026</p>
+            <p className="text-[11px] text-gray-400">Bolão Copa 2026</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
             <IcoX />
@@ -104,7 +104,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Bolão dnata · Copa 2026</title>
+        <title>Bolão Copa 2026</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#002240" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -122,14 +122,12 @@ export default function LoginPage() {
 
             {/* Logo — transparent, no black background */}
             <div className="flex justify-center mb-2 mt-1">
-              <img src="/dnata-logo.png" alt="dnata"
-                className="h-10 w-auto object-contain"
-                style={{mixBlendMode:'multiply', filter:'contrast(1.1)'}} />
+              <img src="/copa2026-logo.jpg" alt="Copa 2026" className="h-16 w-auto rounded-xl object-contain" />
             </div>
 
             {/* Title */}
             <p className="text-center text-[11px] text-gray-400 font-semibold tracking-[.12em] uppercase mb-5">
-              Bolão dnata · Copa do Mundo 2026
+              Bolão · Copa do Mundo 2026
             </p>
 
             {/* Tabs */}
@@ -204,7 +202,7 @@ export default function LoginPage() {
 
             <button onClick={()=>setShowRules(true)}
               className="w-full mt-3 py-2.5 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-500 hover:bg-gray-50 hover:text-[#0099CC] transition-all flex items-center justify-center gap-2">
-              <IcoInfo /> Como funciona o bolão dnata
+              <IcoInfo /> Como funciona o bolão
             </button>
             <div className="absolute bottom-0 left-0 right-0 h-1" style={{background:'linear-gradient(90deg,#0099CC 65%,#8DC63F 100%)'}} />
           </div>

@@ -147,7 +147,7 @@ export default function ChampionPage() {
           </div>
           <div>
             <h2 className="font-bold text-gray-900 text-[15px]">Quem vai vencer a Copa 2026?</h2>
-            <p className="text-[12px] text-gray-400 mt-0.5">Bolão dnata · Escolha antes dos jogos começarem</p>
+            <p className="text-[12px] text-gray-400 mt-0.5">Bolão Escolha antes dos jogos começarem</p>
           </div>
         </div>
 
