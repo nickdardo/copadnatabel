@@ -76,12 +76,7 @@ export default function Layout({ children, title }: Props) {
                 </button>
               )}
 
-              {!player?.payment_ok && (
-                <button onClick={() => router.push('/pagar')}
-                  className="hidden md:flex text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-colors">
-                  💳 Pagar R$10
-                </button>
-              )}
+
 
               {/* Avatar — click to edit profile */}
               <button onClick={() => router.push('/profile-setup')}
