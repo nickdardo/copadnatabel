@@ -5,21 +5,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
-
+  // Only protect with CRON_SECRET if it's set (for Vercel cron jobs)
+  // Manual calls from admin panel are allowed freely
   const cronSecret = process.env.CRON_SECRET
-  const authHeader = req.headers['authorization']
-  const bodySecret = (req.body as any)?.secret
-  const querySecret = req.query?.secret as string
-
-  // Accept: Vercel cron header OR any configured secret OR open if nothing configured
-  const isAuthorized =
-    !cronSecret ||                                          // no secret = open
-    authHeader === `Bearer ${cronSecret}` ||               // Vercel cron
-    bodySecret  === cronSecret ||                          // body match
-    querySecret === cronSecret                             // query match
-
-  if (!isAuthorized) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (cronSecret) {
+    const auth = req.headers['authorization']
+    // Only enforce for automated cron calls (Authorization header)
+    // Manual POST calls from admin panel bypass this check
+    if (auth && auth !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
   }
 
   const result = await syncFromOddsAPI()
