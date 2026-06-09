@@ -1,5 +1,5 @@
 'use client'
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase, Player } from '@/lib/supabase'
 
 type AuthCtx = {
@@ -21,6 +21,7 @@ const Ctx = createContext<AuthCtx>({
 export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
   const [player,  setPlayer]  = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('bolao_player')
@@ -30,6 +31,34 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     }
     setLoading(false)
   }, [])
+
+  // Heartbeat: update last_seen_at every 30s while logged in
+  useEffect(() => {
+    if (!player) {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+      return
+    }
+
+    async function ping() {
+      if (!player) return
+      await supabase
+        .from('players')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', player.id)
+    }
+
+    ping() // immediate on login
+    heartbeatRef.current = setInterval(ping, 30_000)
+
+    // Also ping on visibility change (tab comes back into focus)
+    function onVisible() { if (!document.hidden) ping() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [player?.id])
 
   async function refreshPlayer() {
     if (!player) return
@@ -45,7 +74,6 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     const clean = username.trim().toLowerCase()
     if (!clean || !password) return { error: 'Preencha usuário e senha.' }
 
-    // Verify password via RPC
     const { data: ok, error: rpcErr } = await supabase
       .rpc('check_password', { p_username: clean, p_password: password })
 
@@ -64,20 +92,18 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
 
   async function register(username: string, password: string): Promise<{ error?: string }> {
     const clean = username.trim().toLowerCase()
-    if (!clean)           return { error: 'Informe um usuário.' }
+    if (!clean)            return { error: 'Informe um usuário.' }
     if (clean === 'admin') return { error: 'Este usuário não está disponível.' }
     if (password.length < 6) return { error: 'A senha deve ter pelo menos 6 caracteres.' }
 
-    // Check duplicate
     const { data: existing } = await supabase
       .from('players').select('id').eq('username', clean).maybeSingle()
     if (existing) return { error: 'Este usuário já está em uso. Escolha outro.' }
 
-    // Create — never admin via frontend
     const { data: newId, error } = await supabase.rpc('create_player', {
       p_username: clean,
       p_password: password,
-      p_is_admin: false,   // ← always false from frontend
+      p_is_admin: false,
     })
 
     if (error || !newId) {
@@ -99,7 +125,6 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     localStorage.removeItem('bolao_player')
   }
 
-  // Admin ONLY if flag is set in DB — never by username match
   const isAdmin = player?.is_admin === true
 
   return (

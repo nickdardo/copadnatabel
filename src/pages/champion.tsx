@@ -78,6 +78,8 @@ export default function ChampionPage() {
     if (!player || !champion || !runner || !third) return
     if (champion === runner || champion === third || runner === third) return
     if (locked) return
+    // Block saving for unpaid users
+    if (!player.payment_ok) { router.push('/onboarding'); return }
     setSaving(true)
     const isEdit = !!champion
     const newEditCount = isEdit ? editCount + 1 : 0
@@ -103,6 +105,33 @@ export default function ChampionPage() {
   return (
     <Layout title="Bolão Copa 2026 BEL">
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
+
+        {/* Payment gate banner */}
+        {!player?.payment_ok && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
+                  <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-[13px] font-bold text-amber-900">Pagamento necessário para salvar</p>
+                <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                  Você pode escolher seus favoritos, mas o palpite de campeão só será salvo após confirmar o pagamento.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/onboarding')}
+              className="mt-3 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold flex items-center justify-center gap-2 transition-colors active:scale-[.98]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+              </svg>
+              Confirmar pagamento e liberar palpites
+            </button>
+          </div>
+        )}
 
         {/* ── Hero header com tema Copa ─────────────────────── */}
         <div className="relative overflow-hidden rounded-2xl shadow-md"
@@ -231,7 +260,7 @@ export default function ChampionPage() {
               <div className="px-4 pb-3.5">
                 <select
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
-                  value={state} onChange={e=>set(e.target.value)} disabled={locked}>
+                  value={state} onChange={e=>set(e.target.value)} disabled={locked || !player?.payment_ok}>
                   <option value="">Selecione a seleção...</option>
                   {exclude(ex1,ex2).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>

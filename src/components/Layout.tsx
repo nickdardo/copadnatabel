@@ -103,10 +103,18 @@ export default function Layout({ children, title }: Props) {
   const [showInstallBanner, setShowInstallBanner] = useState(false)
   const [showIosModal, setShowIosModal] = useState(false)
   const [isIos, setIsIos] = useState(false)
+  const [groupLink, setGroupLink] = useState<string | null>(null)
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
 
   // Refresh player on route change
   useEffect(() => { refreshPlayer() }, [router.pathname])
+
+  // Load group link once
+  useEffect(() => {
+    supabase.from('pix_config').select('group_link').limit(1).then(({ data }) => {
+      if (data?.[0]?.group_link) setGroupLink(data[0].group_link)
+    })
+  }, [])
 
   // PWA install detection
   useEffect(() => {
@@ -228,6 +236,20 @@ export default function Layout({ children, title }: Props) {
                 className="h-9 w-9 rounded-lg object-cover flex-shrink-0"/>
               <span className="text-[13px] text-gray-600 font-bold hidden sm:block">Bolão Copa 2026 BEL</span>
             </div>
+
+            {/* WhatsApp group button — center, visible when configured */}
+            {groupLink && (
+              <a href={groupLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span className="hidden xs:inline">Grupo</span>
+              </a>
+            )}
 
             {/* Right side */}
             <div className="flex items-center gap-1.5">

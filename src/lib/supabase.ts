@@ -6,7 +6,29 @@ export const supabase = createClient(supabaseUrl, supabaseAnon)
 
 export type Player = {
   id: string; username: string; nickname: string
-  avatar_url?: string; payment_ok: boolean; is_admin: boolean; created_at: string
+  avatar_url?: string; payment_ok: boolean; is_admin: boolean
+  created_at: string; last_seen_at?: string
+}
+
+/** Returns online status based on last_seen_at.
+ *  online  = seen within 2 minutes
+ *  recent  = seen within 24 hours (show relative time)
+ *  offline = never seen or >24h
+ */
+export function getPresence(last_seen_at?: string): {
+  status: 'online' | 'recent' | 'offline'
+  label: string
+} {
+  if (!last_seen_at) return { status: 'offline', label: 'Nunca visto' }
+  const diff = Date.now() - new Date(last_seen_at).getTime()
+  const mins  = Math.floor(diff / 60_000)
+  const hours = Math.floor(diff / 3_600_000)
+  if (diff < 2 * 60_000)   return { status: 'online',  label: 'Online agora' }
+  if (mins  < 60)          return { status: 'recent',  label: `${mins}min atrás` }
+  if (hours < 24)          return { status: 'recent',  label: `${hours}h atrás` }
+  const days = Math.floor(diff / 86_400_000)
+  if (days < 7)            return { status: 'offline', label: `${days}d atrás` }
+  return { status: 'offline', label: 'Mais de 1 semana' }
 }
 export type Match = {
   id: string; home_team: string; away_team: string

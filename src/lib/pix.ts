@@ -17,15 +17,21 @@ function emv(id: string, value: string): string {
   return `${id}${value.length.toString().padStart(2, '0')}${value}`
 }
 
-// Format/clean key based on type
+// ─── FIX: phone must be +55XXXXXXXXXXX (11 digits after +55) ─────────────────
 export function formatPixKey(key: string, type: PixKeyType): string {
   switch (type) {
     case 'cpf':
       return key.replace(/\D/g, '').slice(0, 11)
-    case 'telefone':
-      // Format: +5511999999999
+    case 'telefone': {
+      // Strip everything except digits
       const digits = key.replace(/\D/g, '')
-      return digits.startsWith('55') ? `+${digits}` : `+55${digits}`
+      // Remove leading 55 if already present, then rebuild +55...
+      const local = digits.startsWith('55') && digits.length > 11
+        ? digits.slice(2)
+        : digits
+      // local must be 10 or 11 digits (DDD + number, with or without 9)
+      return `+55${local}`
+    }
     case 'email':
       return key.trim().toLowerCase()
     case 'aleatoria':
@@ -37,12 +43,17 @@ export function formatPixKey(key: string, type: PixKeyType): string {
 
 export function formatPixKeyDisplay(key: string, type: PixKeyType): string {
   switch (type) {
-    case 'cpf':
+    case 'cpf': {
       const d = key.replace(/\D/g, '')
       return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-    case 'telefone':
+    }
+    case 'telefone': {
+      // key stored as +5511999999999 → show as (11) 99999-9999
       const t = key.replace(/\D/g, '').replace(/^55/, '')
-      return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+      if (t.length === 11) return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+      if (t.length === 10) return t.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+      return key
+    }
     case 'email':
       return key.toLowerCase()
     case 'aleatoria':

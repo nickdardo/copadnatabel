@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase, Match, Player, FASE_ORDER } from '@/lib/supabase'
+import { supabase, Match, Player, FASE_ORDER, getPresence } from '@/lib/supabase'
 import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
@@ -46,6 +46,7 @@ export default function AdminPage() {
   const [pixValor,      setPixValor]      = useState('10')
   const [pixDesc,       setPixDesc]       = useState('Bolão Copa 2026 BEL')
   const [pixWhatsApp,   setPixWhatsApp]   = useState('')
+  const [pixGroupLink,  setPixGroupLink]  = useState('')
   const [savingPix,     setSavingPix]     = useState(false)
   const [pixSaved,      setPixSaved]      = useState(false)
   const [pixLoaded,     setPixLoaded]     = useState(false)
@@ -54,6 +55,9 @@ export default function AdminPage() {
   const [savingExtra,   setSavingExtra]   = useState(false)
   const [extraSaved,    setExtraSaved]    = useState(false)
   const [currentExtra,  setCurrentExtra]  = useState(0)
+  const [playerSearch,  setPlayerSearch]  = useState('')
+  const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
+  const [presenceTick,  setPresenceTick]  = useState(0)
 
   useEffect(() => {
     if (!loading) {
@@ -78,15 +82,40 @@ export default function AdminPage() {
       setPixValor(String(pixRows[0].valor || 10))
       setPixDesc(pixRows[0].descricao || 'Bolão Copa 2026 BEL')
       setPixWhatsApp(pixRows[0].whatsapp || '')
+      setPixGroupLink(pixRows[0].group_link || '')
     }
     setPixLoaded(true)
     // Load extra prize amount
     const { data: prizeRows } = await supabase.from('prize_config').select('extra_amount').limit(1)
     if (prizeRows && prizeRows[0]) setCurrentExtra(Number(prizeRows[0].extra_amount) || 0)
+    // Load picks count per player from scores table
+    const { data: scoresData } = await supabase.from('scores').select('player_id, picks_count')
+    if (scoresData) {
+      const map: Record<string, number> = {}
+      scoresData.forEach((s: { player_id: string; picks_count: number }) => {
+        map[s.player_id] = s.picks_count || 0
+      })
+      setPicksCount(map)
+    }
     setFetching(false)
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Refresh presence dots every 30s without full reload
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from('players').select('id, last_seen_at')
+      if (data) {
+        setPlayers(prev => prev.map(p => {
+          const fresh = data.find((d: { id: string; last_seen_at: string }) => d.id === p.id)
+          return fresh ? { ...p, last_seen_at: fresh.last_seen_at } : p
+        }))
+        setPresenceTick(t => t + 1)
+      }
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Auto-sync every 2 hours (client-side, works on Hobby plan)
   useEffect(() => {
@@ -180,10 +209,10 @@ export default function AdminPage() {
     const { data: existing } = await supabase.from('pix_config').select('id').limit(1)
     if (existing && existing[0]) {
       await supabase.from('pix_config').update({
-        cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null, updated_at: new Date().toISOString()
+        cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null, group_link: pixGroupLink || null, updated_at: new Date().toISOString()
       }).eq('id', existing[0].id)
     } else {
-      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null })
+      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null, group_link: pixGroupLink || null })
     }
     setSavingPix(false); setPixSaved(true)
     setTimeout(() => setPixSaved(false), 3000)
@@ -224,9 +253,15 @@ export default function AdminPage() {
     fetchAll()
   }
 
-  const nonAdminPlayers = players.filter(p => !p.is_admin)
-  const paidCount       = nonAdminPlayers.filter(p => p.payment_ok && !p.is_admin).length
-  const prizePool       = paidCount * 10 + currentExtra
+  const nonAdminPlayers    = players.filter(p => !p.is_admin)
+  const filteredPlayers    = nonAdminPlayers.filter(p => {
+    if (!playerSearch) return true
+    const q = playerSearch.toLowerCase()
+    return (p.nickname || '').toLowerCase().includes(q) || p.username.toLowerCase().includes(q)
+  })
+  const onlineCount        = nonAdminPlayers.filter(p => getPresence(p.last_seen_at).status === 'online').length
+  const paidCount          = nonAdminPlayers.filter(p => p.payment_ok && !p.is_admin).length
+  const prizePool          = paidCount * 10 + currentExtra
   const phases          = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
   const filteredMatches = matches.filter(m => m.fase === activePhase)
   const liveCount       = matches.filter(m => m.status === 'live').length
@@ -268,7 +303,7 @@ export default function AdminPage() {
           <div className="grid grid-cols-4 gap-3">
             {[
               { label: 'Participantes', value: nonAdminPlayers.length,             icon: '👥', color: 'text-blue-600'  },
-              { label: 'Pagamentos',    value: `${paidCount}/${nonAdminPlayers.length}`, icon: '💰', color: 'text-green-600' },
+              { label: 'Online agora',  value: onlineCount,                        icon: '🟢', color: 'text-green-600' },
               { label: 'Prêmio total',  value: `R$${prizePool}`,                   icon: '🏆', color: 'text-amber-600' },
               { label: 'Jogos',         value: `${doneCount}/${matches.length}`,   icon: '⚽', color: 'text-gray-600'  },
             ].map(s => (
@@ -479,6 +514,21 @@ export default function AdminPage() {
                     <p className="text-[11px] text-gray-400 mt-1">Número que aparecerá no botão "Suporte" nas regras</p>
                   </div>
 
+                  {/* Link do grupo WhatsApp */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                      Link do grupo WhatsApp (opcional)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[13px]">👥</span>
+                      <input type="url" placeholder="https://chat.whatsapp.com/..."
+                        value={pixGroupLink}
+                        onChange={e => setPixGroupLink(e.target.value)}
+                        className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] font-mono text-[12px]"/>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Aparecerá como botão "Entrar no grupo" nas regras e no app</p>
+                  </div>
+
                   <button onClick={savePix} disabled={savingPix || !pixCpf || !pixNome}
                     className={`w-full py-3.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 ${
                       pixSaved ? 'bg-green-500 text-white' : 'bg-[#0099CC] text-white hover:bg-[#007aa8] disabled:opacity-50'}`}>
@@ -500,6 +550,11 @@ export default function AdminPage() {
                   {pixWhatsApp && (
                     <p className="text-[12px] text-green-600 mt-1">
                       📱 Suporte WhatsApp: {pixWhatsApp}
+                    </p>
+                  )}
+                  {pixGroupLink && (
+                    <p className="text-[12px] text-green-600 mt-1">
+                      👥 Grupo: <a href={pixGroupLink} target="_blank" rel="noopener noreferrer" className="underline truncate">{pixGroupLink.slice(0, 40)}{pixGroupLink.length > 40 ? '...' : ''}</a>
                     </p>
                   )}
                 </div>
@@ -598,52 +653,120 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Search + legend */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome ou usuário..."
+                    value={playerSearch}
+                    onChange={e => setPlayerSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-[13px] focus:outline-none focus:border-[#0099CC] transition-colors"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-gray-400 whitespace-nowrap bg-white border border-gray-100 rounded-xl px-3 py-2">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>Online</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>Recente</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block"/>Off</span>
+                  {/* presenceTick forces re-render every 30s */}
+                  <span className="sr-only">{presenceTick}</span>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                {nonAdminPlayers.map(p => {
+                {filteredPlayers.map(p => {
                   const av = p.avatar_url
                     ? (p.avatar_url.startsWith('http') ? p.avatar_url : supabase.storage.from('avatars').getPublicUrl(p.avatar_url).data.publicUrl)
                     : null
                   const name = p.nickname || p.username
+                  const presence = getPresence(p.last_seen_at)
+                  const picks = picksCount[p.id] || 0
                   return (
-                    <div key={p.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-sm">
-                      {av
-                        ? <img src={av} alt={name} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"/>
-                        : <div className="w-10 h-10 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[11px] font-bold text-[#0099CC] flex-shrink-0">
-                            {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
-                          </div>
-                      }
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-[14px] truncate">{name}</p>
-                        <p className="text-[11px] text-gray-400">@{p.username}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* Payment toggle */}
-                        <button
-                          onClick={() => togglePayment(p)}
-                          disabled={togglingId === p.id}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold border transition-all disabled:opacity-60
-                            ${p.payment_ok
-                              ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
-                              : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
-                          {togglingId === p.id
-                            ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
-                            : p.payment_ok
-                              ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmado</>
-                              : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Confirmar pagto</>
+                    <div key={p.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3.5 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        {/* Avatar with presence dot */}
+                        <div className="relative flex-shrink-0">
+                          {av
+                            ? <img src={av} alt={name} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"/>
+                            : <div className="w-10 h-10 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[11px] font-bold text-[#0099CC]">
+                                {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
+                              </div>
                           }
-                        </button>
-                        {/* Delete */}
-                        <button onClick={() => setConfirmDelete(p.id)}
-                          className="w-8 h-8 flex items-center justify-center rounded-xl border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors flex-shrink-0">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                          </svg>
-                        </button>
+                          {/* Presence dot */}
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                            presence.status === 'online'  ? 'bg-green-500' :
+                            presence.status === 'recent'  ? 'bg-amber-400' : 'bg-gray-300'
+                          }`}/>
+                        </div>
+
+                        {/* Name + meta */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-semibold text-gray-900 text-[14px] truncate">{name}</p>
+                            {presence.status === 'online' && (
+                              <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md">ONLINE</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[11px] text-gray-400">@{p.username}</p>
+                            <span className="text-gray-200">·</span>
+                            <p className="text-[11px] text-gray-400">{picks} palpites</p>
+                            <span className="text-gray-200">·</span>
+                            <p className={`text-[11px] ${
+                              presence.status === 'online' ? 'text-green-600' :
+                              presence.status === 'recent' ? 'text-amber-500' : 'text-gray-400'
+                            }`}>{presence.label}</p>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* WhatsApp — only shown if number registered in pix_config whatsapp field */}
+                          {pixWhatsApp && (
+                            <a
+                              href={`https://wa.me/${pixWhatsApp.replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${name}! Aqui é o admin do Bolão Copa 2026 BEL 🏆`)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              title="Abrir WhatsApp"
+                              className="w-8 h-8 flex items-center justify-center rounded-xl border border-green-200 text-green-500 hover:bg-green-50 hover:text-green-700 transition-colors flex-shrink-0">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+                              </svg>
+                            </a>
+                          )}
+                          {/* Payment toggle */}
+                          <button
+                            onClick={() => togglePayment(p)}
+                            disabled={togglingId === p.id}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold border transition-all disabled:opacity-60
+                              ${p.payment_ok
+                                ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                                : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
+                            {togglingId === p.id
+                              ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
+                              : p.payment_ok
+                                ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmado</>
+                                : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Confirmar pagto</>
+                            }
+                          </button>
+                          {/* Delete */}
+                          <button onClick={() => setConfirmDelete(p.id)}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors flex-shrink-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )
                 })}
+                {filteredPlayers.length === 0 && playerSearch && (
+                  <div className="text-center py-8 text-gray-400 text-[13px]">
+                    Nenhum participante encontrado para <strong>"{playerSearch}"</strong>
+                  </div>
+                )}
               </div>
             </>
           )}
