@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Score, Player } from '@/lib/supabase'
 import { getFlag } from '@/lib/flags'
+import FlagImg from '@/components/FlagImg'
 import Layout from '@/components/Layout'
 
 type ChampPick = { pick_champion:string; pick_runner:string; pick_third:string }
@@ -229,11 +230,14 @@ export default function RankingPage() {
                         <div className="text-right">
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Campeões</p>
                           <div className="space-y-1">
-                            {[{label:'🥇',team:entry.champ.pick_champion},{label:'🥈',team:entry.champ.pick_runner},{label:'🥉',team:entry.champ.pick_third}]
-                              .map(({label,team})=>(
-                              <div key={label} className="flex items-center gap-1.5 justify-end">
-                                <span className="text-[11px] text-gray-500 font-medium">{team}</span>
-                                <span className="text-[18px]">{getFlag(team)}</span>
+                            {[
+                              {label:'🥇',team:entry.champ.pick_champion},
+                              {label:'🥈',team:entry.champ.pick_runner},
+                              {label:'🥉',team:entry.champ.pick_third}
+                            ].map(({label,team})=>(
+                              <div key={label} className="flex items-center gap-2 justify-end">
+                                <span className="text-[12px] text-gray-500 font-medium">{team}</span>
+                                <FlagImg team={team} size={24} className="rounded-sm" />
                                 <span className="text-[14px]">{label}</span>
                               </div>
                             ))}
