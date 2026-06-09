@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Match, Player, FASE_ORDER } from '@/lib/supabase'
 import Head from 'next/head'
+import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
 type Tab = 'matches' | 'players' | 'pix'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
