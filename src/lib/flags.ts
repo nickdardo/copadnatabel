@@ -1,8 +1,6 @@
-// ─── Flag map — PT + EN + alternates ────────────────────────────
-// Covers both Supabase manual inserts (PT) and The Odds API names (EN)
-
-export const FLAG_MAP: Record<string, string> = {
-  // ── Portuguese names ──────────────────────────────────────────
+// Mapa único PT+EN sem duplicatas — usado em todo o projeto
+const FLAG_MAP: Record<string, string> = {
+  // ── Português ─────────────────────────────────────────────────
   'Albania':'🇦🇱','Alemanha':'🇩🇪','Argentina':'🇦🇷','Arábia Saudita':'🇸🇦',
   'Austrália':'🇦🇺','Áustria':'🇦🇹','Bélgica':'🇧🇪','Bolívia':'🇧🇴',
   'Brasil':'🇧🇷','Camarões':'🇨🇲','Canadá':'🇨🇦','Cazaquistão':'🇰🇿',
@@ -17,60 +15,40 @@ export const FLAG_MAP: Record<string, string> = {
   'Portugal':'🇵🇹','RD Congo':'🇨🇩','Romênia':'🇷🇴','Sérvia':'🇷🇸',
   'Senegal':'🇸🇳','Suécia':'🇸🇪','Suíça':'🇨🇭','Tchéquia':'🇨🇿',
   'Turquia':'🇹🇷','Uruguai':'🇺🇾','Venezuela':'🇻🇪',
-  // ── English names (The Odds API) ──────────────────────────────
-  'Albania':'🇦🇱','Germany':'🇩🇪','Argentina':'🇦🇷','Saudi Arabia':'🇸🇦',
-  'Australia':'🇦🇺','Austria':'🇦🇹','Belgium':'🇧🇪','Bolivia':'🇧🇴',
-  'Brazil':'🇧🇷','Cameroon':'🇨🇲','Canada':'🇨🇦','Kazakhstan':'🇰🇿',
-  'Chile':'🇨🇱','Colombia':'🇨🇴','South Korea':'🇰🇷','Korea Republic':'🇰🇷',
-  'Costa Rica':'🇨🇷','Croatia':'🇭🇷','Denmark':'🇩🇰','Ecuador':'🇪🇨',
-  'Slovakia':'🇸🇰','Slovenia':'🇸🇮','Spain':'🇪🇸','United States':'🇺🇸',
-  'USA':'🇺🇸','France':'🇫🇷','Georgia':'🇬🇪','Honduras':'🇭🇳',
-  'Hungary':'🇭🇺','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Iran':'🇮🇷','Iraq':'🇮🇶',
-  'Israel':'🇮🇱','Italy':'🇮🇹','Jamaica':'🇯🇲','Japan':'🇯🇵',
+  // ── Inglês (The Odds API) — sem duplicar chaves já em PT ──────
+  'Germany':'🇩🇪','Saudi Arabia':'🇸🇦','Australia':'🇦🇺','Austria':'🇦🇹',
+  'Belgium':'🇧🇪','Bolivia':'🇧🇴','Brazil':'🇧🇷','Cameroon':'🇨🇲',
+  'Canada':'🇨🇦','Kazakhstan':'🇰🇿','Colombia':'🇨🇴',
+  'South Korea':'🇰🇷','Korea Republic':'🇰🇷','Croatia':'🇭🇷',
+  'Denmark':'🇩🇰','Ecuador':'🇪🇨','Slovakia':'🇸🇰','Slovenia':'🇸🇮',
+  'Spain':'🇪🇸','United States':'🇺🇸','USA':'🇺🇸','France':'🇫🇷',
+  'Georgia':'🇬🇪','Hungary':'🇭🇺','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Iran':'🇮🇷','Iraq':'🇮🇶','Italy':'🇮🇹','Japan':'🇯🇵',
   'Morocco':'🇲🇦','Mexico':'🇲🇽','Mozambique':'🇲🇿','Nigeria':'🇳🇬',
   'Norway':'🇳🇴','New Zealand':'🇳🇿','Netherlands':'🇳🇱','Panama':'🇵🇦',
-  'Paraguay':'🇵🇾','Peru':'🇵🇪','Portugal':'🇵🇹','DR Congo':'🇨🇩',
-  'Congo DR':'🇨🇩','Romania':'🇷🇴','Serbia':'🇷🇸','Senegal':'🇸🇳',
-  'Sweden':'🇸🇪','Switzerland':'🇨🇭','Czech Republic':'🇨🇿','Czechia':'🇨🇿',
-  'Turkey':'🇹🇷','Turkiye':'🇹🇷','Uruguay':'🇺🇾','Venezuela':'🇻🇪',
+  'Paraguay':'🇵🇾','Romania':'🇷🇴','Serbia':'🇷🇸','Sweden':'🇸🇪',
+  'Switzerland':'🇨🇭','Czech Republic':'🇨🇿','Czechia':'🇨🇿',
+  'Turkey':'🇹🇷','Turkiye':'🇹🇷','Uruguay':'🇺🇾',
   'Wales':'🏴󠁧󠁢󠁷󠁬󠁳󠁿','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Poland':'🇵🇱','Greece':'🇬🇷',
-  'Ukraine':'🇺🇦','Bosnia and Herzegovina':'🇧🇦','Bosnia-Herzegovina':'🇧🇦',
-  'Qatar':'🇶🇦','Indonesia':'🇮🇩','South Africa':'🇿🇦','Trinidad and Tobago':'🇹🇹',
+  'Ukraine':'🇺🇦','Bosnia and Herzegovina':'🇧🇦','Qatar':'🇶🇦',
+  'Indonesia':'🇮🇩','South Africa':'🇿🇦','Trinidad and Tobago':'🇹🇹',
   'El Salvador':'🇸🇻','Cuba':'🇨🇺','Guatemala':'🇬🇹','Haiti':'🇭🇹',
-  'Ivory Coast':'🇨🇮','Côte d\'Ivoire':'🇨🇮',"Cote d'Ivoire":'🇨🇮',
-  'Ghana':'🇬🇭','Mali':'🇲🇱','Tunisia':'🇹🇳','Algeria':'🇩🇿',
-  'Egypt':'🇪🇬','Finland':'🇫🇮','Romania':'🇷🇴','Northern Ireland':'🇬🇧',
-  'Kosovo':'🇽🇰','Luxembourg':'🇱🇺','Cyprus':'🇨🇾','Lithuania':'🇱🇹',
-  'Latvia':'🇱🇻','Estonia':'🇪🇪','Malta':'🇲🇹','Andorra':'🇦🇩',
-  'San Marino':'🇸🇲','Faroe Islands':'🇫🇴','Iceland':'🇮🇸',
-  'Switzerland':'🇨🇭','Netherlands':'🇳🇱','Belgium':'🇧🇪',
+  "Ivory Coast":'🇨🇮',"Cote d'Ivoire":'🇨🇮','Ghana':'🇬🇭',
+  'Tunisia':'🇹🇳','Algeria':'🇩🇿','Egypt':'🇪🇬','Finland':'🇫🇮',
+  'Iceland':'🇮🇸','Kosovo':'🇽🇰','Luxembourg':'🇱🇺',
 }
 
 export function getFlag(team: string, dbFlag?: string): string {
-  // DB flag (from Supabase) takes priority if it's a real emoji flag
   if (dbFlag && dbFlag !== '🏳️' && dbFlag.length > 0) return dbFlag
-  // Exact match
   if (FLAG_MAP[team]) return FLAG_MAP[team]
-  // Case-insensitive match
   const lower = team.toLowerCase()
-  const found = Object.entries(FLAG_MAP).find(([k]) => k.toLowerCase() === lower)
-  if (found) return found[1]
-  // Partial match (e.g. "United States of America" → "United States")
+  const exact = Object.entries(FLAG_MAP).find(([k]) => k.toLowerCase() === lower)
+  if (exact) return exact[1]
   const partial = Object.entries(FLAG_MAP).find(([k]) =>
     lower.includes(k.toLowerCase()) || k.toLowerCase().includes(lower)
   )
-  if (partial) return partial[1]
-  return '🏳️'
+  return partial ? partial[1] : '🏳️'
 }
-
-// PT name lookup (for champion picks stored in PT)
-export const TEAMS_PT = Object.keys(FLAG_MAP)
-  .filter(k => {
-    const c = k.charCodeAt(0)
-    return c >= 65 && c <= 122 // ASCII letters only (filter out EN duplicates by using PT first)
-  })
-  .filter((v, i, a) => a.indexOf(v) === i) // dedupe
-  .sort()
 
 export const TEAMS_SELECT = [
   'Albania','Alemanha','Argentina','Arábia Saudita','Austrália','Áustria',
