@@ -36,6 +36,11 @@ export default function AdminPage() {
   const [saving,        setSaving]        = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [togglingId,    setTogglingId]    = useState<string | null>(null)
+  const [extraAmount,   setExtraAmount]   = useState('')
+  const [extraNote,     setExtraNote]     = useState('')
+  const [savingExtra,   setSavingExtra]   = useState(false)
+  const [extraSaved,    setExtraSaved]    = useState(false)
+  const [currentExtra,  setCurrentExtra]  = useState(0)
 
   useEffect(() => {
     if (!loading) {
@@ -51,6 +56,9 @@ export default function AdminPage() {
     ])
     setMatches((mData || []) as Match[])
     setPlayers((pData || []) as Player[])
+    // Load extra prize amount
+    const { data: prizeData } = await supabase.from('prize_config').select('*').single()
+    if (prizeData) setCurrentExtra(Number(prizeData.extra_amount) || 0)
     setFetching(false)
   }, [])
 
@@ -73,6 +81,31 @@ export default function AdminPage() {
     setRecalcMsg(error ? 'Erro ao recalcular.' : 'Pontuações recalculadas!')
     setTimeout(() => setRecalcMsg(''), 3000)
     setRecalcing(false)
+  }
+
+  async function saveExtra() {
+    const val = parseFloat(extraAmount.replace(',', '.'))
+    if (isNaN(val) || val < 0) return
+    setSavingExtra(true)
+    const { data: existing } = await supabase.from('prize_config').select('id').single()
+    if (existing) {
+      await supabase.from('prize_config').update({
+        extra_amount: currentExtra + val,
+        extra_note: extraNote || null,
+      }).eq('id', existing.id)
+    }
+    setCurrentExtra(prev => prev + val)
+    setExtraAmount('')
+    setExtraNote('')
+    setSavingExtra(false)
+    setExtraSaved(true)
+    setTimeout(() => setExtraSaved(false), 2500)
+  }
+
+  async function resetExtra() {
+    const { data: existing } = await supabase.from('prize_config').select('id').single()
+    if (existing) await supabase.from('prize_config').update({ extra_amount: 0, extra_note: null }).eq('id', existing.id)
+    setCurrentExtra(0)
   }
 
   async function saveResult(match: Match) {
@@ -112,7 +145,7 @@ export default function AdminPage() {
 
   const nonAdminPlayers = players.filter(p => !p.is_admin)
   const paidCount       = nonAdminPlayers.filter(p => p.payment_ok).length
-  const prizePool       = paidCount * 10
+  const prizePool       = paidCount * 10 + currentExtra
   const phases          = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
   const filteredMatches = matches.filter(m => m.fase === activePhase)
   const liveCount       = matches.filter(m => m.status === 'live').length
@@ -288,6 +321,63 @@ export default function AdminPage() {
                     style={{ width: nonAdminPlayers.length > 0 ? `${Math.round((paidCount/nonAdminPlayers.length)*100)}%` : '0%' }}/>
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1.5">{paidCount} de {nonAdminPlayers.length} confirmados</p>
+              </div>
+
+              {/* Extra prize card */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-[14px]">Adicionar valor extra</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Atual: <strong>R$ {currentExtra.toFixed(2).replace('.',',')}</strong> em bônus
+                    </p>
+                  </div>
+                  {currentExtra > 0 && (
+                    <button onClick={resetExtra} className="text-[11px] text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded-lg transition-colors">
+                      Zerar bônus
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[13px] font-medium">R$</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        placeholder="0,00"
+                        value={extraAmount}
+                        onChange={e => setExtraAmount(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
+                      />
+                    </div>
+                    <button
+                      onClick={saveExtra}
+                      disabled={savingExtra || !extraAmount}
+                      className="px-4 py-2.5 rounded-xl bg-[#0099CC] text-white text-[13px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors whitespace-nowrap">
+                      {savingExtra ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"/> : extraSaved ? '✓ Adicionado!' : 'Adicionar'}
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Observação (opcional) — ex: Patrocínio empresa"
+                    value={extraNote}
+                    onChange={e => setExtraNote(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all placeholder:text-gray-300"
+                  />
+                </div>
+                {currentExtra > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-gray-500">Prêmio total com bônus:</span>
+                      <span className="font-bold text-[#0099CC]">R$ {prizePool.toFixed(2).replace('.',',')}</span>
+                    </div>
+                    <div className="flex gap-3 mt-1.5 text-[11px] text-gray-400">
+                      <span>🥇 R$ {(prizePool * 0.6).toFixed(2).replace('.',',')}</span>
+                      <span>🥈 R$ {(prizePool * 0.25).toFixed(2).replace('.',',')}</span>
+                      <span>🥉 R$ {(prizePool * 0.15).toFixed(2).replace('.',',')}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
