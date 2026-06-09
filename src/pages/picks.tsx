@@ -138,6 +138,17 @@ export default function PicksPage() {
       setLimits(l => ({ ...l, [limitKey]: { ...editLimit || { player_id: player.id, fase: activePhase, round_index: safeRound, max_edits: MAX_EDITS }, edits_used: ne } }))
     }
     setPicks(p => { const n = { ...p }; toSave.forEach(m => { n[m.id] = { ...n[m.id], saved: true } }); return n })
+
+    // Update picks_count in scores table so ranking bar reflects immediately
+    const { count: totalPicks } = await supabase
+      .from('picks').select('*', { count: 'exact', head: true }).eq('player_id', player.id)
+    if (totalPicks !== null) {
+      await supabase.from('scores').upsert(
+        { player_id: player.id, picks_count: totalPicks, total_pts: 0, f10_count: 0, f7_count: 0, f5_count: 0, f2_count: 0, f0_count: 0, champion_pts: 0, updated_at: new Date().toISOString() },
+        { onConflict: 'player_id', ignoreDuplicates: false }
+      )
+    }
+
     setSaving(false); setBatchSaved(true)
   }
 

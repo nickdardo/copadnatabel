@@ -46,7 +46,7 @@ export const FACTOR_COLOR: Record<string,string> = {
   F5:'bg-amber-100 text-amber-800',  F2:'bg-pink-100 text-pink-800',
   F0:'bg-gray-100 text-gray-600',
 }
-export const FASE_ORDER = ['Fase de Grupos','Oitavas','Quartas','Semifinais','Terceiro Lugar','Final']
+export const FASE_ORDER = ['Fase de Grupos','Oitavas de Final','Quartas de Final','Semifinais','Terceiro Lugar','Final']
 
 export function getAvatarUrl(path:string|null|undefined):string|null {
   if (!path) return null

@@ -16,6 +16,11 @@ type Props = { children: React.ReactNode; title: string; step?: number }
 export default function Layout({ children, title }: Props) {
   const router = useRouter()
   const { player, logout, isAdmin, refreshPlayer } = useAuth()
+
+  // Refresh player data on every route change to get latest payment_ok, nickname, avatar
+  useEffect(() => {
+    refreshPlayer()
+  }, [router.pathname])
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
 
   // Refresh player data on every page load to get latest avatar

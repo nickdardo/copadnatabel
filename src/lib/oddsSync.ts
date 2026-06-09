@@ -43,10 +43,18 @@ function translateTeam(enName: string): string {
 
 function detectPhase(commenceTime: string): string {
   const ts = new Date(commenceTime).getTime()
-  if (ts < new Date('2026-07-01T00:00:00Z').getTime()) return 'Fase de Grupos'
-  if (ts < new Date('2026-07-07T00:00:00Z').getTime()) return 'Oitavas'
-  if (ts < new Date('2026-07-12T00:00:00Z').getTime()) return 'Quartas'
-  if (ts < new Date('2026-07-16T00:00:00Z').getTime()) return 'Semifinais'
+  // Copa 2026: 48 teams, 12 groups
+  // Group stage: Jun 11–25
+  // Round of 32: Jun 27–Jul 3
+  // Round of 16 (Oitavas): Jul 4–7
+  // Quarterfinals: Jul 9–11
+  // Semifinals: Jul 14–15
+  // Third place: Jul 18
+  // Final: Jul 19
+  if (ts < new Date('2026-06-27T00:00:00Z').getTime()) return 'Fase de Grupos'
+  if (ts < new Date('2026-07-04T00:00:00Z').getTime()) return 'Oitavas de Final'
+  if (ts < new Date('2026-07-09T00:00:00Z').getTime()) return 'Quartas de Final'
+  if (ts < new Date('2026-07-14T00:00:00Z').getTime()) return 'Semifinais'
   if (ts < new Date('2026-07-19T00:00:00Z').getTime()) return 'Terceiro Lugar'
   return 'Final'
 }
@@ -71,7 +79,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
     const events: OddsEvent[] = await eventsRes.json()
 
     const scoresRes = await fetch(
-      `${ODDS_BASE}/sports/${SPORT_KEY}/scores?apiKey=${apiKey}&daysFrom=3&dateFormat=iso`,
+      `${ODDS_BASE}/sports/${SPORT_KEY}/scores?apiKey=${apiKey}&daysFrom=5&dateFormat=iso`,
       { cache: 'no-store' }
     )
     quotaRemaining = Number(scoresRes.headers.get('x-requests-remaining') ?? quotaRemaining)
