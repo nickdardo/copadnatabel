@@ -6,34 +6,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // Protection: check CRON_SECRET OR ADMIN_NICKNAME
-  const cronSecret  = process.env.CRON_SECRET
-  const adminNick   = process.env.NEXT_PUBLIC_ADMIN_NICKNAME?.toLowerCase()
+  const cronSecret = process.env.CRON_SECRET
+  const authHeader = req.headers['authorization']
+  const bodySecret = (req.body as any)?.secret
+  const querySecret = req.query?.secret as string
 
-  const authHeader  = req.headers['authorization']
-  const bodySecret  = (req.body as any)?.secret?.toLowerCase()
-  const querySecret = (req.query?.secret as string)?.toLowerCase()
-
+  // Accept: Vercel cron header OR any configured secret OR open if nothing configured
   const isAuthorized =
-    // Vercel cron job
-    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
-    // Manual from admin panel — accepts cron secret OR admin nickname
-    (cronSecret && (bodySecret === cronSecret || querySecret === cronSecret)) ||
-    (adminNick  && (bodySecret === adminNick  || querySecret === adminNick))  ||
-    // No secret configured — allow all (dev mode)
-    (!cronSecret && !adminNick)
+    !cronSecret ||                                          // no secret = open
+    authHeader === `Bearer ${cronSecret}` ||               // Vercel cron
+    bodySecret  === cronSecret ||                          // body match
+    querySecret === cronSecret                             // query match
 
   if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  console.log('[/api/sync] Starting sync...')
   const result = await syncFromOddsAPI()
-  console.log('[/api/sync] Done:', result)
-
-  return res.status(200).json({
-    ok: !result.error,
-    ...result,
-    timestamp: new Date().toISOString(),
-  })
+  return res.status(200).json({ ok: !result.error, ...result, timestamp: new Date().toISOString() })
 }

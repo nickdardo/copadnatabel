@@ -55,7 +55,8 @@ export default function AdminPage() {
   async function triggerSync() {
     setSyncing(true); setSyncResult(null)
     try {
-      const res  = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: process.env.NEXT_PUBLIC_ADMIN_NICKNAME }) })
+      const secret = process.env.NEXT_PUBLIC_CRON_SECRET || ''
+      const res  = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret }) })
       const data = await res.json()
       setSyncResult(data)
       if (data.ok) fetchAll()
