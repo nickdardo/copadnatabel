@@ -13,7 +13,7 @@ export type Match = {
   home_flag?: string; away_flag?: string; match_date?: string
   fase: string; status: 'upcoming'|'live'|'done'
   score_home?: number; score_away?: number
-  sort_order: number; odds_event_id?: string
+  sort_order: number; odds_event_id?: string; group_name?: string
 }
 export type Pick = {
   id: string; player_id: string; match_id: string
