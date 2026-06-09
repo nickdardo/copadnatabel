@@ -3,12 +3,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, Player } from '@/lib/supabase'
 
 type AuthCtx = {
-  player: Player | null
-  loading: boolean
-  login:    (username: string, password: string) => Promise<{ error?: string }>
-  register: (username: string, password: string) => Promise<{ error?: string }>
-  logout:   () => void
-  isAdmin:  boolean
+  player:        Player | null
+  loading:       boolean
+  login:         (username: string, password: string) => Promise<{ error?: string }>
+  register:      (username: string, password: string) => Promise<{ error?: string }>
+  logout:        () => void
+  isAdmin:       boolean
   refreshPlayer: () => Promise<void>
 }
 
@@ -41,36 +41,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // ── Login ──────────────────────────────────────────────────────
   async function login(username: string, password: string): Promise<{ error?: string }> {
     const clean = username.trim().toLowerCase()
     if (!clean || !password) return { error: 'Preencha usuário e senha.' }
 
-    const { data, error } = await supabase
-      .from('players')
-      .select('*')
-      .eq('username', clean)
-      .maybeSingle()
-
-    if (error)  return { error: 'Erro ao conectar. Tente novamente.' }
-    if (!data)  return { error: 'Usuário não encontrado.' }
-
-    // Simple password check via bcrypt stored in column password_hash
-    // We do server-side check via RPC
+    // Verify password via RPC
     const { data: ok, error: rpcErr } = await supabase
       .rpc('check_password', { p_username: clean, p_password: password })
 
-    if (rpcErr || !ok) return { error: 'Senha incorreta.' }
+    if (rpcErr) return { error: 'Erro ao conectar. Tente novamente.' }
+    if (!ok)    return { error: 'Usuário ou senha incorretos.' }
+
+    const { data } = await supabase
+      .from('players').select('*').eq('username', clean).single()
+
+    if (!data) return { error: 'Usuário não encontrado.' }
 
     setPlayer(data)
     localStorage.setItem('bolao_player', JSON.stringify(data))
     return {}
   }
 
-  // ── Register ───────────────────────────────────────────────────
   async function register(username: string, password: string): Promise<{ error?: string }> {
     const clean = username.trim().toLowerCase()
-    if (!clean)        return { error: 'Informe um usuário.' }
+    if (!clean)           return { error: 'Informe um usuário.' }
+    if (clean === 'admin') return { error: 'Este usuário não está disponível.' }
     if (password.length < 6) return { error: 'A senha deve ter pelo menos 6 caracteres.' }
 
     // Check duplicate
@@ -78,21 +73,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('players').select('id').eq('username', clean).maybeSingle()
     if (existing) return { error: 'Este usuário já está em uso. Escolha outro.' }
 
-    const isAdmin = clean === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
+    // Create — never admin via frontend
+    const { data: newId, error } = await supabase.rpc('create_player', {
+      p_username: clean,
+      p_password: password,
+      p_is_admin: false,   // ← always false from frontend
+    })
 
-    const { data: created, error } = await supabase
-      .rpc('create_player', {
-        p_username: clean,
-        p_password: password,
-        p_is_admin: isAdmin,
-      })
-
-    if (error || !created) {
+    if (error || !newId) {
       console.error(error)
       return { error: 'Erro ao criar conta. Tente novamente.' }
     }
 
-    // Fetch full row
     const { data: row } = await supabase
       .from('players').select('*').eq('username', clean).single()
 
@@ -107,9 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('bolao_player')
   }
 
-  const isAdmin =
-    player?.is_admin === true ||
-    player?.username?.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
+  // Admin ONLY if flag is set in DB — never by username match
+  const isAdmin = player?.is_admin === true
 
   return (
     <Ctx.Provider value={{ player, loading, login, register, logout, isAdmin, refreshPlayer }}>
