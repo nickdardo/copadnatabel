@@ -32,7 +32,7 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     setLoading(false)
   }, [])
 
-  // Heartbeat: update last_seen_at every 30s while logged in
+  // Heartbeat: update last_seen_at every 30s via API (bypasses RLS)
   useEffect(() => {
     if (!player) {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
@@ -41,16 +41,18 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
 
     async function ping() {
       if (!player) return
-      await supabase
-        .from('players')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('id', player.id)
+      try {
+        await fetch('/api/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player_id: player.id }),
+        })
+      } catch {}
     }
 
-    ping() // immediate on login
+    ping() // immediate on login / page load
     heartbeatRef.current = setInterval(ping, 30_000)
 
-    // Also ping on visibility change (tab comes back into focus)
     function onVisible() { if (!document.hidden) ping() }
     document.addEventListener('visibilitychange', onVisible)
 
