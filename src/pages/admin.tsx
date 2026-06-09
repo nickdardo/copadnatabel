@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth'
 import { supabase, Match, Player, FASE_ORDER } from '@/lib/supabase'
 import Head from 'next/head'
 
-type Tab = 'matches' | 'players'
+type Tab = 'matches' | 'players' | 'pix'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
 
 // BRT formatter
@@ -36,6 +36,13 @@ export default function AdminPage() {
   const [saving,        setSaving]        = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [togglingId,    setTogglingId]    = useState<string | null>(null)
+  const [pixCpf,        setPixCpf]        = useState('')
+  const [pixNome,       setPixNome]       = useState('')
+  const [pixValor,      setPixValor]      = useState('10')
+  const [pixDesc,       setPixDesc]       = useState('Bolão Copa 2026 BEL')
+  const [savingPix,     setSavingPix]     = useState(false)
+  const [pixSaved,      setPixSaved]      = useState(false)
+  const [pixLoaded,     setPixLoaded]     = useState(false)
   const [extraAmount,   setExtraAmount]   = useState('')
   const [extraNote,     setExtraNote]     = useState('')
   const [savingExtra,   setSavingExtra]   = useState(false)
@@ -56,6 +63,15 @@ export default function AdminPage() {
     ])
     setMatches((mData || []) as Match[])
     setPlayers((pData || []) as Player[])
+    // Load PIX config
+    const { data: pixRows } = await supabase.from('pix_config').select('*').limit(1)
+    if (pixRows && pixRows[0]) {
+      setPixCpf(pixRows[0].cpf || '')
+      setPixNome(pixRows[0].nome || '')
+      setPixValor(String(pixRows[0].valor || 10))
+      setPixDesc(pixRows[0].descricao || 'Bolão Copa 2026 BEL')
+    }
+    setPixLoaded(true)
     // Load extra prize amount
     const { data: prizeRows } = await supabase.from('prize_config').select('extra_amount').limit(1)
     if (prizeRows && prizeRows[0]) setCurrentExtra(Number(prizeRows[0].extra_amount) || 0)
@@ -116,6 +132,23 @@ export default function AdminPage() {
       await supabase.from('prize_config').update({ extra_amount: 0, extra_note: null }).eq('id', resetRows[0].id)
     }
     setCurrentExtra(0)
+  }
+
+  async function savePix() {
+    if (!pixCpf || !pixNome) return
+    setSavingPix(true)
+    const cpf = pixCpf.replace(/\D/g, '')
+    const valor = parseFloat(pixValor) || 10
+    const { data: existing } = await supabase.from('pix_config').select('id').limit(1)
+    if (existing && existing[0]) {
+      await supabase.from('pix_config').update({
+        cpf, nome: pixNome, valor, descricao: pixDesc, updated_at: new Date().toISOString()
+      }).eq('id', existing[0].id)
+    } else {
+      await supabase.from('pix_config').insert({ cpf, nome: pixNome, valor, descricao: pixDesc })
+    }
+    setSavingPix(false); setPixSaved(true)
+    setTimeout(() => setPixSaved(false), 3000)
   }
 
   async function saveResult(match: Match) {
@@ -237,7 +270,7 @@ export default function AdminPage() {
 
           {/* Tabs */}
           <div className="flex bg-gray-100 rounded-xl p-1">
-            {([['matches', `Partidas (${matches.length})`], ['players', `Participantes (${nonAdminPlayers.length})`]] as [Tab, string][]).map(([t, label]) => (
+            {([['matches', `Partidas (${matches.length})`], ['players', `Participantes (${nonAdminPlayers.length})`], ['pix', 'PIX']] as [Tab, string][]).map(([t, label]) => (
               <button key={t} onClick={() => setTab(t)}
                 className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all ${tab === t ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400'}`}>
                 {label}
@@ -316,6 +349,71 @@ export default function AdminPage() {
                 ))}
               </div>
             </>
+          )}
+
+          {/* PIX */}
+          {tab === 'pix' && (
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <p className="font-bold text-gray-900 text-[15px] mb-1">Configurar chave PIX</p>
+                <p className="text-[12px] text-gray-400 mb-4">Os participantes verão o QR Code para pagar a inscrição</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">CPF (chave PIX)</label>
+                    <input type="text" placeholder="000.000.000-00" value={pixCpf}
+                      onChange={e => setPixCpf(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Nome do beneficiário</label>
+                    <input type="text" placeholder="Nome completo" value={pixNome}
+                      onChange={e => setPixNome(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Valor (R$)</label>
+                      <input type="number" min="1" step="0.01" value={pixValor}
+                        onChange={e => setPixValor(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Descrição</label>
+                      <input type="text" value={pixDesc}
+                        onChange={e => setPixDesc(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
+                    </div>
+                  </div>
+                  <button onClick={savePix} disabled={savingPix || !pixCpf || !pixNome}
+                    className={`w-full py-3.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 ${
+                      pixSaved ? 'bg-green-500 text-white' : 'bg-[#0099CC] text-white hover:bg-[#007aa8] disabled:opacity-50'}`}>
+                    {savingPix ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> :
+                     pixSaved ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Salvo!</> :
+                     'Salvar configuração PIX'}
+                  </button>
+                </div>
+              </div>
+
+              {pixCpf && pixNome && (
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+                  <p className="text-[13px] font-bold text-green-800 mb-1">✓ PIX configurado</p>
+                  <p className="text-[12px] text-green-700">Os participantes já podem acessar <strong>/pagar</strong> para ver o QR Code e efetuar o pagamento.</p>
+                  <p className="text-[12px] text-green-600 mt-2">Chave: {pixCpf} · Beneficiário: {pixNome}</p>
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                <p className="text-[12px] font-bold text-amber-800 mb-2">Fluxo de pagamento</p>
+                <div className="space-y-1.5">
+                  {['Admin cadastra CPF e nome aqui','Participante acessa /pagar e escaneia o QR Code','Participante paga e avisa ao admin','Admin confirma em Participantes → botão Confirmar pagto'].map((s,i) => (
+                    <div key={i} className="flex items-start gap-2 text-[12px] text-amber-700">
+                      <span className="w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i+1}</span>
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* PARTICIPANTES */}

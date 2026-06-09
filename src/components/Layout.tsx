@@ -77,9 +77,10 @@ export default function Layout({ children, title }: Props) {
               )}
 
               {!player?.payment_ok && (
-                <span className="hidden md:flex text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
-                  Pag. pendente
-                </span>
+                <button onClick={() => router.push('/pagar')}
+                  className="hidden md:flex text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-colors">
+                  💳 Pagar R$10
+                </button>
               )}
 
               {/* Avatar — click to edit profile */}
