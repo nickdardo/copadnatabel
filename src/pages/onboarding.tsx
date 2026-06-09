@@ -18,8 +18,13 @@ export default function OnboardingPage() {
   const [copied,     setCopied]     = useState(false)
   const [confirming, setConfirming] = useState(false)
 
-  useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
-  useEffect(() => { if (!loading && player?.payment_ok) router.push('/champion') }, [loading, player])
+  useEffect(() => { 
+    if (!loading && !player) router.push('/')
+  }, [loading, player])
+  
+  // Don't redirect away if coming from profile-setup (first time)
+  // Only redirect if payment already confirmed
+  // useEffect(() => { if (!loading && player?.payment_ok) router.push('/champion') }, [loading, player])
 
   useEffect(() => {
     if (!player) return
@@ -45,9 +50,7 @@ export default function OnboardingPage() {
 
   async function confirmPaid() {
     setConfirming(true)
-    // Mark as pending confirmation — admin will confirm
-    await supabase.from('players').update({ payment_ok: false }).eq('id', player!.id)
-    await refreshPlayer()
+    // Just move to done step — admin will confirm payment later
     setStep('done')
     setConfirming(false)
   }
