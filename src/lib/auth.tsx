@@ -5,71 +5,100 @@ import { supabase, Player } from '@/lib/supabase'
 type AuthCtx = {
   player: Player | null
   loading: boolean
-  login: (name: string) => Promise<{ error?: string }>
-  logout: () => void
-  isAdmin: boolean
+  login:    (username: string, password: string) => Promise<{ error?: string }>
+  register: (username: string, password: string) => Promise<{ error?: string }>
+  logout:   () => void
+  isAdmin:  boolean
+  refreshPlayer: () => Promise<void>
 }
 
 const Ctx = createContext<AuthCtx>({
   player: null, loading: true,
-  login: async () => ({}), logout: () => {},
-  isAdmin: false,
+  login: async () => ({}), register: async () => ({}),
+  logout: () => {}, isAdmin: false, refreshPlayer: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [player, setPlayer] = useState<Player | null>(null)
+  const [player,  setPlayer]  = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const saved = localStorage.getItem('bolao_player')
     if (saved) {
-      try { setPlayer(JSON.parse(saved)) } catch { localStorage.removeItem('bolao_player') }
+      try { setPlayer(JSON.parse(saved)) }
+      catch { localStorage.removeItem('bolao_player') }
     }
     setLoading(false)
   }, [])
 
-  async function login(name: string): Promise<{ error?: string }> {
-    const clean = name.trim()
-    if (!clean) return { error: 'Informe seu nome.' }
+  async function refreshPlayer() {
+    if (!player) return
+    const { data } = await supabase
+      .from('players').select('*').eq('id', player.id).single()
+    if (data) {
+      setPlayer(data)
+      localStorage.setItem('bolao_player', JSON.stringify(data))
+    }
+  }
 
-    // Check if already exists (case-insensitive)
-    const { data: existing, error: fetchError } = await supabase
+  // ── Login ──────────────────────────────────────────────────────
+  async function login(username: string, password: string): Promise<{ error?: string }> {
+    const clean = username.trim().toLowerCase()
+    if (!clean || !password) return { error: 'Preencha usuário e senha.' }
+
+    const { data, error } = await supabase
       .from('players')
       .select('*')
-      .ilike('nickname', clean)
+      .eq('username', clean)
       .maybeSingle()
 
-    if (fetchError) {
-      console.error('Supabase fetch error:', fetchError)
-      return { error: 'Erro ao conectar com o servidor. Verifique sua conexão.' }
+    if (error)  return { error: 'Erro ao conectar. Tente novamente.' }
+    if (!data)  return { error: 'Usuário não encontrado.' }
+
+    // Simple password check via bcrypt stored in column password_hash
+    // We do server-side check via RPC
+    const { data: ok, error: rpcErr } = await supabase
+      .rpc('check_password', { p_username: clean, p_password: password })
+
+    if (rpcErr || !ok) return { error: 'Senha incorreta.' }
+
+    setPlayer(data)
+    localStorage.setItem('bolao_player', JSON.stringify(data))
+    return {}
+  }
+
+  // ── Register ───────────────────────────────────────────────────
+  async function register(username: string, password: string): Promise<{ error?: string }> {
+    const clean = username.trim().toLowerCase()
+    if (!clean)        return { error: 'Informe um usuário.' }
+    if (password.length < 6) return { error: 'A senha deve ter pelo menos 6 caracteres.' }
+
+    // Check duplicate
+    const { data: existing } = await supabase
+      .from('players').select('id').eq('username', clean).maybeSingle()
+    if (existing) return { error: 'Este usuário já está em uso. Escolha outro.' }
+
+    const isAdmin = clean === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
+
+    const { data: created, error } = await supabase
+      .rpc('create_player', {
+        p_username: clean,
+        p_password: password,
+        p_is_admin: isAdmin,
+      })
+
+    if (error || !created) {
+      console.error(error)
+      return { error: 'Erro ao criar conta. Tente novamente.' }
     }
 
-    if (existing) {
-      setPlayer(existing)
-      localStorage.setItem('bolao_player', JSON.stringify(existing))
-      return {}
-    }
+    // Fetch full row
+    const { data: row } = await supabase
+      .from('players').select('*').eq('username', clean).single()
 
-    // Create new player
-    const isAdmin = clean.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
-    const { data: created, error: insertError } = await supabase
-      .from('players')
-      .insert({ nickname: clean, is_admin: isAdmin })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('Supabase insert error:', insertError)
-      if (insertError.code === '42P01') {
-        return { error: 'Tabelas não encontradas. O schema SQL precisa ser executado no Supabase.' }
-      }
-      return { error: 'Erro ao criar seu perfil. Tente novamente.' }
-    }
-
-    if (!created) return { error: 'Erro inesperado. Tente novamente.' }
-
-    setPlayer(created)
-    localStorage.setItem('bolao_player', JSON.stringify(created))
+    if (!row) return { error: 'Erro inesperado. Tente novamente.' }
+    setPlayer(row)
+    localStorage.setItem('bolao_player', JSON.stringify(row))
     return {}
   }
 
@@ -80,10 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin =
     player?.is_admin === true ||
-    player?.nickname?.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
+    player?.username?.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_NICKNAME ?? '').toLowerCase()
 
   return (
-    <Ctx.Provider value={{ player, loading, login, logout, isAdmin }}>
+    <Ctx.Provider value={{ player, loading, login, register, logout, isAdmin, refreshPlayer }}>
       {children}
     </Ctx.Provider>
   )

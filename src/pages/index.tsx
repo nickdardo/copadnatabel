@@ -2,27 +2,46 @@ import { useState, FormEvent } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import { IconUser, IconLock, IconArrowRight, IconCheck } from '@/components/Icons'
+
+type Mode = 'login' | 'register'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, register } = useAuth()
   const router = useRouter()
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+
+  const [mode,     setMode]     = useState<Mode>('login')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm,  setConfirm]  = useState('')
+  const [error,    setError]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [showPass, setShowPass] = useState(false)
+
+  function switchMode(m: Mode) {
+    setMode(m); setError('')
+    setUsername(''); setPassword(''); setConfirm('')
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    const parts = name.trim().split(/\s+/)
-    if (parts.length < 2) {
-      setError('Por favor, informe seu primeiro e último nome.')
-      return
+
+    if (mode === 'register' && password !== confirm) {
+      setError('As senhas não coincidem.'); return
     }
+
     setLoading(true)
-    const result = await login(name.trim())
+    const result = mode === 'login'
+      ? await login(username, password)
+      : await register(username, password)
     setLoading(false)
+
     if (result.error) { setError(result.error); return }
-    router.push('/champion')
+
+    // After register → go to profile setup
+    // After login → go to champion picks
+    router.push(mode === 'register' ? '/profile-setup' : '/champion')
   }
 
   return (
@@ -35,113 +54,142 @@ export default function LoginPage() {
       </Head>
 
       <div className="relative min-h-screen flex items-center justify-center p-5 overflow-hidden bg-[#003a5c]">
-
         {/* Background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/copa2026-bg.webp')", opacity: 0.25 }}
-        />
-
-        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/copa2026-bg.webp')", opacity: 0.25 }} />
         <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(180deg,rgba(0,30,55,0.6) 0%,rgba(0,40,70,0.75) 50%,rgba(0,20,40,0.92) 100%)' }}
-        />
+          style={{ background: 'linear-gradient(180deg,rgba(0,30,55,.6) 0%,rgba(0,40,70,.75) 50%,rgba(0,20,40,.92) 100%)' }} />
 
-        {/* Card */}
         <div className="relative z-10 w-full max-w-sm">
           <div className="relative bg-white rounded-[22px] px-8 py-9 shadow-2xl overflow-hidden">
 
-            {/* Top accent bar */}
+            {/* Top bar */}
             <div className="absolute top-0 left-0 right-0 h-1"
               style={{ background: 'linear-gradient(90deg,#0099CC 65%,#8DC63F 100%)' }} />
 
-            {/* dnata logo */}
-            <div className="flex justify-center mb-6 mt-2">
-              <img
-                src="/dnata-logo.png"
-                alt="dnata"
-                className="h-9 w-auto object-contain"
-              />
+            {/* Logo */}
+            <div className="flex justify-center mb-5 mt-1">
+              <img src="/dnata-logo.png" alt="dnata" className="h-9 w-auto object-contain" />
             </div>
 
-            {/* Divider with text */}
+            {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px bg-gray-100" />
-              <span className="text-[10px] text-gray-400 font-semibold tracking-[0.12em] uppercase whitespace-nowrap">
+              <span className="text-[10px] text-gray-400 font-semibold tracking-[.1em] uppercase whitespace-nowrap">
                 Bolão Copa do Mundo 2026
               </span>
               <div className="flex-1 h-px bg-gray-100" />
             </div>
 
-            {/* Country badges */}
-            <div className="flex justify-center gap-2 mb-6">
-              {[['🇺🇸','EUA'],['🇲🇽','México'],['🇨🇦','Canadá']].map(([flag, country]) => (
-                <div key={country} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-full px-3 py-1">
-                  <span className="text-sm">{flag}</span>
-                  <span className="text-[11px] text-gray-500 font-medium">{country}</span>
-                </div>
+            {/* Mode tabs */}
+            <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+              {(['login', 'register'] as Mode[]).map(m => (
+                <button key={m} onClick={() => switchMode(m)}
+                  className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all
+                    ${mode === m ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                  {m === 'login' ? 'Entrar' : 'Criar conta'}
+                </button>
               ))}
             </div>
 
-            {/* Title */}
-            <h1 className="text-xl font-bold text-[#001e3c] text-center leading-snug mb-1">
-              Bem-vindo ao Bolão!
-            </h1>
-            <p className="text-[13px] text-gray-400 text-center mb-7 leading-relaxed">
-              Registre-se e faça seus palpites
-            </p>
-
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {/* Username */}
               <div>
-                <label className="block text-[12px] font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  Seu primeiro e último nome
+                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                  Usuário
                 </label>
-                <input
-                  className="w-full px-4 py-3.5 rounded-xl border border-gray-200
-                             bg-gray-50 text-gray-900 text-[15px]
-                             focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC]
-                             transition-all placeholder:text-gray-300"
-                  placeholder="Ex: João Silva"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  maxLength={50}
-                  autoFocus
-                  autoComplete="name"
-                />
-                <p className="text-[11px] text-gray-300 mt-1.5 ml-1">
-                  Já participou? Use o mesmo nome para entrar.
-                </p>
+                <div className="relative">
+                  <IconUser size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input
+                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                               text-gray-900 text-[14px] focus:outline-none focus:ring-2
+                               focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all placeholder:text-gray-300"
+                    placeholder="seu.usuario"
+                    value={username}
+                    onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s/g,''))}
+                    autoCapitalize="none"
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </div>
               </div>
 
+              {/* Password */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                  Senha
+                </label>
+                <div className="relative">
+                  <IconLock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    className="w-full pl-9 pr-10 py-3 rounded-xl border border-gray-200 bg-gray-50
+                               text-gray-900 text-[14px] focus:outline-none focus:ring-2
+                               focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all placeholder:text-gray-300"
+                    placeholder={mode === 'register' ? 'Mínimo 6 caracteres' : '••••••'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  />
+                  <button type="button" onClick={() => setShowPass(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-[11px] font-medium">
+                    {showPass ? 'Ocultar' : 'Ver'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm password (register only) */}
+              {mode === 'register' && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                    Confirmar senha
+                  </label>
+                  <div className="relative">
+                    <IconLock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                                 text-gray-900 text-[14px] focus:outline-none focus:ring-2
+                                 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all placeholder:text-gray-300"
+                      placeholder="Repita a senha"
+                      value={confirm}
+                      onChange={e => setConfirm(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    {confirm && password && (
+                      <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${confirm === password ? 'text-green-500' : 'text-red-400'}`}>
+                        {confirm === password ? <IconCheck size={15} /> : '✕'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {error && (
-                <div className="bg-red-50 border border-red-100 text-red-500 text-[12px] rounded-xl px-4 py-3">
+                <div className="bg-red-50 border border-red-100 text-red-500 text-[12px] rounded-xl px-4 py-2.5">
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading || !name.trim()}
-                className="w-full py-3.5 rounded-xl font-semibold text-[15px] text-white
-                           transition-all active:scale-[.98]
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           flex items-center justify-center gap-2"
-                style={{ background: loading || !name.trim() ? '#0099CC' : '#0099CC' }}
-              >
+              <button type="submit" disabled={loading || !username || !password}
+                className="w-full py-3.5 rounded-xl font-semibold text-[15px] text-white mt-1
+                           flex items-center justify-center gap-2 transition-all active:scale-[.98]
+                           bg-[#0099CC] hover:bg-[#007aa8] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
                 {loading
                   ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : 'Entrar no Bolão'}
+                  : mode === 'login'
+                    ? <>Entrar <IconArrowRight size={16} /></>
+                    : <>Criar conta <IconArrowRight size={16} /></>}
               </button>
             </form>
 
-            {/* Bottom accent bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1"
               style={{ background: 'linear-gradient(90deg,#0099CC 65%,#8DC63F 100%)' }} />
           </div>
 
           <p className="text-center text-[11px] text-white/30 mt-5 tracking-wide">
-            Copa do Mundo FIFA 2026 &nbsp;&middot;&nbsp; 104 jogos &nbsp;&middot;&nbsp; 48 seleções
+            Copa do Mundo FIFA 2026 &nbsp;·&nbsp; 104 jogos &nbsp;·&nbsp; 48 seleções
           </p>
         </div>
       </div>

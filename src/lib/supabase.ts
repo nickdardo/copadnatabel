@@ -5,62 +5,65 @@ const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnon)
 
-// ─── Types ───────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────
 export type Player = {
-  id: string
-  nickname: string
-  is_admin: boolean
-  created_at: string
+  id:           string
+  username:     string   // login key (lowercase)
+  nickname:     string   // "Primeiro Último" — display name
+  avatar_url?:  string   // photo from Supabase Storage
+  payment_ok:   boolean  // admin marks as paid
+  is_admin:     boolean
+  created_at:   string
 }
 
 export type Match = {
-  id: string
-  home_team: string
-  away_team: string
-  home_flag?: string
-  away_flag?: string
-  match_date?: string
-  fase: string
-  status: 'upcoming' | 'live' | 'done'
-  score_home?: number
-  score_away?: number
-  sort_order: number
+  id:            string
+  home_team:     string
+  away_team:     string
+  home_flag?:    string
+  away_flag?:    string
+  match_date?:   string
+  fase:          string
+  status:        'upcoming' | 'live' | 'done'
+  score_home?:   number
+  score_away?:   number
+  sort_order:    number
   odds_event_id?: string
 }
 
 export type Pick = {
-  id: string
-  player_id: string
-  match_id: string
-  pick_home: number
-  pick_away: number
+  id:           string
+  player_id:    string
+  match_id:     string
+  pick_home:    number
+  pick_away:    number
   submitted_at: string
 }
 
 export type ChampionPick = {
-  id: string
-  player_id: string
+  id:            string
+  player_id:     string
   pick_champion: string
-  pick_runner: string
-  pick_third: string
-  locked: boolean
+  pick_runner:   string
+  pick_third:    string
+  locked:        boolean
 }
 
 export type Score = {
-  player_id: string
-  total_pts: number
-  f10_count: number
-  f7_count: number
-  f5_count: number
-  f2_count: number
-  f0_count: number
+  player_id:    string
+  total_pts:    number
+  f10_count:    number
+  f7_count:     number
+  f5_count:     number
+  f2_count:     number
+  f0_count:     number
   champion_pts: number
-  updated_at: string
+  updated_at:   string
 }
 
 export type ScoreWithPlayer = Score & { players: Player }
 
-// ─── Helpers ─────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────
 export function calcFactor(
   pickH: number, pickA: number,
   realH: number, realA: number
@@ -89,3 +92,11 @@ export const FACTOR_COLOR: Record<string, string> = {
 export const FASE_ORDER = [
   'Fase de Grupos', 'Oitavas', 'Quartas', 'Semifinais', 'Terceiro Lugar', 'Final',
 ]
+
+// ─── Avatar public URL ────────────────────────────────────────────
+export function getAvatarUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  if (path.startsWith('http')) return path
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  return data.publicUrl
+}
