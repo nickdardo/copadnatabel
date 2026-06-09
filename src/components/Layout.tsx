@@ -13,7 +13,7 @@ const NAV = [
   { href: '/onboarding', Icon: IconInfo,      label: 'Regras'   },
 ]
 
-type Props = { children: React.ReactNode; title: string; step?: number }
+type Props = { children?: React.ReactNode; title: string; step?: number }
 
 export default function Layout({ children, title }: Props) {
   const router    = useRouter()
@@ -115,27 +115,16 @@ export default function Layout({ children, title }: Props) {
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20 safe-area-bottom">
           <div className="max-w-lg mx-auto flex">
             {NAV.map(({ href, Icon, label }) => {
-              // Regras matches onboarding
-              const isActive = router.pathname === href ||
-                (href === '/onboarding' && router.pathname === '/onboarding')
-
-              const isRules = href === '/onboarding'
-
+              const isActive = router.pathname === href
               return (
                 <button key={href} onClick={() => router.push(href)}
                   className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors relative
-                    ${isRules
-                      ? `mx-1 rounded-xl my-1.5 ${isActive ? 'bg-[#0099CC] text-white' : 'bg-[#0099CC]/10 text-[#0099CC]'}`
-                      : isActive ? 'text-[#0099CC]' : 'text-gray-400 hover:text-gray-500'
-                    }`}>
-                  {/* Active indicator — only for non-rules items */}
-                  {!isRules && isActive && (
+                    ${isActive ? 'text-[#0099CC]' : 'text-gray-400 hover:text-gray-500'}`}>
+                  {isActive && (
                     <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full"/>
                   )}
-                  <Icon size={isRules ? 18 : 20}/>
-                  <span className={`text-[10px] font-semibold tracking-wide ${isRules ? 'font-bold' : ''}`}>
-                    {label}
-                  </span>
+                  <Icon size={20}/>
+                  <span className="text-[10px] font-semibold tracking-wide">{label}</span>
                 </button>
               )
             })}

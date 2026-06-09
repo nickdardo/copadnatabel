@@ -148,7 +148,7 @@ export default function RankingPage() {
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-white/50 text-[10px]">Palpites:</span>
                     {[me.champ.pick_champion, me.champ.pick_runner, me.champ.pick_third].map((t,i) => (
-                      <FlagImg key={i} team={t} size={20}/>
+                      <span key={i}><FlagImg team={t} size={20}/></span>
                     ))}
                   </div>
                 )}

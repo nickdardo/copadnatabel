@@ -18,7 +18,7 @@ const Ctx = createContext<AuthCtx>({
   logout: () => {}, isAdmin: false, refreshPlayer: async () => {},
 })
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
   const [player,  setPlayer]  = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
 
