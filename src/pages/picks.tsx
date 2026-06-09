@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER, EditLimit } from '@/lib/supabase'
@@ -9,6 +9,8 @@ import { ptBR } from 'date-fns/locale'
 
 type PickMap  = Record<string, { home: string; away: string; saved: boolean; editCount: number }>
 type LimitMap = Record<string, EditLimit>
+type GroupConsensus = Record<string, { home: number; away: number; count: number } | null>
+
 const ROUND_SIZE = 8
 const MAX_EDITS  = 3
 const LOCK_HOURS = 5
@@ -18,6 +20,38 @@ const IcoBall   = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="no
 const IcoLock   = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
 const IcoArrowL = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
 const IcoArrowR = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+
+// Countdown hook — returns formatted string "Xh Ym" or "Fechado"
+function useCountdown(lockAt: Date | null) {
+  const [display, setDisplay] = useState('')
+  useEffect(() => {
+    if (!lockAt) return
+    function update() {
+      const diff = lockAt!.getTime() - Date.now()
+      if (diff <= 0) { setDisplay('Fechado'); return }
+      const h = Math.floor(diff / 3_600_000)
+      const m = Math.floor((diff % 3_600_000) / 60_000)
+      const s = Math.floor((diff % 60_000) / 1_000)
+      if (h > 0) setDisplay(`${h}h ${m}m`)
+      else if (m > 0) setDisplay(`${m}m ${s}s`)
+      else setDisplay(`${s}s`)
+    }
+    update()
+    const t = setInterval(update, 1000)
+    return () => clearInterval(t)
+  }, [lockAt])
+  return display
+}
+
+// Next lock time — earliest upcoming match lock
+function getNextLockDate(matches: Match[]): Date | null {
+  const upcoming = matches
+    .filter(m => m.status === 'upcoming' && m.match_date)
+    .map(m => subHours(parseISO(m.match_date!), LOCK_HOURS))
+    .filter(d => d > new Date())
+    .sort((a, b) => a.getTime() - b.getTime())
+  return upcoming[0] || null
+}
 
 // Format UTC date as BRT (UTC-3) using toLocaleString
 function fmtBRT(dateStr: string, fmt: string): string {
@@ -55,8 +89,34 @@ export default function PicksPage() {
   const [tab,         setTab]         = useState<'upcoming'|'live'|'done'>('upcoming')
   const [round,       setRound]       = useState(0)
   const [batchSaved,  setBatchSaved]  = useState(false)
+  const [consensus,   setConsensus]   = useState<GroupConsensus>({})
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
+
+  // Load group consensus (most popular pick per match) — only for locked/done matches
+  async function loadConsensus(matchIds: string[]) {
+    if (!matchIds.length) return
+    const { data } = await supabase
+      .from('picks')
+      .select('match_id, pick_home, pick_away')
+      .in('match_id', matchIds)
+    if (!data) return
+    const grouped: Record<string, Record<string, number>> = {}
+    data.forEach((p: { match_id: string; pick_home: number; pick_away: number }) => {
+      const key = `${p.pick_home}-${p.pick_away}`
+      if (!grouped[p.match_id]) grouped[p.match_id] = {}
+      grouped[p.match_id][key] = (grouped[p.match_id][key] || 0) + 1
+    })
+    const result: GroupConsensus = {}
+    Object.entries(grouped).forEach(([matchId, votes]) => {
+      const top = Object.entries(votes).sort((a, b) => b[1] - a[1])[0]
+      if (top) {
+        const [h, a] = top[0].split('-').map(Number)
+        result[matchId] = { home: h, away: a, count: top[1] }
+      }
+    })
+    setConsensus(prev => ({ ...prev, ...result }))
+  }
 
   const fetchData = useCallback(async () => {
     if (!player) return
@@ -80,6 +140,9 @@ export default function PicksPage() {
     const first  = phases.find(f => ms.some(m => m.fase === f && (m.status === 'upcoming' || m.status === 'live'))) || phases[0]
     setActivePhase(first || '')
     setFetching(false)
+    // Load consensus for done/locked matches
+    const doneIds = ms.filter(m => m.status === 'done').map(m => m.id)
+    if (doneIds.length) loadConsensus(doneIds)
   }, [player])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -168,6 +231,8 @@ export default function PicksPage() {
   const phases  = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
   const filled  = tabMatches.filter(m => { const p = picks[m.id]; return p && p.home !== '' && p.away !== '' }).length
   const grouped = byDate(tabMatches)
+  const nextLockDate = getNextLockDate(currentRound)
+  const countdown    = useCountdown(nextLockDate)
 
   if (loading || fetching) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -265,6 +330,21 @@ export default function PicksPage() {
           </div>
         )}
 
+        {/* Countdown to next lock */}
+        {tab === 'upcoming' && countdown && countdown !== 'Fechado' && (
+          <div className="mb-2 mx-auto max-w-lg px-4">
+            <div className="bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span className="text-[12px] text-[#0099CC] font-medium">Palpites fecham em</span>
+              </div>
+              <span className="text-[14px] font-bold text-[#0099CC] tabular-nums">{countdown}</span>
+            </div>
+          </div>
+        )}
+
         <p className="text-[11px] text-gray-400 text-center mb-2">
           {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos ao vivo' : 'Resultados'}
         </p>
@@ -356,6 +436,19 @@ export default function PicksPage() {
                       {m.status==='done' && m.score_home!==undefined && (
                         <div className="text-center">
                           <span className="text-[10px] text-gray-400">Resultado: <strong className="text-gray-600">{m.score_home}×{m.score_away}</strong></span>
+                        </div>
+                      )}
+
+                      {/* Group consensus — most popular pick */}
+                      {m.status==='done' && consensus[m.id] && (
+                        <div className="flex justify-center mt-1">
+                          <span className="text-[9px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            Grupo apostou {consensus[m.id]!.home}×{consensus[m.id]!.away} ({consensus[m.id]!.count}x)
+                          </span>
                         </div>
                       )}
 

@@ -11,10 +11,12 @@ export default function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     setMounted(true)
-    // Only show splash on first visit per session
     const shown = sessionStorage.getItem('splash_shown')
-    if (shown) {
-      setShowSplash(false)
+    if (shown) setShowSplash(false)
+
+    // Register service worker for push + offline
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
   }, [])
 

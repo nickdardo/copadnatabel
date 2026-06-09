@@ -5,7 +5,7 @@ import { supabase, Match, Player, FASE_ORDER, getPresence } from '@/lib/supabase
 import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
-type Tab = 'matches' | 'players' | 'pix'
+type Tab = 'matches' | 'players' | 'pix' | 'logs'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
 
 // BRT formatter
@@ -58,6 +58,9 @@ export default function AdminPage() {
   const [playerSearch,  setPlayerSearch]  = useState('')
   const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
   const [presenceTick,  setPresenceTick]  = useState(0)
+  const [paymentLogs,   setPaymentLogs]   = useState<{id:string;player_name:string;action:string;confirmed_by:string;valor:number;created_at:string}[]>([])
+  const [calcingBadges, setCalcingBadges] = useState(false)
+  const [badgesMsg,     setBadgesMsg]     = useState('')
 
   useEffect(() => {
     if (!loading) {
@@ -141,7 +144,23 @@ export default function AdminPage() {
   async function refreshAll() {
     setRefreshing(true)
     await fetchAll()
+    if (tab === 'logs') await loadPaymentLogs()
     setRefreshing(false)
+  }
+
+  async function loadPaymentLogs() {
+    const res = await fetch('/api/admin/payment-log')
+    const { data } = await res.json()
+    setPaymentLogs(data || [])
+  }
+
+  async function calcBadges() {
+    setCalcingBadges(true)
+    const res = await fetch('/api/admin/badges', { method: 'POST' })
+    const { granted } = await res.json()
+    setBadgesMsg(`${granted} conquista${granted !== 1 ? 's' : ''} atribuida${granted !== 1 ? 's' : ''}!`)
+    setTimeout(() => setBadgesMsg(''), 4000)
+    setCalcingBadges(false)
   }
 
   async function triggerSync() {
@@ -228,8 +247,32 @@ export default function AdminPage() {
 
   async function togglePayment(p: Player) {
     setTogglingId(p.id)
-    const { error } = await supabase.from('players').update({ payment_ok: !p.payment_ok }).eq('id', p.id)
-    if (!error) await fetchAll()
+    const nowPaid = !p.payment_ok
+    const { error } = await supabase.from('players').update({ payment_ok: nowPaid }).eq('id', p.id)
+    if (!error) {
+      await fetchAll()
+      // Log the action
+      const name = p.nickname || p.username
+      await fetch('/api/admin/payment-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          player_id: p.id,
+          player_name: name,
+          action: nowPaid ? 'confirmed' : 'reversed',
+          confirmed_by: player?.username,
+          valor: parseFloat(pixValor) || 10,
+        }),
+      })
+      // Feed event only when confirming
+      if (nowPaid) {
+        await fetch('/api/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'payment_confirmed', player_id: p.id, player_name: name }),
+        })
+      }
+    }
     setTogglingId(null)
   }
 
@@ -338,21 +381,26 @@ export default function AdminPage() {
             </div>
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
               <p className="font-semibold text-gray-900 text-[14px] mb-0.5">Recalcular</p>
-              <p className="text-[11px] text-gray-400 mb-3">Pontuações e ranking</p>
+              <p className="text-[11px] text-gray-400 mb-3">Pontuacoes e ranking</p>
               <button onClick={recalcScores} disabled={recalcing}
-                className="w-full py-2.5 rounded-xl bg-gray-800 text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-gray-900 disabled:opacity-50 transition-colors">
+                className="w-full py-2.5 rounded-xl bg-gray-800 text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-gray-900 disabled:opacity-50 transition-colors mb-2">
                 {recalcing ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Recalcular ranking'}
               </button>
-              {recalcMsg && <p className="text-[11px] mt-2 text-green-600">✓ {recalcMsg}</p>}
+              <button onClick={calcBadges} disabled={calcingBadges}
+                className="w-full py-2.5 rounded-xl bg-amber-500 text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-amber-600 disabled:opacity-50 transition-colors">
+                {calcingBadges ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Calcular conquistas'}
+              </button>
+              {recalcMsg && <p className="text-[11px] mt-2 text-green-600">{recalcMsg}</p>}
+              {badgesMsg && <p className="text-[11px] mt-1 text-amber-600">{badgesMsg}</p>}
             </div>
           </div>
 
           {/* Tabs + Refresh */}
           <div className="flex items-center gap-2">
-            <div className="flex flex-1 bg-gray-100 rounded-xl p-1">
-            {([['matches', `Partidas (${matches.length})`], ['players', `Participantes (${nonAdminPlayers.length})`], ['pix', 'PIX']] as [Tab, string][]).map(([t, label]) => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all ${tab === t ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400'}`}>
+            <div className="flex flex-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
+            {([['matches', `Partidas (${matches.length})`], ['players', `Participantes (${nonAdminPlayers.length})`], ['pix', 'PIX'], ['logs', 'Pagamentos']] as [Tab, string][]).map(([t, label]) => (
+                <button key={t} onClick={() => { setTab(t); if (t === 'logs') loadPaymentLogs() }}
+                  className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all whitespace-nowrap ${tab === t ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400'}`}>
                   {label}
                 </button>
               ))}
@@ -527,6 +575,34 @@ export default function AdminPage() {
                         className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] font-mono text-[12px]"/>
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1">Aparecerá como botão "Entrar no grupo" nas regras e no app</p>
+                  </div>
+
+                  {/* Push notification broadcast */}
+                  <div className="bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl p-4">
+                    <p className="text-[12px] font-bold text-[#0099CC] mb-0.5">Notificacao push</p>
+                    <p className="text-[11px] text-gray-500 mb-3">Envia para todos que ativaram as notificacoes no app</p>
+                    <div className="space-y-2">
+                      <input type="text" placeholder="Titulo — ex: Jogo em 1 hora!" id="push-title"
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-[13px] focus:outline-none focus:border-[#0099CC]"/>
+                      <input type="text" placeholder="Mensagem — ex: Brasil x Argentina começa às 16h" id="push-body"
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-[13px] focus:outline-none focus:border-[#0099CC]"/>
+                      <button
+                        onClick={async () => {
+                          const title = (document.getElementById('push-title') as HTMLInputElement)?.value
+                          const body  = (document.getElementById('push-body')  as HTMLInputElement)?.value
+                          if (!title || !body) return
+                          const res = await fetch('/api/push/send', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ title, body }),
+                          })
+                          const d = await res.json()
+                          alert(`Notificacao enviada para ${d.sent} dispositivo${d.sent !== 1 ? 's' : ''}.`)
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-[#0099CC] text-white text-[13px] font-semibold hover:bg-[#007aa8] transition-colors">
+                        Enviar para todos
+                      </button>
+                    </div>
                   </div>
 
                   <button onClick={savePix} disabled={savingPix || !pixCpf || !pixNome}
@@ -769,6 +845,48 @@ export default function AdminPage() {
                 )}
               </div>
             </>
+          )}
+
+          {/* HISTORICO DE PAGAMENTOS */}
+          {tab === 'logs' && (
+            <div className="space-y-3">
+              {/* Summary */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-semibold text-gray-900 text-[14px]">Historico de pagamentos</p>
+                  <span className="text-[12px] font-bold text-[#0099CC]">{paymentLogs.filter(l=>l.action==='confirmed').length} confirmados</span>
+                </div>
+                <p className="text-[11px] text-gray-400">Log de todas as confirmacoes e reversoes</p>
+              </div>
+
+              {paymentLogs.length === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-3 opacity-40">
+                    <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                  </svg>
+                  <p className="text-[13px]">Nenhum registro ainda</p>
+                </div>
+              ) : paymentLogs.map(log => (
+                <div key={log.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${log.action === 'confirmed' ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={log.action === 'confirmed' ? '#16A34A' : '#DC2626'} strokeWidth="2.5" strokeLinecap="round">
+                      {log.action === 'confirmed'
+                        ? <polyline points="20 6 9 17 4 12"/>
+                        : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-gray-900">{log.player_name}</p>
+                    <p className="text-[11px] text-gray-400">
+                      {log.action === 'confirmed' ? 'Confirmado' : 'Revertido'} por @{log.confirmed_by} · R$ {Number(log.valor).toFixed(2).replace('.',',')}
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">
+                    {new Date(log.created_at).toLocaleString('pt-BR', { timeZone:'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                  </p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

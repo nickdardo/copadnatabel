@@ -253,6 +253,34 @@ export default function Layout({ children, title }: Props) {
 
             {/* Right side */}
             <div className="flex items-center gap-1.5">
+              {/* Push notification bell */}
+              {player && (
+                <button
+                  title="Ativar notificacoes"
+                  onClick={async () => {
+                    if (!('Notification' in window) || !('serviceWorker' in navigator)) return
+                    const perm = await Notification.requestPermission()
+                    if (perm !== 'granted') return
+                    const reg = await navigator.serviceWorker.ready
+                    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+                    if (!vapidKey) return
+                    const sub = await reg.pushManager.subscribe({
+                      userVisibleOnly: true,
+                      applicationServerKey: vapidKey,
+                    })
+                    await fetch('/api/push/subscribe', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ player_id: player.id, subscription: sub }),
+                    })
+                  }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#0099CC] hover:bg-gray-100 transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                </button>
+              )}
+
               {/* Admin badge */}
               {isAdmin && (
                 <button onClick={() => router.push('/admin')}

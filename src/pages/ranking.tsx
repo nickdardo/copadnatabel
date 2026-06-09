@@ -43,14 +43,46 @@ function Medal({ pos }: { pos: number }) {
   return <span className="text-[13px] font-bold text-gray-400 w-[26px] text-center block">{pos}º</span>
 }
 
+type BadgeMap = Record<string, string[]>
+type FeedEvent = {
+  id: string; type: string; player_name: string
+  match_desc?: string; points?: number; factor?: string
+  badge_key?: string; created_at: string
+}
+
+const BADGE_META: Record<string, { label: string; icon: string; color: string }> = {
+  placar_perfeito:   { label: 'Placar Perfeito',   icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',          color: 'bg-green-100 text-green-800 border-green-200' },
+  atirador_de_elite: { label: 'Atirador de Elite', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  vidente:           { label: 'Vidente',            icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+  zebra:             { label: 'Zebra',              icon: 'M13 10V3L4 14h7v7l9-11h-7z',                              color: 'bg-pink-100 text-pink-800 border-pink-200' },
+  maratonista:       { label: 'Maratonista',        icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  lider:             { label: 'Lider',              icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+}
+
+function BadgeChip({ badgeKey }: { badgeKey: string }) {
+  const meta = BADGE_META[badgeKey]
+  if (!meta) return null
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${meta.color}`}>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d={meta.icon}/>
+      </svg>
+      {meta.label}
+    </span>
+  )
+}
+
 export default function RankingPage() {
   const { player, loading } = useAuth()
   const router = useRouter()
-  const [ranking,    setRanking]    = useState<RankEntry[]>([])
-  const [fetching,   setFetching]   = useState(true)
-  const [expanded,   setExpanded]   = useState<string|null>(null)
-  const [showAll,    setShowAll]    = useState(false)
+  const [ranking,      setRanking]      = useState<RankEntry[]>([])
+  const [fetching,     setFetching]     = useState(true)
+  const [expanded,     setExpanded]     = useState<string|null>(null)
+  const [showAll,      setShowAll]      = useState(false)
   const [totalMatches, setTotalMatches] = useState(72)
+  const [badges,       setBadges]       = useState<BadgeMap>({})
+  const [feed,         setFeed]         = useState<FeedEvent[]>([])
+  const [activeTab,    setActiveTab]    = useState<'ranking'|'feed'>('ranking')
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
 
@@ -64,15 +96,26 @@ export default function RankingPage() {
   }, [player])
 
   async function load() {
-    const [{ data: scores }, { data: players }, { data: champs }, { count }] = await Promise.all([
+    const [{ data: scores }, { data: players }, { data: champs }, { count }, { data: badgeRows }, { data: feedRows }] = await Promise.all([
       supabase.from('scores').select('*').order('total_pts', { ascending: false }),
       supabase.from('players').select('*'),
       supabase.from('champion_picks').select('*'),
       supabase.from('matches').select('*', { count:'exact', head:true }),
+      supabase.from('player_badges').select('player_id, badge_key'),
+      supabase.from('activity_feed').select('*').order('created_at', { ascending: false }).limit(50),
     ])
     if (!scores || !players) { setFetching(false); return }
 
     setTotalMatches(count || 72)
+
+    // Badge map
+    const bm: BadgeMap = {}
+    ;(badgeRows || []).forEach((b: { player_id: string; badge_key: string }) => {
+      if (!bm[b.player_id]) bm[b.player_id] = []
+      bm[b.player_id].push(b.badge_key)
+    })
+    setBadges(bm)
+    setFeed((feedRows || []) as FeedEvent[])
 
     const playerMap: Record<string, Player> = {}
     players.forEach((p:Player) => { playerMap[p.id] = p })
@@ -176,6 +219,77 @@ export default function RankingPage() {
           </div>
         )}
 
+        {/* Tabs: Ranking | Feed */}
+        <div className="flex bg-gray-100 rounded-xl p-1 mx-4 my-3">
+          {(['ranking', 'feed'] as const).map(t => (
+            <button key={t} onClick={() => setActiveTab(t)}
+              className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center gap-1.5
+                ${activeTab === t ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400'}`}>
+              {t === 'ranking' ? (
+                <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>Ranking</>
+              ) : (
+                <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>Feed {feed.length > 0 && <span className="bg-[#0099CC] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{feed.length}</span>}</>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── FEED ── */}
+        {activeTab === 'feed' && (
+          <div className="px-4 pb-6 space-y-2">
+            {feed.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-3 opacity-40">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p className="text-[13px]">Nenhuma atividade ainda</p>
+              </div>
+            ) : feed.map(event => (
+              <div key={event.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-start gap-3 shadow-sm">
+                {/* Icon by type */}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  event.type === 'badge_earned'      ? 'bg-amber-100' :
+                  event.type === 'payment_confirmed' ? 'bg-green-100' :
+                  event.type === 'ranking_change'    ? 'bg-blue-100'  : 'bg-gray-100'
+                }`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    className={
+                      event.type === 'badge_earned'      ? 'text-amber-600' :
+                      event.type === 'payment_confirmed' ? 'text-green-600' :
+                      event.type === 'ranking_change'    ? 'text-blue-600'  : 'text-gray-500'
+                    }>
+                    {event.type === 'badge_earned' && <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>}
+                    {event.type === 'payment_confirmed' && <polyline points="20 6 9 17 4 12"/>}
+                    {event.type === 'pick_saved' && <><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/><path d="M2 12h20"/></>}
+                    {event.type === 'ranking_change' && <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>}
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] text-gray-800 leading-snug">
+                    <strong>{event.player_name}</strong>
+                    {event.type === 'badge_earned' && event.badge_key && (
+                      <> conquistou <span className="font-semibold text-amber-700">{BADGE_META[event.badge_key]?.label || event.badge_key}</span></>
+                    )}
+                    {event.type === 'payment_confirmed' && <> confirmou o pagamento</>}
+                    {event.type === 'pick_saved' && event.match_desc && (
+                      <> palpitou em <span className="text-gray-600">{event.match_desc}</span>{event.points !== undefined && <> · <span className="font-bold text-[#0099CC]">+{event.points}pts</span></>}</>
+                    )}
+                    {event.type === 'ranking_change' && <> subiu no ranking</>}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {new Date(event.created_at).toLocaleString('pt-BR', { timeZone:'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'ranking' && (<>
         {/* List header */}
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
           <p className="text-[12px] text-gray-500 font-semibold">{ranking.length} participante{ranking.length !== 1 ? 's' : ''}</p>
@@ -239,10 +353,10 @@ export default function RankingPage() {
 
                 {/* Expanded detail */}
                 {isOpen && (
-                  <div className="bg-gray-50 border-b border-gray-100 px-5 py-4">
+                  <div className="bg-gray-50 border-b border-gray-100 px-5 py-4 space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Pontuação</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Pontuacao</p>
                         <div className="flex gap-2 flex-wrap">
                           {[
                             {k:'f10_count',l:'F10',c:'bg-green-100 text-green-800',p:10},
@@ -259,7 +373,7 @@ export default function RankingPage() {
                           ))}
                           {entry.champion_pts > 0 && (
                             <div className="px-2.5 py-1.5 rounded-xl text-center bg-amber-100 text-amber-800">
-                              <p className="text-[10px] font-semibold">Bônus</p>
+                              <p className="text-[10px] font-semibold">Bonus</p>
                               <p className="text-[14px] font-bold">+{entry.champion_pts}</p>
                             </div>
                           )}
@@ -268,23 +382,35 @@ export default function RankingPage() {
 
                       {entry.champ && (
                         <div className="text-right">
-                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Campeões</p>
+                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Campeos</p>
                           <div className="space-y-1.5">
                             {[
-                              {label:'🥇', team: entry.champ.pick_champion},
-                              {label:'🥈', team: entry.champ.pick_runner},
-                              {label:'🥉', team: entry.champ.pick_third},
+                              {label:'1', team: entry.champ.pick_champion},
+                              {label:'2', team: entry.champ.pick_runner},
+                              {label:'3', team: entry.champ.pick_third},
                             ].map(({label, team}) => (
                               <div key={label} className="flex items-center gap-2 justify-end">
                                 <span className="text-[12px] text-gray-500">{team}</span>
                                 <FlagImg team={team} size={22}/>
-                                <span>{label}</span>
+                                <span className="text-[11px] font-bold text-gray-500">{label}o</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
                     </div>
+
+                    {/* Badges */}
+                    {(badges[entry.player_id] || []).length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Conquistas</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(badges[entry.player_id] || []).map(key => (
+                            <BadgeChip key={key} badgeKey={key}/>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -309,6 +435,7 @@ export default function RankingPage() {
         )}
 
         <div className="h-4"/>
+        </>)}
       </div>
     </Layout>
   )
