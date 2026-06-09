@@ -16,10 +16,12 @@ function initials(n: string) {
 }
 
 function resolveAvatar(p: Player): string | null {
-  if (!p.avatar_url) return null
-  if (p.avatar_url.startsWith('http')) return p.avatar_url + '?v=1'
-  const { data } = supabase.storage.from('avatars').getPublicUrl(p.avatar_url)
-  return data.publicUrl + '?v=1'
+  if (!p?.avatar_url) return null
+  try {
+    if (p.avatar_url.startsWith('http')) return p.avatar_url
+    const { data } = supabase.storage.from('avatars').getPublicUrl(p.avatar_url)
+    return data?.publicUrl || null
+  } catch { return null }
 }
 
 function PicksBar({ count, total }: { count: number; total: number }) {
@@ -140,8 +142,8 @@ export default function RankingPage() {
             <div className="relative flex items-center gap-4 px-5 py-5">
               {/* Avatar */}
               <div className="relative flex-shrink-0">
-                {resolveAvatar(myEntry.player) ? (
-                  <img src={resolveAvatar(myEntry.player)!} alt=""
+                {(() => { const av = resolveAvatar(myEntry.player); return av ? (
+                  <img src={av} alt=""
                     className="w-16 h-16 rounded-full object-cover shadow-lg"
                     style={{ border: '3px solid rgba(255,255,255,0.9)' }} />
                 ) : (
@@ -149,7 +151,7 @@ export default function RankingPage() {
                     style={{ border: '3px solid rgba(255,255,255,0.9)' }}>
                     {initials(myEntry.player.nickname || myEntry.player.username)}
                   </div>
-                )}
+                ); })()}
                 <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-[#FFD700] border-2 border-white flex items-center justify-center text-[10px] font-bold text-[#7a5800]">
                   {myPos}
                 </div>
