@@ -2,10 +2,10 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import Head from 'next/head'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconInfo } from '@/components/Icons'
 
-// Bottom nav — Regras no centro
+// Bottom nav
 const NAV = [
   { href: '/champion',   Icon: IconTrophy,    label: 'Campeão'  },
   { href: '/picks',      Icon: IconBall,      label: 'Palpites' },
@@ -13,15 +13,150 @@ const NAV = [
   { href: '/onboarding', Icon: IconInfo,      label: 'Regras'   },
 ]
 
+// iOS install instructions modal
+function IosInstallModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" style={{ background: 'rgba(0,20,40,0.7)' }}
+      onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+        {/* Arrow pointing to bottom bar */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        <div className="px-5 pt-2 pb-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-bold text-gray-900 text-[16px]">Instalar no iPhone</h2>
+              <p className="text-[11px] text-gray-400">Adicionar à Tela de Início</p>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              {
+                step: '1',
+                icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <polyline points="16 6 12 2 8 6"/>
+                    <line x1="12" y1="2" x2="12" y2="15"/>
+                  </svg>
+                ),
+                text: 'Toque no ícone de compartilhar na barra inferior do Safari',
+              },
+              {
+                step: '2',
+                icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round">
+                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                  </svg>
+                ),
+                text: 'Role para baixo e toque em "Adicionar à Tela de Início"',
+              },
+              {
+                step: '3',
+                icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                ),
+                text: 'Toque em "Adicionar" no canto superior direito',
+              },
+            ].map(({ step, icon, text }) => (
+              <div key={step} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center flex-shrink-0">
+                  {icon}
+                </div>
+                <div className="flex-1">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Passo {step}</span>
+                  <p className="text-[13px] text-gray-700 leading-snug mt-0.5">{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl p-3 text-center">
+            <p className="text-[12px] text-[#0099CC] font-medium">
+              Abra o site no <strong>Safari</strong> para instalar o app 🏆
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type Props = { children?: React.ReactNode; title: string; step?: number }
 
 export default function Layout({ children, title }: Props) {
   const router    = useRouter()
   const { player, logout, isAdmin, refreshPlayer } = useAuth()
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
+  const [showInstallBanner, setShowInstallBanner] = useState(false)
+  const [showIosModal, setShowIosModal] = useState(false)
+  const [isIos, setIsIos] = useState(false)
+  const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
 
   // Refresh player on route change
   useEffect(() => { refreshPlayer() }, [router.pathname])
+
+  // PWA install detection
+  useEffect(() => {
+    // Check if already installed
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    if (isStandalone) return
+
+    // Check if dismissed
+    const dismissed = sessionStorage.getItem('pwa_banner_dismissed')
+    if (dismissed) return
+
+    // Check iOS
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    setIsIos(ios)
+
+    if (ios) {
+      setShowInstallBanner(true)
+      return
+    }
+
+    // Android/Chrome: listen for beforeinstallprompt
+    const handler = (e: Event) => {
+      e.preventDefault()
+      deferredPrompt.current = e as BeforeInstallPromptEvent
+      setShowInstallBanner(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler as EventListener)
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener)
+  }, [])
+
+  async function handleInstallClick() {
+    if (isIos) {
+      setShowIosModal(true)
+      return
+    }
+    if (deferredPrompt.current) {
+      deferredPrompt.current.prompt()
+      const { outcome } = await deferredPrompt.current.userChoice
+      if (outcome === 'accepted') {
+        setShowInstallBanner(false)
+        deferredPrompt.current = null
+      }
+    }
+  }
+
+  function dismissBanner() {
+    setShowInstallBanner(false)
+    sessionStorage.setItem('pwa_banner_dismissed', '1')
+  }
 
   // Resolve avatar URL
   useEffect(() => {
@@ -53,7 +188,35 @@ export default function Layout({ children, title }: Props) {
         <link rel="manifest" href="/manifest.json"/>
       </Head>
 
+      {showIosModal && <IosInstallModal onClose={() => setShowIosModal(false)} />}
+
       <div className="min-h-screen bg-gray-50 pb-[68px]">
+
+        {/* ── Install Banner ─────────────────────────────── */}
+        {showInstallBanner && (
+          <div className="bg-gradient-to-r from-[#002240] to-[#003a6e] text-white px-4 py-2.5 flex items-center gap-3"
+            style={{ paddingTop: 'max(10px, env(safe-area-inset-top))' }}>
+            <img src="/copa2026-logo.jpg" alt="Copa 2026"
+              className="w-8 h-8 rounded-lg object-cover flex-shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold leading-tight truncate">Instalar o app do Bolão</p>
+              <p className="text-[10px] text-white/60 leading-tight">
+                {isIos ? 'Toque para ver como instalar' : 'Acesso rápido na tela inicial'}
+              </p>
+            </div>
+            <button
+              onClick={handleInstallClick}
+              className="flex-shrink-0 bg-[#0099CC] hover:bg-[#007aa8] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+              {isIos ? 'Como instalar' : 'Instalar'}
+            </button>
+            <button onClick={dismissBanner}
+              className="flex-shrink-0 text-white/50 hover:text-white/80 transition-colors p-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* ── Top header ──────────────────────────────────── */}
         <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
@@ -76,7 +239,7 @@ export default function Layout({ children, title }: Props) {
                 </button>
               )}
 
-              {/* Payment button — always visible */}
+              {/* Payment button */}
               {!player?.payment_ok && (
                 <button onClick={() => router.push('/pagar')}
                   className="flex items-center gap-1 text-[11px] font-bold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap shadow-sm">
