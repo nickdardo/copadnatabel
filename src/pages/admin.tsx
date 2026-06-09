@@ -38,6 +38,7 @@ export default function AdminPage() {
   const [togglingId,    setTogglingId]    = useState<string | null>(null)
   const [lastAutoSync,  setLastAutoSync]  = useState<string>('')
   const [autoSyncing,   setAutoSyncing]   = useState(false)
+  const [refreshing,    setRefreshing]    = useState(false)
   const [pixCpf,        setPixCpf]        = useState('')
   const [pixNome,       setPixNome]       = useState('')
   const [pixValor,      setPixValor]      = useState('10')
@@ -102,6 +103,12 @@ export default function AdminPage() {
     const interval = setInterval(autoSync, 2 * 60 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
+
+  async function refreshAll() {
+    setRefreshing(true)
+    await fetchAll()
+    setRefreshing(false)
+  }
 
   async function triggerSync() {
     setSyncing(true); setSyncResult(null)
@@ -297,14 +304,27 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex bg-gray-100 rounded-xl p-1">
+          {/* Tabs + Refresh */}
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 bg-gray-100 rounded-xl p-1">
             {([['matches', `Partidas (${matches.length})`], ['players', `Participantes (${nonAdminPlayers.length})`], ['pix', 'PIX']] as [Tab, string][]).map(([t, label]) => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all ${tab === t ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400'}`}>
-                {label}
-              </button>
-            ))}
+                <button key={t} onClick={() => setTab(t)}
+                  className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all ${tab === t ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-400'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Refresh button */}
+            <button onClick={refreshAll} disabled={refreshing}
+              title="Atualizar lista"
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50 flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round"
+                className={refreshing ? 'animate-spin' : ''}>
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
           </div>
 
           {/* PARTIDAS */}

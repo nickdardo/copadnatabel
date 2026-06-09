@@ -9,8 +9,8 @@ import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconInfo 
 const NAV = [
   { href: '/champion',   Icon: IconTrophy,    label: 'Campeão'  },
   { href: '/picks',      Icon: IconBall,      label: 'Palpites' },
-  { href: '/onboarding', Icon: IconInfo,      label: 'Regras'   },
   { href: '/ranking',    Icon: IconBarChart,  label: 'Ranking'  },
+  { href: '/onboarding', Icon: IconInfo,      label: 'Regras'   },
 ]
 
 type Props = { children: React.ReactNode; title: string; step?: number }
