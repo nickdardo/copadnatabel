@@ -147,7 +147,6 @@ const ISO_MAP: Record<string, string> = {
   'Iceland':'is',
   'Paraguay':'py',
   'Ivory Coast':'ci',
-  'Cote d'Ivoire':'ci',
   'Trinidad and Tobago':'tt',
   'Indonesia':'id',
   'Curacao':'cw',
