@@ -50,7 +50,7 @@ export default function Layout({ children, title }: Props) {
   return (
     <>
       <Head>
-        <title>{title} · Bolão Copa 2026</title>
+        <title>{title} · Bolão Copa 2026 BEL</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#0099CC" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -65,7 +65,7 @@ export default function Layout({ children, title }: Props) {
             <div className="flex items-center gap-2.5">
               <img src="/copa2026-logo.jpg" alt="Copa 2026" className="h-9 w-auto rounded-lg object-contain" />
               <div className="h-4 w-px bg-gray-200" />
-              <span className="text-[13px] text-gray-600 font-semibold hidden sm:block">Bolão Copa 2026</span>
+              <span className="text-[13px] text-gray-600 font-semibold hidden sm:block">Bolão Copa 2026 BEL</span>
             </div>
 
             <div className="flex items-center gap-2">

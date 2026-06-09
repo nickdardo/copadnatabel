@@ -68,6 +68,7 @@ export default function RankingPage() {
   const [fetching,     setFetching]     = useState(true)
   const [lastUpdate,   setLastUpdate]   = useState('')
   const [expanded,     setExpanded]     = useState<string | null>(null)
+  const [showAll,      setShowAll]      = useState(false)
   const [totalMatches, setTotalMatches] = useState(104)
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
@@ -214,7 +215,7 @@ export default function RankingPage() {
 
         {/* ── Ranking rows ─────────────────────────────────────────── */}
         <div>
-          {ranking.map((entry, i) => {
+          {ranking.slice(0, showAll ? ranking.length : 10).map((entry, i) => {
             const isMe   = entry.player_id === player?.id
             const color  = COLORS[i % COLORS.length]
             const photo  = resolveAvatar(entry.player)
@@ -341,6 +342,22 @@ export default function RankingPage() {
             )
           })}
         </div>
+
+        {/* Show more button */}
+        {!showAll && ranking.length > 10 && (
+          <button
+            onClick={() => setShowAll(true)}
+            className="w-full py-3 mt-2 rounded-2xl border border-gray-200 bg-white text-[13px] font-semibold text-[#0099CC] hover:bg-gray-50 transition-colors shadow-sm">
+            Ver todos os {ranking.length} participantes
+          </button>
+        )}
+        {showAll && ranking.length > 10 && (
+          <button
+            onClick={() => setShowAll(false)}
+            className="w-full py-3 mt-2 rounded-2xl border border-gray-200 bg-white text-[13px] font-semibold text-gray-400 hover:bg-gray-50 transition-colors">
+            Mostrar menos
+          </button>
+        )}
 
         {/* Empty state */}
         {ranking.length === 0 && (

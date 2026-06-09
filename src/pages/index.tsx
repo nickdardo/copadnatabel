@@ -17,7 +17,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
         <div className="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
           <div>
             <h2 className="font-bold text-gray-900 text-[16px]">Como funciona</h2>
-            <p className="text-[11px] text-gray-400">Bolão Copa 2026</p>
+            <p className="text-[11px] text-gray-400">Bolão Copa 2026 BEL</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
             <IcoX />
@@ -62,7 +62,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl p-4">
             <p className="text-[12px] font-bold text-[#0099CC] mb-1">Limite de alterações</p>
-            <p className="text-[12px] text-gray-600 leading-relaxed">Após salvar seus palpites, você pode alterá-los até <strong>5 vezes por rodada</strong>. Use com sabedoria!</p>
+            <p className="text-[12px] text-gray-600 leading-relaxed">Após salvar seus palpites, você pode alterá-los até <strong>3 vezes por rodada</strong>. Use com sabedoria!</p>
           </div>
           <button onClick={onClose} className="w-full py-3.5 rounded-xl bg-[#0099CC] text-white font-semibold text-[14px] hover:bg-[#007aa8] transition-colors">
             Entendido!
@@ -104,7 +104,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Bolão Copa 2026</title>
+        <title>Bolão Copa 2026 BEL</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#002240" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />

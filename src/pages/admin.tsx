@@ -160,7 +160,7 @@ export default function AdminPage() {
   return (
     <>
       <Head>
-        <title>Admin · Bolão Copa 2026</title>
+        <title>Admin · Bolão Copa 2026 BEL</title>
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
       </Head>
 

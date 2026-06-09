@@ -112,7 +112,7 @@ export default function ProfileSetupPage() {
   return (
     <>
       <Head>
-        <title>Configure seu perfil · Bolão Copa 2026</title>
+        <title>Configure seu perfil · Bolão Copa 2026 BEL</title>
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
       </Head>
 

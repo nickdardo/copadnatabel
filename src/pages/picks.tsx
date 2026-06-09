@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale'
 type PickMap  = Record<string, { home: string; away: string; saved: boolean; editCount: number }>
 type LimitMap = Record<string, EditLimit>
 const ROUND_SIZE = 8
-const MAX_EDITS  = 5
+const MAX_EDITS  = 3
 const LOCK_HOURS = 5
 
 const IcoCheck  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -169,7 +169,7 @@ export default function PicksPage() {
       <div className="max-w-lg mx-auto px-4 pt-5 pb-2">
         <div className="text-center mb-4">
           <h1 className="text-[18px] font-bold text-gray-900">Palpites</h1>
-          <p className="text-[12px] text-gray-400 mt-0.5">Bolão Copa do Mundo 2026</p>
+          <p className="text-[12px] text-gray-400 mt-0.5">Bolão Copa 2026 BEL</p>
         </div>
 
         {/* Phase tabs */}
