@@ -142,16 +142,15 @@ export default function RankingPage() {
             <div className="relative flex items-center gap-4 px-5 py-5">
               {/* Avatar */}
               <div className="relative flex-shrink-0">
-                {(() => { const av = resolveAvatar(myEntry.player); return av ? (
-                  <img src={av} alt=""
-                    className="w-16 h-16 rounded-full object-cover shadow-lg"
-                    style={{ border: '3px solid rgba(255,255,255,0.9)' }} />
-                ) : (
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-[#0099CC] bg-white shadow-lg"
-                    style={{ border: '3px solid rgba(255,255,255,0.9)' }}>
-                    {initials(myEntry.player.nickname || myEntry.player.username)}
-                  </div>
-                ); })()}
+                {resolveAvatar(myEntry.player)
+                  ? <img src={resolveAvatar(myEntry.player)!} alt=""
+                      className="w-16 h-16 rounded-full object-cover shadow-lg"
+                      style={{ border: '3px solid rgba(255,255,255,0.9)' }} />
+                  : <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-[#0099CC] bg-white shadow-lg"
+                      style={{ border: '3px solid rgba(255,255,255,0.9)' }}>
+                      {initials(myEntry.player.nickname || myEntry.player.username)}
+                    </div>
+                }
                 <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-[#FFD700] border-2 border-white flex items-center justify-center text-[10px] font-bold text-[#7a5800]">
                   {myPos}
                 </div>
@@ -218,6 +217,7 @@ export default function RankingPage() {
         {/* ── Ranking rows ─────────────────────────────────────────── */}
         <div>
           {ranking.slice(0, showAll ? ranking.length : 10).map((entry, i) => {
+            if (!entry.player) return null
             const isMe   = entry.player_id === player?.id
             const color  = COLORS[i % COLORS.length]
             const photo  = resolveAvatar(entry.player)
