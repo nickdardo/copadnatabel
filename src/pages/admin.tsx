@@ -57,8 +57,8 @@ export default function AdminPage() {
     setMatches((mData || []) as Match[])
     setPlayers((pData || []) as Player[])
     // Load extra prize amount
-    const { data: prizeData } = await supabase.from('prize_config').select('*').single()
-    if (prizeData) setCurrentExtra(Number(prizeData.extra_amount) || 0)
+    const { data: prizeRows } = await supabase.from('prize_config').select('extra_amount').limit(1)
+    if (prizeRows && prizeRows[0]) setCurrentExtra(Number(prizeRows[0].extra_amount) || 0)
     setFetching(false)
   }, [])
 
@@ -84,17 +84,25 @@ export default function AdminPage() {
   }
 
   async function saveExtra() {
-    const val = parseFloat(extraAmount.replace(',', '.'))
+    const val = parseFloat(String(extraAmount).replace(',', '.'))
     if (isNaN(val) || val < 0) return
     setSavingExtra(true)
-    const { data: existing } = await supabase.from('prize_config').select('id').single()
-    if (existing) {
+    const newTotal = currentExtra + val
+    // Try update first, then insert if no rows
+    const { data: rows } = await supabase.from('prize_config').select('id').limit(1)
+    if (rows && rows.length > 0) {
       await supabase.from('prize_config').update({
-        extra_amount: currentExtra + val,
+        extra_amount: newTotal,
         extra_note: extraNote || null,
-      }).eq('id', existing.id)
+        updated_at: new Date().toISOString(),
+      }).eq('id', rows[0].id)
+    } else {
+      await supabase.from('prize_config').insert({
+        pct_first: 60, pct_second: 25, pct_third: 15,
+        extra_amount: newTotal, extra_note: extraNote || null,
+      })
     }
-    setCurrentExtra(prev => prev + val)
+    setCurrentExtra(newTotal)
     setExtraAmount('')
     setExtraNote('')
     setSavingExtra(false)
@@ -103,8 +111,10 @@ export default function AdminPage() {
   }
 
   async function resetExtra() {
-    const { data: existing } = await supabase.from('prize_config').select('id').single()
-    if (existing) await supabase.from('prize_config').update({ extra_amount: 0, extra_note: null }).eq('id', existing.id)
+    const { data: rows } = await supabase.from('prize_config').select('id').limit(1)
+    if (rows && rows.length > 0) {
+      await supabase.from('prize_config').update({ extra_amount: 0, extra_note: null }).eq('id', rows[0].id)
+    }
     setCurrentExtra(0)
   }
 

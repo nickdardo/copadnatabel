@@ -58,7 +58,7 @@ export default function ChampionPage() {
     Promise.all([
       supabase.from('champion_picks').select('*').eq('player_id', player.id).maybeSingle(),
       supabase.from('players').select('id', { count:'exact', head:true }).eq('payment_ok', true),
-      supabase.from('prize_config').select('*').maybeSingle(),
+      supabase.from('prize_config').select('extra_amount,extra_note').limit(1),
     ]).then(([{ data }, { count }, { data: prizeData }]) => {
       if (data) {
         setChampion(data.pick_champion); setRunner(data.pick_runner); setThird(data.pick_third)
@@ -66,9 +66,10 @@ export default function ChampionPage() {
         setEditCount(data.edit_count || 0)
       }
       setPaidCount(count || 0)
-      if (prizeData) {
-        setExtraAmount(Number(prizeData.extra_amount) || 0)
-        setExtraNote(prizeData.extra_note || '')
+      const prizeRow = Array.isArray(prizeData) ? prizeData[0] : prizeData
+      if (prizeRow) {
+        setExtraAmount(Number(prizeRow.extra_amount) || 0)
+        setExtraNote(prizeRow.extra_note || '')
       }
       setFetching(false)
     })

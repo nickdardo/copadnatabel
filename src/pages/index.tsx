@@ -26,7 +26,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
         <div className="px-5 py-4 space-y-5">
           <div className="bg-[#E6F4FA] rounded-xl p-4">
             <p className="text-[13px] font-semibold text-[#0099CC] mb-1">Objetivo</p>
-            <p className="text-[13px] text-gray-600 leading-relaxed">Acerte os placares dos 104 jogos da Copa 2026 e acumule pontos. Quem tiver mais pontos ao final vence o bolão dnata!</p>
+            <p className="text-[13px] text-gray-600 leading-relaxed">Acerte os placares dos 104 jogos da Copa 2026 e acumule pontos. Quem tiver mais pontos ao final vence o Bolão BEL!</p>
           </div>
           <div>
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Pontuação por jogo</p>
