@@ -19,12 +19,28 @@ const IcoLock   = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="no
 const IcoArrowL = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
 const IcoArrowR = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 6 15 12 9 18"/></svg>
 
-// UTC → BRT (UTC-3)
-function toBRT(dateStr: string): Date {
-  return new Date(parseISO(dateStr).getTime() - 3 * 60 * 60 * 1000)
-}
+// Format UTC date as BRT (UTC-3) using toLocaleString
 function fmtBRT(dateStr: string, fmt: string): string {
-  return format(toBRT(dateStr), fmt, { locale: ptBR })
+  const d = parseISO(dateStr)
+  // Use Intl to get BRT time regardless of browser/server timezone
+  const brtStr = d.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit', minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: '2-digit',
+    weekday: 'short',
+  })
+  // For simple time format
+  if (fmt === 'HH:mm') {
+    return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+  }
+  // For date format like "Qui., 11/06"
+  if (fmt.includes('dd/MM')) {
+    const weekday = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short' })
+    const day     = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit' })
+    const month   = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', month: '2-digit' })
+    return `${weekday.replace('.','')}.., ${day}/${month}`
+  }
+  return format(d, fmt, { locale: ptBR })
 }
 
 export default function PicksPage() {
