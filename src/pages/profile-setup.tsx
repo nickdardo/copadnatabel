@@ -97,7 +97,7 @@ export default function ProfileSetupPage() {
     await refreshPlayer()
     setSaving(false)
     setSaved(true)
-    setTimeout(() => router.push('/champion'), 1200)
+    setTimeout(() => router.push('/onboarding'), 800)
   }
 
   if (loading) return (

@@ -50,7 +50,7 @@ export default function ChampionPage() {
     if (!player) return
     Promise.all([
       supabase.from('champion_picks').select('*').eq('player_id', player.id).maybeSingle(),
-      supabase.from('players').select('id', { count:'exact', head:true }).eq('payment_ok', true),
+      supabase.from('players').select('id', { count:'exact', head:true }).eq('payment_ok', true).eq('is_admin', false),
       supabase.from('prize_config').select('*').limit(1),
     ]).then(([{ data }, { count }, { data: prizeRows }]) => {
       if (data) {

@@ -210,7 +210,7 @@ export default function AdminPage() {
   }
 
   const nonAdminPlayers = players.filter(p => !p.is_admin)
-  const paidCount       = nonAdminPlayers.filter(p => p.payment_ok).length
+  const paidCount       = nonAdminPlayers.filter(p => p.payment_ok && !p.is_admin).length
   const prizePool       = paidCount * 10 + currentExtra
   const phases          = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
   const filteredMatches = matches.filter(m => m.fase === activePhase)
