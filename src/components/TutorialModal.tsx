@@ -17,7 +17,7 @@ function Phone({ children, header, nav }: {
   nav?: string
 }) {
   const NAV_ITEMS = [
-    { label: 'Campeao',  icon: 'M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z' },
+    { label: 'Campeão',  icon: 'M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z' },
     { label: 'Palpites', icon: 'M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z M2 12h20 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z' },
     { label: 'Ranking',  icon: 'M18 20v-10 M12 20v-16 M6 20v-6' },
     { label: 'Regras',   icon: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01' },
@@ -39,7 +39,7 @@ function Phone({ children, header, nav }: {
                 <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M18 2H6v7a6 6 0 0 0 12 0V2z"/>
               </svg>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 500, color: '#fff', flex: 1 }}>Bolao Copa BEL</span>
+            <span style={{ fontSize: 10, fontWeight: 500, color: '#fff', flex: 1 }}>Bolão Copa BEL</span>
             <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 500, color: '#fff' }}>EO</div>
           </div>
         )}
@@ -117,8 +117,8 @@ const RankRow = ({ pos, initials, name, sub, pts, highlight, badge, avatarBg, av
 const SCENES: Scene[] = [
   {
     id: 1, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 5000,
-    title: 'Faca seus palpites',
-    subtitle: 'Informe o placar que voce espera para cada jogo antes do fechamento.',
+    title: 'Faça seus palpites',
+    subtitle: 'Informe o placar esperado para cada jogo antes do horário de fechamento.',
     screen: (
       <Phone nav="Palpites">
         <div>
@@ -140,13 +140,13 @@ const SCENES: Scene[] = [
   {
     id: 2, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 5000,
     title: 'Sem pagamento, sem palpite',
-    subtitle: 'Quem nao pagou pode ver os jogos, mas os campos ficam bloqueados ate confirmar a inscricao.',
+    subtitle: 'Quem não pagou pode ver os jogos, mas os campos ficam bloqueados ate confirmar a inscrição.',
     screen: (
       <Phone nav="Palpites">
         <div>
           <div style={{ background: '#FFFBEB', border: '0.5px solid #FCD34D', borderRadius: 8, padding: 8, marginBottom: 6 }}>
             <p style={{ fontSize: 9, fontWeight: 500, color: '#92400E', marginBottom: 2 }}>Pagamento necessario</p>
-            <p style={{ fontSize: 7, color: '#B45309', marginBottom: 5 }}>Voce pode ver os jogos, mas nao pode salvar palpites ate confirmar o pagamento da inscricao.</p>
+            <p style={{ fontSize: 7, color: '#B45309', marginBottom: 5 }}>Você pode ver os jogos, mas não pode salvar palpites ate confirmar o pagamento da inscrição.</p>
             <div style={{ background: '#F59E0B', borderRadius: 6, padding: '4px 8px', textAlign: 'center' }}>
               <p style={{ fontSize: 8, fontWeight: 500, color: '#fff' }}>Pagar R$ 10,00 via PIX</p>
             </div>
@@ -158,7 +158,7 @@ const SCENES: Scene[] = [
           <div style={{ background: '#F59E0B', borderRadius: 8, padding: '7px', textAlign: 'center', marginTop: 4 }}>
             <p style={{ fontSize: 9, fontWeight: 500, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Pagar inscricao para palpitar
+              Pagar inscrição para palpitar
             </p>
           </div>
         </div>
@@ -167,13 +167,13 @@ const SCENES: Scene[] = [
   },
   {
     id: 3, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 5000,
-    title: 'Escolha seu campeao',
-    subtitle: 'Antes dos jogos, vote no campeao, vice e 3 lugar para ganhar pontos bonus.',
+    title: 'Escolha seu campeão',
+    subtitle: 'Antes dos jogos, vote no campeão, vice e 3º lugar para ganhar pontos bônus.',
     screen: (
-      <Phone nav="Campeao">
+      <Phone nav="Campeão">
         <div>
           <div style={{ background: '#003a6e', borderRadius: 10, padding: '10px 10px 8px', marginBottom: 8, textAlign: 'center' }}>
-            <p style={{ fontSize: 8, color: 'rgba(255,255,255,.6)', marginBottom: 2 }}>Palpite de campeao</p>
+            <p style={{ fontSize: 8, color: 'rgba(255,255,255,.6)', marginBottom: 2 }}>Palpite de campeão</p>
             <p style={{ fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1 }}>Copa 2026</p>
             <p style={{ fontSize: 8, color: 'rgba(255,255,255,.5)', marginTop: 2 }}>Bônus: +50 / +25 / +10 pts</p>
           </div>
@@ -191,7 +191,7 @@ const SCENES: Scene[] = [
             </div>
           ))}
           <div style={{ background: '#0099CC', borderRadius: 8, padding: '7px', textAlign: 'center', marginTop: 2 }}>
-            <p style={{ fontSize: 10, fontWeight: 500, color: '#fff' }}>Salvar palpite de campeao</p>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#fff' }}>Salvar palpite de campeão</p>
           </div>
         </div>
       </Phone>
@@ -200,7 +200,7 @@ const SCENES: Scene[] = [
   {
     id: 4, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 5500,
     title: 'Palpites ao vivo',
-    subtitle: 'Durante os jogos voce ve o placar em tempo real e o seu palpite ao lado para comparar.',
+    subtitle: 'Durante os jogos você vê o placar em tempo real e compara com seu palpite.',
     screen: (
       <Phone nav="Palpites">
         <div>
@@ -210,7 +210,7 @@ const SCENES: Scene[] = [
           </div>
           <MatchCard time="67'" status="live" home="Brasil" away="Mexico" scoreH="2" scoreA="0" myPick="2×0" pickLabel="Seu palpite: 2×0" pickColor="#DCFCE7" consensus="Grupo apostou 2×0 (9x)"/>
           <MatchCard time="23'" status="live" home="Argentina" away="Polonia" scoreH="0" scoreA="0" myPick="1×1" pickLabel="Seu palpite: 1×1" pickColor="#FEF9C3" consensus="Grupo apostou 1×0 (7x)"/>
-          <p style={{ fontSize: 8, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', margin: '4px 0 3px' }}>Proximos</p>
+          <p style={{ fontSize: 8, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', margin: '4px 0 3px' }}>Próximos</p>
           <MatchCard time="21:00 hoje" status="upcoming" home="Franca" away="Australia" scoreH="1" scoreA="0"/>
         </div>
       </Phone>
@@ -219,7 +219,7 @@ const SCENES: Scene[] = [
   {
     id: 5, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 5000,
     title: 'Ranking em tempo real',
-    subtitle: 'A classificacao atualiza automaticamente depois de cada resultado confirmado.',
+    subtitle: 'A classificação atualiza automaticamente após cada resultado confirmado.',
     screen: (
       <Phone nav="Ranking">
         <div>
@@ -227,7 +227,7 @@ const SCENES: Scene[] = [
             <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1.5px solid rgba(255,215,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, color: '#FFD700', flexShrink: 0 }}>2</div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 10, fontWeight: 500, color: '#fff' }}>Eduardo Oliveira</p>
-              <p style={{ fontSize: 8, color: 'rgba(255,255,255,.5)' }}>Subiu 1 posicao</p>
+              <p style={{ fontSize: 8, color: 'rgba(255,255,255,.5)' }}>Subiu 1 posição</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ fontSize: 18, fontWeight: 500, color: '#fff', lineHeight: 1 }}>15</p>
@@ -239,7 +239,7 @@ const SCENES: Scene[] = [
             <span style={{ fontSize: 8, color: '#DC2626', fontWeight: 500 }}>Atualizando ao vivo</span>
           </div>
           <RankRow pos={1} initials="JV" name="Joao Victor" sub="F10+F7" pts={17} avatarBg="#EFF6FF" avatarColor="#1D4ED8"/>
-          <RankRow pos={2} initials="EO" name="Eduardo (voce)" sub="F10+F5 +15pts" pts={15} highlight avatarBg="#DBEAFE" avatarColor="#1E40AF"/>
+          <RankRow pos={2} initials="EO" name="Eduardo (você)" sub="F10+F5 +15pts" pts={15} highlight avatarBg="#DBEAFE" avatarColor="#1E40AF"/>
           <RankRow pos={3} initials="MA" name="Maicon Araujo" sub="F7+F5" pts={12} avatarBg="#F0FDF4" avatarColor="#166534"/>
           <RankRow pos={4} initials="EM" name="Erick Moura" sub="F5+F0" pts={5} avatarBg="#FEF9C3" avatarColor="#854D0E"/>
         </div>
@@ -248,8 +248,8 @@ const SCENES: Scene[] = [
   },
   {
     id: 6, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 5000,
-    title: 'Notificacoes push',
-    subtitle: 'O admin envia avisos pelo painel. Chegam mesmo com o app fechado.',
+    title: 'Notificações push',
+    subtitle: 'O administrador envia avisos pelo painel. Chegam mesmo com o app fechado.',
     screen: (
       <div style={{ width: 210, flexShrink: 0 }}>
         <div style={{ borderRadius: 28, border: '2.5px solid #1a1a1a', background: '#111', padding: 5, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
@@ -261,16 +261,16 @@ const SCENES: Scene[] = [
               <span style={{ fontSize: 9, color: 'rgba(255,255,255,.4)' }}>BRT</span>
             </div>
             {[
-              { title: 'Brasil venceu! Confira o placar', body: 'Brasil 2×0 Mexico. Palpites para o proximo jogo fecham em 4h.', time: 'agora' },
+              { title: 'Brasil venceu! Confira o placar', body: 'Brasil 2×0 Mexico. Palpites para o próximo jogo fecham em 4h.', time: 'agora' },
               { title: 'Jogo em 1 hora!', body: 'Argentina x Polonia comeca as 18h. Ultimo aviso para palpites!', time: '3 min' },
-              { title: 'Ranking atualizado', body: 'Voce subiu para o 2 lugar! Veja a pontuacao completa.', time: '15 min' },
+              { title: 'Ranking atualizado', body: 'Você subiu para o 2 lugar! Veja a pontuação completa.', time: '15 min' },
             ].map((n, i) => (
               <div key={i} style={{ background: '#2c2c2e', padding: 10, margin: '0 8px 6px', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                   <div style={{ width: 20, height: 20, borderRadius: 5, background: '#0099CC', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
                   </div>
-                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,.5)', flex: 1 }}>Bolao Copa BEL</span>
+                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,.5)', flex: 1 }}>Bolão Copa BEL</span>
                   <span style={{ fontSize: 8, color: 'rgba(255,255,255,.35)' }}>{n.time}</span>
                 </div>
                 <p style={{ fontSize: 9, fontWeight: 500, color: '#fff', marginBottom: 2 }}>{n.title}</p>
@@ -285,8 +285,8 @@ const SCENES: Scene[] = [
   },
   {
     id: 7, phase: 'depois', phaseLabel: 'Apos os jogos', duration: 5500,
-    title: 'Resultados com pontuacao',
-    subtitle: 'Cada jogo encerrado mostra seu palpite, a pontuacao recebida e o placar mais votado pelo grupo.',
+    title: 'Resultados com pontuação',
+    subtitle: 'Cada jogo encerrado exibe seu palpite, a pontuação recebida e o placar mais apostado pelo grupo.',
     screen: (
       <Phone nav="Palpites">
         <div>
@@ -305,7 +305,7 @@ const SCENES: Scene[] = [
   {
     id: 8, phase: 'depois', phaseLabel: 'Apos os jogos', duration: 6000,
     title: 'Ranking final e premiacao',
-    subtitle: 'Ao fim do torneio, o ranking mostra as conquistas de cada participante e o valor do premio de cada colocado.',
+    subtitle: 'Ao fim do torneio o ranking exibe as conquistas de cada participante e o valor do prêmio por colocação.',
     screen: (
       <Phone nav="Ranking">
         <div>
@@ -313,19 +313,19 @@ const SCENES: Scene[] = [
             <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', border: '1.5px solid rgba(255,215,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, color: '#FFD700', flexShrink: 0 }}>1</div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 10, fontWeight: 500, color: '#fff' }}>Eduardo Oliveira</p>
-              <p style={{ fontSize: 8, color: 'rgba(255,255,255,.5)' }}>Campeao do Bolao BEL!</p>
+              <p style={{ fontSize: 8, color: 'rgba(255,255,255,.5)' }}>Campeão do Bolão BEL!</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ fontSize: 18, fontWeight: 500, color: '#FFD700', lineHeight: 1 }}>342</p>
               <p style={{ fontSize: 7, color: 'rgba(255,255,255,.4)' }}>pontos</p>
             </div>
           </div>
-          <RankRow pos={1} initials="EO" name="Eduardo (voce)" pts={342} highlight badge="Vidente · Lider" avatarBg="#FEF3C7" avatarColor="#92400E"/>
+          <RankRow pos={1} initials="EO" name="Eduardo (você)" pts={342} highlight badge="Vidente · Lider" avatarBg="#FEF3C7" avatarColor="#92400E"/>
           <RankRow pos={2} initials="JV" name="Joao Victor" pts={318} badge="Atirador Elite" avatarBg="#EFF6FF" avatarColor="#1D4ED8"/>
           <RankRow pos={3} initials="MA" name="Maicon Araujo" pts={295} badge="Zebra" avatarBg="#F0FDF4" avatarColor="#166534"/>
           <RankRow pos={4} initials="EM" name="Erick Moura" pts={241} avatarBg="#FEF9C3" avatarColor="#854D0E"/>
           <div style={{ background: '#FFFBEB', border: '0.5px solid #FCD34D', borderRadius: 8, padding: '7px 8px', marginTop: 6 }}>
-            <p style={{ fontSize: 8, fontWeight: 500, color: '#92400E', marginBottom: 4 }}>Premio final</p>
+            <p style={{ fontSize: 8, fontWeight: 500, color: '#92400E', marginBottom: 4 }}>Prêmio final</p>
             {[
               { pos: '1 Eduardo', pct: '60%', val: 'R$ 108,00' },
               { pos: '2 Joao Victor', pct: '25%', val: 'R$ 45,00' },
@@ -437,7 +437,7 @@ export default function TutorialModal({ onClose }: { onClose: () => void }) {
             </svg>
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#1f2937' }}>Tutorial do Bolao Copa BEL</p>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#1f2937' }}>Tutorial do Bolão Copa BEL</p>
             <p style={{ fontSize: 11, color: '#9ca3af' }}>Cena {current + 1} de {SCENES.length}</p>
           </div>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -524,7 +524,7 @@ export default function TutorialModal({ onClose }: { onClose: () => void }) {
           {current === SCENES.length - 1 && progress >= 99 && (
             <button onClick={onClose}
               style={{ padding: '0 14px', height: 36, borderRadius: 8, border: 'none', background: '#0099CC', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
-              Comecar
+              Começar
             </button>
           )}
         </div>
