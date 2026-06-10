@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import Head from 'next/head'
+import TutorialModal from '@/components/TutorialModal'
 import { generatePixPayload, formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
 type PixConfig = {
@@ -22,6 +23,7 @@ export default function OnboardingPage() {
   const [copied,    setCopied]    = useState(false)
   const [checking,  setChecking]  = useState(false)
   const [whatsapp,  setWhatsapp]  = useState('')
+  const [showTutorial, setShowTutorial] = useState(false)
   const [groupLink, setGroupLink] = useState('')
 
   useEffect(() => {
@@ -106,6 +108,8 @@ export default function OnboardingPage() {
         <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
       </Head>
 
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+
       <div className="min-h-screen bg-gray-50 flex flex-col">
 
         {/* Progress bar */}
@@ -147,6 +151,11 @@ export default function OnboardingPage() {
                   className="h-14 w-14 mx-auto mb-3 rounded-xl object-cover shadow-md"/>
                 <h1 className="text-[20px] font-bold text-gray-900">Como funciona o Bolão</h1>
                 <p className="text-[13px] text-gray-400 mt-0.5">Copa 2026 BEL</p>
+                <button onClick={() => setShowTutorial(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0099CC] bg-[#E6F4FA] hover:bg-[#d0ebf7] border border-[#0099CC]/20 px-4 py-2 rounded-full transition-colors">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Ver tutorial animado
+                </button>
               </div>
 
               <div className="space-y-3 flex-1 overflow-y-auto pb-2">

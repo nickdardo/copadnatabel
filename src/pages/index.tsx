@@ -1,7 +1,8 @@
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect, useRef } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import TutorialModal from '@/components/TutorialModal'
 
 // SVG Icons inline (no emoji)
 const IcoUser = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -87,6 +88,8 @@ export default function LoginPage() {
   const [error,      setError]      = useState('')
   const [loading,    setLoading]    = useState(false)
   const [showRules,  setShowRules]  = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const tutorialDelay = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function switchMode(m: Mode) { setMode(m); setError(''); setUsername(''); setPassword(''); setConfirm('') }
 
@@ -111,6 +114,7 @@ export default function LoginPage() {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
       <div className="relative min-h-screen flex flex-col items-center justify-center p-5 overflow-hidden bg-[#002240]">
         <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage:"url('/copa2026-bg.webp')",opacity:0.22}} />
@@ -200,10 +204,17 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <button onClick={()=>setShowRules(true)}
-              className="w-full mt-3 py-2.5 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-500 hover:bg-gray-50 hover:text-[#0099CC] transition-all flex items-center justify-center gap-2">
-              <IcoInfo /> Como funciona o bolão
-            </button>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setShowRules(true)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-500 hover:bg-gray-50 hover:text-[#0099CC] transition-all flex items-center justify-center gap-2">
+                <IcoInfo /> Regras
+              </button>
+              <button onClick={() => setShowTutorial(true)}
+                className="flex-1 py-2.5 rounded-xl border border-[#0099CC]/20 bg-[#E6F4FA] text-[13px] font-semibold text-[#0099CC] hover:bg-[#d0ebf7] transition-all flex items-center justify-center gap-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Ver tutorial
+              </button>
+            </div>
             <div className="absolute bottom-0 left-0 right-0 h-1" style={{background:'linear-gradient(90deg,#0099CC 65%,#8DC63F 100%)'}} />
           </div>
         </div>
