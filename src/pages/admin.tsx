@@ -371,8 +371,8 @@ export default function AdminPage() {
 
       <div className="flex h-screen bg-gray-100 overflow-hidden">
 
-        {/* ── SIDEBAR ─────────────────────────────────────── */}
-        <aside className="w-56 flex-shrink-0 flex flex-col bg-[#001e3c] h-screen">
+        {/* ── SIDEBAR — desktop only ───────────────────────── */}
+        <aside className="hidden md:flex w-56 flex-shrink-0 flex-col bg-[#001e3c] h-screen">
           {/* Logo */}
           <div className="px-4 py-4 border-b border-white/8">
             <div className="flex items-center gap-2.5">
@@ -427,28 +427,33 @@ export default function AdminPage() {
             </div>
           </div>
         </aside>
-
         {/* ── MAIN ────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
           {/* Topbar */}
-          <header className="h-12 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-5 gap-4">
-            <h1 className="text-[14px] font-semibold text-gray-800">
-              {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'Configuração PIX' : page === 'logs' ? 'Histórico de Pagamentos' : 'Notificações'}
-            </h1>
+          <header className="h-12 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-3 md:px-5 gap-2 md:gap-4">
 
-            {/* Sync status */}
-            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${autoSyncing ? 'bg-[#0099CC] animate-pulse' : 'bg-green-400'}`}/>
-              {autoSyncing ? 'Sincronizando...' : lastAutoSync ? `Sync ${lastAutoSync}` : 'Aguardando sync'}
+            {/* Mobile: logo */}
+            <div className="flex md:hidden items-center gap-2 flex-shrink-0">
+              <img src="/copa2026-logo.jpg" alt="" className="w-7 h-7 rounded-lg object-cover"/>
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
+            <h1 className="text-[13px] md:text-[14px] font-semibold text-gray-800 truncate">
+              {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'PIX' : page === 'logs' ? 'Pagamentos' : 'Notificações'}
+            </h1>
+
+            {/* Sync status — hidden on small mobile */}
+            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 flex-shrink-0">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${autoSyncing ? 'bg-[#0099CC] animate-pulse' : 'bg-green-400'}`}/>
+              {autoSyncing ? 'Sincronizando...' : lastAutoSync ? `Sync ${lastAutoSync}` : 'Aguardando'}
+            </div>
+
+            <div className="ml-auto flex items-center gap-1.5 md:gap-2 flex-shrink-0">
               {(page === 'dashboard' || page === 'matches') && (
                 <button onClick={triggerSync} disabled={syncing}
-                  className="flex items-center gap-1.5 text-[12px] font-semibold text-white bg-[#0099CC] hover:bg-[#007aa8] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1 text-[11px] md:text-[12px] font-semibold text-white bg-[#0099CC] hover:bg-[#007aa8] px-2 md:px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                   <span className={syncing ? 'animate-spin' : ''}><Ico.Sync /></span>
-                  {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
+                  <span className="hidden sm:inline">{syncing ? 'Sincronizando...' : 'Sincronizar'}</span>
                 </button>
               )}
               <button
@@ -459,32 +464,37 @@ export default function AdminPage() {
                   setRefreshing(false)
                 }}
                 disabled={refreshing}
-                className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                className="flex items-center gap-1 text-[11px] text-gray-500 border border-gray-200 hover:bg-gray-50 px-2 md:px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                 <span className={refreshing ? 'animate-spin' : ''}><Ico.Sync /></span>
-                {refreshing ? 'Atualizando...' : 'Atualizar'}
+                <span className="hidden sm:inline">{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
+              </button>
+              {/* Mobile: logout */}
+              <button onClick={() => { logout(); router.push('/') }}
+                className="flex md:hidden items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <Ico.Logout />
               </button>
             </div>
           </header>
 
-          {/* Content */}
-          <main className="flex-1 overflow-y-auto p-5">
+          {/* Content — extra bottom padding on mobile for bottom nav */}
+          <main className="flex-1 overflow-y-auto p-3 md:p-5 pb-20 md:pb-5">
 
             {/* ── DASHBOARD ─────────────────────────────── */}
             {page === 'dashboard' && (
               <div className="max-w-5xl mx-auto space-y-5">
 
                 {/* KPI cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
                     { label: 'Participantes', value: nonAdminPlayers.length, sub: `${onlineCount} online agora`, subColor: 'text-green-600', dot: 'bg-green-400' },
                     { label: 'Pagamentos', value: `${paidCount}/${nonAdminPlayers.length}`, sub: pendingCount > 0 ? `${pendingCount} aguardando` : 'Todos confirmados', subColor: pendingCount > 0 ? 'text-amber-600' : 'text-green-600', dot: pendingCount > 0 ? 'bg-amber-400' : 'bg-green-400' },
                     { label: 'Prêmio total', value: `R$ ${prizePool.toFixed(0)}`, sub: `60% · 25% · 15%`, subColor: 'text-gray-400', dot: 'bg-[#0099CC]' },
                     { label: 'Jogos', value: `${doneCount}/${matches.length}`, sub: liveMatches.length > 0 ? `${liveMatches.length} ao vivo` : `${upcomingCount} em breve`, subColor: liveMatches.length > 0 ? 'text-red-500' : 'text-gray-400', dot: liveMatches.length > 0 ? 'bg-red-500' : 'bg-gray-300' },
                   ].map(k => (
-                    <div key={k.label} className="bg-white rounded-xl border border-gray-200 p-4">
-                      <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-2">{k.label}</p>
-                      <p className="text-[26px] font-semibold text-gray-900 leading-none mb-2">{k.value}</p>
-                      <p className={`text-[11px] flex items-center gap-1.5 ${k.subColor}`}>
+                    <div key={k.label} className="bg-white rounded-xl border border-gray-200 p-3 md:p-4">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">{k.label}</p>
+                      <p className="text-[22px] md:text-[26px] font-semibold text-gray-900 leading-none mb-1.5">{k.value}</p>
+                      <p className={`text-[10px] flex items-center gap-1.5 ${k.subColor}`}>
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${k.dot}`}/>
                         {k.sub}
                       </p>
@@ -709,7 +719,7 @@ export default function AdminPage() {
               <div className="max-w-3xl mx-auto space-y-4">
 
                 {/* Stats bar */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: 'Total', value: nonAdminPlayers.length, color: 'text-gray-800' },
                     { label: 'Pagos', value: paidCount, color: 'text-green-600' },
@@ -723,7 +733,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Payment progress */}
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-4">
                   <div className="flex justify-between text-[12px] mb-2">
                     <span className="font-semibold text-gray-700">Progresso de pagamentos</span>
                     <span className="text-[#0099CC] font-bold">R$ {prizePool.toFixed(0)} arrecadados</span>
@@ -812,7 +822,7 @@ export default function AdminPage() {
             {page === 'matches' && (
               <div className="max-w-3xl mx-auto space-y-4">
                 {/* Status summary */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: 'Ao vivo', count: liveMatches.length, color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
                     { label: 'Encerrados', count: doneCount, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' },
@@ -890,7 +900,7 @@ export default function AdminPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Tipo de chave</label>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {(['cpf','telefone','email','aleatória'] as PixKeyType[]).map(type => (
                           <button key={type} onClick={() => { setPixKeyType(type); setPixCpf('') }}
                             className={`py-2.5 rounded-xl text-[12px] font-semibold border transition-all ${pixKeyType === type ? 'bg-[#0099CC] text-white border-[#0099CC]' : 'bg-white text-gray-500 border-gray-200 hover:border-[#0099CC]/40'}`}>
@@ -1125,6 +1135,34 @@ export default function AdminPage() {
             )}
 
           </main>
+
+          {/* ── MOBILE BOTTOM NAV — md:hidden ────────────── */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#001e3c] border-t border-white/10 z-30 flex">
+            {NAV.map(({ id, label, Icon, badge }) => (
+              <button key={id}
+                onClick={() => { setPage(id); if (id === 'logs') loadPaymentLogs() }}
+                className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors relative ${page === id ? 'text-[#4dc6ef]' : 'text-white/35'}`}>
+                {page === id && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full"/>
+                )}
+                <div className="relative">
+                  <Icon />
+                  {badge !== null && (
+                    <span className={`absolute -top-1.5 -right-2 text-[8px] font-bold px-1 py-0.5 rounded-full leading-none ${id === 'matches' ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
+                      {badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[8px] font-medium leading-none">
+                  {label === 'Dashboard' ? 'Início' :
+                   label === 'Participantes' ? 'Pessoas' :
+                   label === 'Partidas' ? 'Jogos' :
+                   label === 'PIX' ? 'PIX' :
+                   label === 'Pagamentos' ? 'Pagtos' : 'Avisos'}
+                </span>
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
 
