@@ -128,10 +128,11 @@ export default function AdminPage() {
       scoresData.forEach((s: { player_id: string; picks_count: number }) => { map[s.player_id] = s.picks_count || 0 })
       setPicksCount(map)
     }
-    // Load push subscriptions to show who enabled notifications
-    const { data: pushData } = await supabase.from('push_subscriptions').select('player_id')
-    if (pushData) {
-      setPushEnabled(new Set(pushData.map((r: { player_id: string }) => r.player_id)))
+    // Load push subscriptions via API (bypasses RLS)
+    const pushRes = await fetch('/api/admin/push-status')
+    if (pushRes.ok) {
+      const { playerIds } = await pushRes.json()
+      setPushEnabled(new Set(playerIds || []))
     }
     setFetching(false)
   }, [])
