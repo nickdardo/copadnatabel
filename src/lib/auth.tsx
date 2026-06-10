@@ -24,10 +24,21 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('bolao_player')
+    // Try localStorage first, fallback to sessionStorage
+    let saved = localStorage.getItem('bolao_player')
+    if (!saved) saved = sessionStorage.getItem('bolao_player')
     if (saved) {
-      try { setPlayer(JSON.parse(saved)) }
-      catch { localStorage.removeItem('bolao_player') }
+      try {
+        const parsed = JSON.parse(saved)
+        setPlayer(parsed)
+        // Ensure both storages are in sync
+        localStorage.setItem('bolao_player', saved)
+        sessionStorage.setItem('bolao_player', saved)
+      }
+      catch {
+        localStorage.removeItem('bolao_player')
+        sessionStorage.removeItem('bolao_player')
+      }
     }
     setLoading(false)
   }, [])
@@ -69,6 +80,7 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     if (data) {
       setPlayer(data)
       localStorage.setItem('bolao_player', JSON.stringify(data))
+      sessionStorage.setItem('bolao_player', JSON.stringify(data))
     }
   }
 
@@ -89,6 +101,7 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
 
     setPlayer(data)
     localStorage.setItem('bolao_player', JSON.stringify(data))
+    sessionStorage.setItem('bolao_player', JSON.stringify(data))
     return {}
   }
 
@@ -119,13 +132,14 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     if (!row) return { error: 'Erro inesperado. Tente novamente.' }
     setPlayer(row)
     localStorage.setItem('bolao_player', JSON.stringify(row))
+    sessionStorage.setItem('bolao_player', JSON.stringify(row))
     return {}
   }
 
   function logout() {
     setPlayer(null)
     localStorage.removeItem('bolao_player')
-    // Only clear saved credentials if remember me was not set
+    sessionStorage.removeItem('bolao_player')
     if (localStorage.getItem('bolao_remember') !== '1') {
       localStorage.removeItem('bolao_saved_user')
     }
