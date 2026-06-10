@@ -764,7 +764,7 @@ export default function AdminPage() {
                   <div className="relative flex-1">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" placeholder="Buscar por nome ou usuário..." value={playerSearch}
-                      onChange={e => { setPlayerSearch(e.target.value); setPlayerPage(0) }}}
+                      onChange={e => { setPlayerSearch(e.target.value); setPlayerPage(0) }}
                       className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-[13px] focus:outline-none focus:border-[#0099CC] transition-colors"/>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-gray-400 bg-white border border-gray-200 rounded-xl px-3 py-2.5 whitespace-nowrap">
