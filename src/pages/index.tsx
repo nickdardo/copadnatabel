@@ -94,11 +94,13 @@ export default function LoginPage() {
 
   // Load saved credentials on mount
   useEffect(() => {
-    const saved = localStorage.getItem('bolao_saved_user')
     const remember = localStorage.getItem('bolao_remember') === '1'
-    if (remember && saved) {
-      setUsername(saved)
+    const savedUser = localStorage.getItem('bolao_saved_user') || ''
+    const savedPass = localStorage.getItem('bolao_saved_pass') || ''
+    if (remember && savedUser) {
+      setUsername(savedUser)
       setRememberMe(true)
+      if (savedPass) setPassword(atob(savedPass))
     } else {
       setRememberMe(false)
     }
@@ -121,9 +123,14 @@ export default function LoginPage() {
     const result = mode==='login' ? await login(username, password, rememberMe) : await register(username, password)
     setLoading(false)
     if (result.error) { setError(result.error); return }
-    if (!rememberMe) {
+    if (rememberMe && mode === 'login') {
+      localStorage.setItem('bolao_remember',  '1')
+      localStorage.setItem('bolao_saved_user', username.trim().toLowerCase())
+      localStorage.setItem('bolao_saved_pass', btoa(password))
+    } else if (!rememberMe) {
       localStorage.removeItem('bolao_remember')
       localStorage.removeItem('bolao_saved_user')
+      localStorage.removeItem('bolao_saved_pass')
     }
     router.push(mode==='register' ? '/profile-setup' : '/champion')
   }

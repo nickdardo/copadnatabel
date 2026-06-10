@@ -29,6 +29,7 @@ function clearStorage() {
   try { sessionStorage.removeItem('bolao_player') } catch {}
   try { localStorage.removeItem('bolao_remember') } catch {}
   try { localStorage.removeItem('bolao_saved_user') } catch {}
+  try { localStorage.removeItem('bolao_saved_pass') } catch {}
 }
 
 function loadFromStorage(): Player | null {
@@ -46,22 +47,52 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
   // On mount — try storage first, then validate session cookie via API
   useEffect(() => {
     async function init() {
-      // 1. Try localStorage/sessionStorage (fastest)
+      // 1. Try localStorage/sessionStorage (fastest — works most of the time)
       const stored = loadFromStorage()
       if (stored) {
         setPlayer(stored)
         setLoading(false)
-        // Silently validate in background
+        // Silently validate session cookie in background
         validateSession().then(p => { if (p) { setPlayer(p); saveToStorage(p) } })
         return
       }
 
-      // 2. Try session cookie (catches PWA install / browser restart)
+      // 2. Try session cookie (PWA install / Safari cleared localStorage)
       const p = await validateSession()
       if (p) {
         setPlayer(p)
         saveToStorage(p)
+        setLoading(false)
+        return
       }
+
+      // 3. Try saved credentials (user had "Permanecer conectado" checked)
+      try {
+        const remember  = typeof localStorage !== 'undefined' && localStorage.getItem('bolao_remember') === '1'
+        const savedUser = typeof localStorage !== 'undefined' && localStorage.getItem('bolao_saved_user')
+        const savedPass = typeof localStorage !== 'undefined' && localStorage.getItem('bolao_saved_pass')
+        if (remember && savedUser && savedPass) {
+          const { data: ok } = await import('@/lib/supabase').then(m =>
+            m.supabase.rpc('check_password', { p_username: savedUser, p_password: atob(savedPass) })
+          )
+          if (ok) {
+            const { supabase } = await import('@/lib/supabase')
+            const { data: row } = await supabase.from('players').select('*').eq('username', savedUser).single()
+            if (row) {
+              setPlayer(row)
+              saveToStorage(row)
+              // Recreate session cookie
+              await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ player_id: row.id }),
+              }).catch(() => {})
+            }
+          }
+        }
+      } catch {}
+
       setLoading(false)
     }
     init()
