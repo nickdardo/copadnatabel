@@ -97,6 +97,63 @@ function IosInstallModal({ onClose }: { onClose: () => void }) {
 
 type Props = { children?: React.ReactNode; title: string; step?: number }
 
+// ── Modal de permissão de notificação ──────────────────────────
+function NotifyPermissionModal({ onAllow, onDismiss }: { onAllow: () => void; onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4"
+      style={{ background: 'rgba(0,20,40,0.7)' }}
+      onClick={onDismiss}>
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-4 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-200"/>
+        </div>
+        <div className="px-5 pt-3 pb-6">
+          {/* Icon */}
+          <div className="w-14 h-14 rounded-2xl bg-[#E6F4FA] border border-[#0099CC]/20 flex items-center justify-center mx-auto mb-4">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="1.75" strokeLinecap="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+          </div>
+          <h2 className="text-[17px] font-bold text-gray-900 text-center mb-2">
+            Ativar notificações
+          </h2>
+          <p className="text-[13px] text-gray-500 text-center leading-relaxed mb-5">
+            Receba avisos de jogos que estão prestes a começar, resultados e atualizações do ranking — mesmo com o app fechado.
+          </p>
+          {/* Benefits */}
+          <div className="space-y-2.5 mb-5">
+            {[
+              { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', text: 'Aviso 6h antes de cada jogo para fazer seu palpite' },
+              { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', text: 'Resultado assim que o jogo terminar' },
+              { icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', text: 'Aviso quando o ranking for atualizado' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center flex-shrink-0">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round">
+                    <path d={item.icon}/>
+                  </svg>
+                </div>
+                <p className="text-[12px] text-gray-600 leading-snug">{item.text}</p>
+              </div>
+            ))}
+          </div>
+          {/* Buttons */}
+          <button onClick={onAllow}
+            className="w-full py-3.5 rounded-2xl bg-[#0099CC] text-white font-bold text-[15px] hover:bg-[#007aa8] transition-all active:scale-[.98] mb-2">
+            Ativar notificações
+          </button>
+          <button onClick={onDismiss}
+            className="w-full py-2.5 rounded-2xl text-[13px] text-gray-400 hover:text-gray-600 transition-colors">
+            Agora não
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout({ children, title }: Props) {
   const router    = useRouter()
   const { player, logout, isAdmin, refreshPlayer } = useAuth()
@@ -106,7 +163,26 @@ export default function Layout({ children, title }: Props) {
   const [isIos, setIsIos] = useState(false)
   const [groupLink, setGroupLink] = useState<string | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [notifyEnabled, setNotifyEnabled] = useState(false)
+  const [showNotifyModal, setShowNotifyModal] = useState(false)
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
+
+  // Check current notification permission state
+  useEffect(() => {
+    if (!player || !('Notification' in window)) return
+    const enabled = Notification.permission === 'granted'
+    setNotifyEnabled(enabled)
+
+    // Show prompt if not yet decided and not dismissed before
+    if (Notification.permission === 'default') {
+      const dismissed = sessionStorage.getItem('notify_modal_dismissed')
+      if (!dismissed) {
+        // Small delay so it doesn't pop on top of everything immediately
+        const t = setTimeout(() => setShowNotifyModal(true), 2500)
+        return () => clearTimeout(t)
+      }
+    }
+  }, [player?.id])
 
   // Refresh player on route change
   useEffect(() => { refreshPlayer() }, [router.pathname])
@@ -178,6 +254,28 @@ export default function Layout({ children, title }: Props) {
     setAvatarSrc(data.publicUrl + '?v=' + Date.now())
   }, [player?.avatar_url])
 
+  async function subscribeToPush(): Promise<boolean> {
+    if (!player || !('Notification' in window) || !('serviceWorker' in navigator)) return false
+    const perm = await Notification.requestPermission()
+    if (perm !== 'granted') return false
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    if (!vapidKey) return false
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKey,
+      })
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: player.id, subscription: sub }),
+      })
+      setNotifyEnabled(true)
+      return true
+    } catch { return false }
+  }
+
   function handleLogout() { logout(); router.push('/') }
 
   const initials = player?.nickname
@@ -200,6 +298,18 @@ export default function Layout({ children, title }: Props) {
 
       {showIosModal && <IosInstallModal onClose={() => setShowIosModal(false)} />}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+      {showNotifyModal && (
+        <NotifyPermissionModal
+          onAllow={async () => {
+            setShowNotifyModal(false)
+            await subscribeToPush()
+          }}
+          onDismiss={() => {
+            setShowNotifyModal(false)
+            sessionStorage.setItem('notify_modal_dismissed', '1')
+          }}
+        />
+      )}
 
       <div className="min-h-screen bg-gray-50 pb-[68px]">
 
@@ -269,28 +379,28 @@ export default function Layout({ children, title }: Props) {
               {/* Push notification bell */}
               {player && (
                 <button
-                  title="Ativar notificacoes"
+                  title={notifyEnabled ? 'Notificações ativadas' : 'Ativar notificações'}
                   onClick={async () => {
-                    if (!('Notification' in window) || !('serviceWorker' in navigator)) return
-                    const perm = await Notification.requestPermission()
-                    if (perm !== 'granted') return
-                    const reg = await navigator.serviceWorker.ready
-                    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-                    if (!vapidKey) return
-                    const sub = await reg.pushManager.subscribe({
-                      userVisibleOnly: true,
-                      applicationServerKey: vapidKey,
-                    })
-                    await fetch('/api/push/subscribe', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ player_id: player.id, subscription: sub }),
-                    })
+                    if (notifyEnabled) return // already active, nothing to do
+                    setShowNotifyModal(true)
                   }}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#0099CC] hover:bg-gray-100 transition-colors">
+                  className={`relative p-1.5 rounded-lg transition-colors ${
+                    notifyEnabled
+                      ? 'text-green-500 bg-green-50 hover:bg-green-100'
+                      : 'text-gray-400 hover:text-[#0099CC] hover:bg-gray-100'
+                  }`}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                   </svg>
+                  {/* Green dot when active */}
+                  {notifyEnabled && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-500 border border-white"/>
+                  )}
+                  {/* Red dot when not active (nudge) */}
+                  {!notifyEnabled && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-400 border border-white animate-pulse"/>
+                  )}
                 </button>
               )}
 
