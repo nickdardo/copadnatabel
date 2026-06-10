@@ -651,7 +651,7 @@ export default function AdminPage() {
           </header>
 
           {/* Content — extra bottom padding on mobile for bottom nav */}
-          <main className="flex-1 overflow-y-auto p-3 md:p-5 pb-20 md:pb-5">
+          <main className="flex-1 overflow-y-auto p-3 md:p-5 pb-28 md:pb-5">
 
             {/* ── DASHBOARD ─────────────────────────────── */}
             {page === 'dashboard' && (
@@ -1640,15 +1640,15 @@ export default function AdminPage() {
           </main>
 
           {/* ── MOBILE BOTTOM NAV — md:hidden ────────────── */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#001e3c] border-t border-white/10 z-30 flex">
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#001e3c] border-t border-white/10 z-30 flex" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
             {NAV.map(({ id, label, Icon, badge }) => (
               <button key={id}
                 onClick={() => { setPage(id); if (id === 'logs') loadPaymentLogs() }}
-                className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors relative ${page === id ? 'text-[#4dc6ef]' : 'text-white/35'}`}>
+                className={`flex-1 flex flex-col items-center justify-center py-4 gap-1.5 transition-colors relative ${page === id ? 'text-[#4dc6ef]' : 'text-white/40'}`}>
                 {page === id && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full"/>
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-[#0099CC] rounded-full"/>
                 )}
-                <div className="relative">
+                <div className="relative scale-125">
                   <Icon />
                   {badge !== null && (
                     <span className={`absolute -top-1.5 -right-2 text-[8px] font-bold px-1 py-0.5 rounded-full leading-none ${id === 'matches' ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
@@ -1656,7 +1656,7 @@ export default function AdminPage() {
                     </span>
                   )}
                 </div>
-                <span className="text-[8px] font-medium leading-none">
+                <span className="text-[10px] font-semibold leading-none">
                   {label === 'Dashboard' ? 'Início' :
                    label === 'Participantes' ? 'Pessoas' :
                    label === 'Partidas' ? 'Jogos' :
