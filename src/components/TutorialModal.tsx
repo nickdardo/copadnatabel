@@ -116,7 +116,7 @@ const RankRow = ({ pos, initials, name, sub, pts, highlight, badge, avatarBg, av
 // ─── Scene definitions ─────────────────────────────────────────
 const SCENES: Scene[] = [
   {
-    id: 1, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 5000,
+    id: 1, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 8000,
     title: 'Faça seus palpites',
     subtitle: 'Informe o placar esperado para cada jogo antes do horário de fechamento.',
     screen: (
@@ -138,7 +138,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 2, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 5000,
+    id: 2, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 8000,
     title: 'Sem pagamento, sem palpite',
     subtitle: 'Quem não pagou pode ver os jogos, mas os campos ficam bloqueados ate confirmar a inscrição.',
     screen: (
@@ -166,7 +166,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 3, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 5000,
+    id: 3, phase: 'antes', phaseLabel: 'Antes dos jogos', duration: 8000,
     title: 'Escolha seu campeão',
     subtitle: 'Antes dos jogos, vote no campeão, vice e 3º lugar para ganhar pontos bônus.',
     screen: (
@@ -198,7 +198,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 4, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 5500,
+    id: 4, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 8000,
     title: 'Palpites ao vivo',
     subtitle: 'Durante os jogos você vê o placar em tempo real e compara com seu palpite.',
     screen: (
@@ -217,7 +217,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 5, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 5000,
+    id: 5, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 8000,
     title: 'Ranking em tempo real',
     subtitle: 'A classificação atualiza automaticamente após cada resultado confirmado.',
     screen: (
@@ -247,7 +247,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 6, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 5000,
+    id: 6, phase: 'durante', phaseLabel: 'Durante os jogos', duration: 8000,
     title: 'Notificações push',
     subtitle: 'O administrador envia avisos pelo painel. Chegam mesmo com o app fechado.',
     screen: (
@@ -284,7 +284,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 7, phase: 'depois', phaseLabel: 'Apos os jogos', duration: 5500,
+    id: 7, phase: 'depois', phaseLabel: 'Apos os jogos', duration: 8000,
     title: 'Resultados com pontuação',
     subtitle: 'Cada jogo encerrado exibe seu palpite, a pontuação recebida e o placar mais apostado pelo grupo.',
     screen: (
@@ -303,7 +303,7 @@ const SCENES: Scene[] = [
     ),
   },
   {
-    id: 8, phase: 'depois', phaseLabel: 'Apos os jogos', duration: 6000,
+    id: 8, phase: 'depois', phaseLabel: 'Apos os jogos', duration: 8000,
     title: 'Ranking final e premiacao',
     subtitle: 'Ao fim do torneio o ranking exibe as conquistas de cada participante e o valor do prêmio por colocação.',
     screen: (
