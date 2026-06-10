@@ -168,6 +168,7 @@ export default function Layout({ children, title }: Props) {
   const [showNotifyLog, setShowNotifyLog] = useState(false)
   const [notifyLog, setNotifyLog] = useState<{title:string;body:string;time:number}[]>([])
   const bellRef = useRef<HTMLButtonElement>(null)
+  const [hasUpdate, setHasUpdate] = useState(false)
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
 
   // Check current notification permission state + load log
@@ -223,6 +224,30 @@ export default function Layout({ children, title }: Props) {
     supabase.from('pix_config').select('group_link').limit(1).then(({ data }) => {
       if (data?.[0]?.group_link) setGroupLink(data[0].group_link)
     })
+  }, [])
+
+  // Version checker — polls every 3 minutes
+  useEffect(() => {
+    // Store current version on first load
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/api/version?t=' + Date.now())
+        if (!res.ok) return
+        const { version } = await res.json()
+        const stored = sessionStorage.getItem('app_version')
+        if (!stored) {
+          // First check — just save, don't show banner
+          sessionStorage.setItem('app_version', version)
+          return
+        }
+        if (stored !== version) {
+          setHasUpdate(true)
+        }
+      } catch {}
+    }
+    checkVersion()
+    const interval = setInterval(checkVersion, 3 * 60 * 1000) // every 3 min
+    return () => clearInterval(interval)
   }, [])
 
   // PWA install detection
@@ -347,6 +372,37 @@ export default function Layout({ children, title }: Props) {
       )}
 
       <div className="min-h-screen bg-gray-50 pb-[68px]">
+
+        {/* ── Update banner ──────────────────────────────── */}
+        {hasUpdate && (
+          <div className="bg-gradient-to-r from-[#0099CC] to-[#003a6e] text-white px-4 py-2.5 flex items-center gap-3 z-30 relative">
+            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold leading-tight">Nova versão disponível!</p>
+              <p className="text-[10px] text-white/70 leading-tight">Atualize para continuar usando o bolão corretamente.</p>
+            </div>
+            <button
+              onClick={() => {
+                sessionStorage.removeItem('app_version')
+                window.location.reload()
+              }}
+              className="flex-shrink-0 bg-white text-[#0099CC] text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors hover:bg-white/90 whitespace-nowrap">
+              Atualizar agora
+            </button>
+            <button
+              onClick={() => setHasUpdate(false)}
+              className="flex-shrink-0 text-white/50 hover:text-white/80 transition-colors p-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* ── Install Banner ─────────────────────────────── */}
         {showInstallBanner && (
