@@ -80,6 +80,9 @@ export default function AdminPage() {
   const [playerPage,    setPlayerPage]    = useState(0)
   const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
   const [pushEnabled,   setPushEnabled]   = useState<Set<string>>(new Set())
+  const [resettingId,   setResettingId]   = useState<string | null>(null)
+  const [resettingAll,  setResettingAll]  = useState(false)
+  const [resetMsg,      setResetMsg]      = useState('')
   const [presenceTick,  setPresenceTick]  = useState(0)
   const [paymentLogs,   setPaymentLogs]   = useState<{id:string;player_name:string;action:string;confirmed_by:string;valor:number;created_at:string}[]>([])
   const [calcingBadges, setCalcingBadges] = useState(false)
@@ -311,6 +314,22 @@ export default function AdminPage() {
     ])
     await supabase.from('players').delete().eq('id', id)
     setConfirmDelete(null); fetchAll()
+  }
+
+  async function resetPlayerEdits(playerId: string, playerName: string) {
+    setResettingId(playerId)
+    await supabase.from('pick_edit_limits').delete().eq('player_id', playerId)
+    setResettingId(null)
+    setResetMsg(`Alterações de ${playerName} liberadas!`)
+    setTimeout(() => setResetMsg(''), 3000)
+  }
+
+  async function resetAllEdits() {
+    setResettingAll(true)
+    await supabase.from('pick_edit_limits').delete().neq('player_id', '00000000-0000-0000-0000-000000000000')
+    setResettingAll(false)
+    setResetMsg('Alterações de todos os participantes liberadas!')
+    setTimeout(() => setResetMsg(''), 4000)
   }
 
   async function setMatchStatus(match: Match, status: 'live' | 'upcoming') {
@@ -759,7 +778,29 @@ export default function AdminPage() {
                   <p className="text-[11px] text-gray-400 mt-1.5">{paidCount} de {nonAdminPlayers.length} confirmados ({nonAdminPlayers.length > 0 ? Math.round((paidCount/nonAdminPlayers.length)*100) : 0}%)</p>
                 </div>
 
-                {/* Push config warning — if table is empty, VAPID may not be configured */}
+                {/* Global reset + toast */}
+                <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+                  <div>
+                    <p className="text-[13px] font-semibold text-gray-800">Liberar alterações de palpites</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Reseta o limite de 3 alterações por rodada para todos</p>
+                  </div>
+                  <button onClick={resetAllEdits} disabled={resettingAll}
+                    className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap flex-shrink-0">
+                    {resettingAll
+                      ? <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-600 rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    }
+                    Liberar todos
+                  </button>
+                </div>
+                {resetMsg && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <p className="text-[12px] text-green-700 font-medium">{resetMsg}</p>
+                  </div>
+                )}
+
+                {/* Search + legend */}
                 {pushEnabled.size === 0 && nonAdminPlayers.length > 0 && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -840,6 +881,17 @@ export default function AdminPage() {
                                   {togglingId === p.id
                                     ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
                                     : p.payment_ok ? <><Ico.Check /> Confirmado</> : 'Confirmar pagto'
+                                  }
+                                </button>
+                                {/* Reset edit limits */}
+                                <button
+                                  onClick={() => resetPlayerEdits(p.id, p.nickname || p.username)}
+                                  disabled={resettingId === p.id}
+                                  title="Liberar alterações de palpites"
+                                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-amber-200 text-amber-500 hover:bg-amber-50 hover:text-amber-700 transition-colors disabled:opacity-50">
+                                  {resettingId === p.id
+                                    ? <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-500 rounded-full animate-spin"/>
+                                    : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                   }
                                 </button>
                                 <button onClick={() => setConfirmDelete(p.id)}
