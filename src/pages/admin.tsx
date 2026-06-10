@@ -87,6 +87,9 @@ export default function AdminPage() {
   const [pushSending,   setPushSending]   = useState(false)
   const [pushMsg,       setPushMsg]       = useState('')
   const [refreshing,    setRefreshing]    = useState(false)
+  const [autoNotify,    setAutoNotify]    = useState(true)
+  const [lastAutoNotify,setLastAutoNotify]= useState('')
+  const [autoNotifyLog, setAutoNotifyLog] = useState<string[]>([])
 
   useEffect(() => {
     if (!loading) {
@@ -108,7 +111,7 @@ export default function AdminPage() {
       setPixKeyType((pixRows[0].key_type as PixKeyType) || 'cpf')
       setPixNome(pixRows[0].nome || '')
       setPixValor(String(pixRows[0].valor || 10))
-      setPixDesc(pixRows[0].descricao || 'Bolão Copa 2026 BEL')
+      setPixDesc(pixRows[0].descrição || 'Bolão Copa 2026 BEL')
       setPixWhatsApp(pixRows[0].whatsapp || '')
       setPixGroupLink(pixRows[0].group_link || '')
     }
@@ -158,6 +161,28 @@ export default function AdminPage() {
     const interval = setInterval(autoSync, 2 * 60 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-notify: check every 10 minutes when enabled
+  useEffect(() => {
+    if (!autoNotify) return
+    async function runAutoNotify() {
+      try {
+        const res  = await fetch('/api/push/auto-notify', { method: 'POST' })
+        const data = await res.json()
+        const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        setLastAutoNotify(time)
+        if (data.notifications?.length > 0) {
+          const msgs = data.notifications.map((n: { type: string; title: string; sent: number }) =>
+            `${time} — ${n.title} (${n.sent} enviado${n.sent !== 1 ? 's' : ''})`
+          )
+          setAutoNotifyLog(prev => [...msgs, ...prev].slice(0, 20))
+        }
+      } catch {}
+    }
+    runAutoNotify()
+    const interval = setInterval(runAutoNotify, 10 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [autoNotify])
 
   // Keep-alive: prevent browser from sleeping when page is open as server
   useEffect(() => {
@@ -241,9 +266,9 @@ export default function AdminPage() {
     if (pixKeyType === 'telefone') { const d = key.replace(/\D/g,''); key = d.startsWith('55') ? '+'+d : '+55'+d }
     const { data: existing } = await supabase.from('pix_config').select('id').limit(1)
     if (existing?.[0]) {
-      await supabase.from('pix_config').update({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null, group_link: pixGroupLink || null, updated_at: new Date().toISOString() }).eq('id', existing[0].id)
+      await supabase.from('pix_config').update({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descrição: pixDesc, whatsapp: pixWhatsApp || null, group_link: pixGroupLink || null, updated_at: new Date().toISOString() }).eq('id', existing[0].id)
     } else {
-      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descricao: pixDesc, whatsapp: pixWhatsApp || null, group_link: pixGroupLink || null })
+      await supabase.from('pix_config').insert({ cpf: key, key_type: pixKeyType, nome: pixNome, valor, descrição: pixDesc, whatsapp: pixWhatsApp || null, group_link: pixGroupLink || null })
     }
     setSavingPix(false); setPixSaved(true)
     setTimeout(() => setPixSaved(false), 3000)
@@ -327,7 +352,7 @@ export default function AdminPage() {
     { id: 'matches'       as Page, label: 'Partidas',       Icon: Ico.Ball,       badge: liveMatches.length > 0 ? liveMatches.length : null },
     { id: 'pix'           as Page, label: 'PIX',            Icon: Ico.Pix,        badge: null },
     { id: 'logs'          as Page, label: 'Pagamentos',     Icon: Ico.Logs,       badge: null },
-    { id: 'notifications' as Page, label: 'Notificacoes',   Icon: Ico.Bell,       badge: null },
+    { id: 'notifications' as Page, label: 'Notificações',   Icon: Ico.Bell,       badge: null },
   ]
 
   if (loading || fetching || !isAdmin) return (
@@ -353,7 +378,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-2.5">
               <img src="/copa2026-logo.jpg" alt="Copa 2026" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
               <div>
-                <p className="text-[13px] text-white font-semibold leading-tight">Bolao Copa BEL</p>
+                <p className="text-[13px] text-white font-semibold leading-tight">Bolão Copa BEL</p>
                 <p className="text-[10px] text-white/40 leading-tight">Painel admin</p>
               </div>
             </div>
@@ -361,7 +386,7 @@ export default function AdminPage() {
 
           {/* Nav */}
           <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-            <p className="text-[9px] font-semibold text-white/25 uppercase tracking-widest px-2 pb-1.5 pt-1">Visao geral</p>
+            <p className="text-[9px] font-semibold text-white/25 uppercase tracking-widest px-2 pb-1.5 pt-1">Visão geral</p>
             {NAV.slice(0,3).map(({ id, label, Icon, badge }) => (
               <button key={id} onClick={() => setPage(id)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] font-medium transition-all ${page === id ? 'bg-[#0099CC]/20 text-[#4dc6ef]' : 'text-white/45 hover:text-white/80 hover:bg-white/6'}`}>
@@ -374,7 +399,7 @@ export default function AdminPage() {
                 )}
               </button>
             ))}
-            <p className="text-[9px] font-semibold text-white/25 uppercase tracking-widest px-2 pb-1.5 pt-3">Configuracoes</p>
+            <p className="text-[9px] font-semibold text-white/25 uppercase tracking-widest px-2 pb-1.5 pt-3">Configurações</p>
             {NAV.slice(3).map(({ id, label, Icon }) => (
               <button key={id} onClick={() => { setPage(id); if (id === 'logs') loadPaymentLogs() }}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] font-medium transition-all ${page === id ? 'bg-[#0099CC]/20 text-[#4dc6ef]' : 'text-white/45 hover:text-white/80 hover:bg-white/6'}`}>
@@ -409,7 +434,7 @@ export default function AdminPage() {
           {/* Topbar */}
           <header className="h-12 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-5 gap-4">
             <h1 className="text-[14px] font-semibold text-gray-800">
-              {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'Configuracao PIX' : page === 'logs' ? 'Historico de Pagamentos' : 'Notificacoes'}
+              {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'Configuração PIX' : page === 'logs' ? 'Histórico de Pagamentos' : 'Notificações'}
             </h1>
 
             {/* Sync status */}
@@ -453,7 +478,7 @@ export default function AdminPage() {
                   {[
                     { label: 'Participantes', value: nonAdminPlayers.length, sub: `${onlineCount} online agora`, subColor: 'text-green-600', dot: 'bg-green-400' },
                     { label: 'Pagamentos', value: `${paidCount}/${nonAdminPlayers.length}`, sub: pendingCount > 0 ? `${pendingCount} aguardando` : 'Todos confirmados', subColor: pendingCount > 0 ? 'text-amber-600' : 'text-green-600', dot: pendingCount > 0 ? 'bg-amber-400' : 'bg-green-400' },
-                    { label: 'Premio total', value: `R$ ${prizePool.toFixed(0)}`, sub: `60% · 25% · 15%`, subColor: 'text-gray-400', dot: 'bg-[#0099CC]' },
+                    { label: 'Prêmio total', value: `R$ ${prizePool.toFixed(0)}`, sub: `60% · 25% · 15%`, subColor: 'text-gray-400', dot: 'bg-[#0099CC]' },
                     { label: 'Jogos', value: `${doneCount}/${matches.length}`, sub: liveMatches.length > 0 ? `${liveMatches.length} ao vivo` : `${upcomingCount} em breve`, subColor: liveMatches.length > 0 ? 'text-red-500' : 'text-gray-400', dot: liveMatches.length > 0 ? 'bg-red-500' : 'bg-gray-300' },
                   ].map(k => (
                     <div key={k.label} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -473,7 +498,7 @@ export default function AdminPage() {
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <div className="flex items-center gap-2 mb-4">
                       <Ico.Trophy />
-                      <h2 className="text-[13px] font-semibold text-gray-800">Distribuicao do premio</h2>
+                      <h2 className="text-[13px] font-semibold text-gray-800">Distribuicao do prêmio</h2>
                     </div>
                     <div className="space-y-2.5">
                       {[
@@ -501,7 +526,7 @@ export default function AdminPage() {
                         </div>
                         <button onClick={saveExtra} disabled={savingExtra || !extraAmount}
                           className="px-3 py-1.5 rounded-lg bg-[#0099CC] text-white text-[12px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors">
-                          {extraSaved ? 'Adicionado!' : 'Bonus'}
+                          {extraSaved ? 'Adicionado!' : 'Bônus'}
                         </button>
                         {currentExtra > 0 && (
                           <button onClick={resetExtra} className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 text-[12px] hover:bg-red-50 transition-colors">Zerar</button>
@@ -628,7 +653,7 @@ export default function AdminPage() {
                       </div>
                     )}
 
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Proximas</p>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Próximas</p>
                     <div className="space-y-2">
                       {matches.filter(m => m.status === 'upcoming').slice(0, 4).map(m => (
                         <div key={m.id} className="flex items-center gap-3 py-1.5 border-b border-gray-50 last:border-0">
@@ -666,7 +691,7 @@ export default function AdminPage() {
                   </button>
                   <button onClick={() => setPage('players')}
                     className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-xl py-3 text-[13px] font-semibold hover:bg-gray-50 transition-colors">
-                    <Ico.Users /> Confirmar pagtos
+                    <Ico.Users /> Confirmar pagamentos
                     {pendingCount > 0 && <span className="bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
                   </button>
                 </div>
@@ -753,7 +778,7 @@ export default function AdminPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {pixWhatsApp && (
-                            <a href={`https://wa.me/${pixWhatsApp.replace(/\D/g,'')}?text=${encodeURIComponent(`Ola ${name}! Aqui e o admin do Bolao Copa 2026 BEL`)}`}
+                            <a href={`https://wa.me/${pixWhatsApp.replace(/\D/g,'')}?text=${encodeURIComponent(`Ola ${name}! Aqui e o admin do Bolão Copa 2026 BEL`)}`}
                               target="_blank" rel="noopener noreferrer"
                               className="w-8 h-8 flex items-center justify-center rounded-lg border border-green-200 text-green-500 hover:bg-green-50 transition-colors">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
@@ -861,15 +886,15 @@ export default function AdminPage() {
               <div className="max-w-2xl mx-auto space-y-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <h2 className="text-[14px] font-semibold text-gray-800 mb-1">Configurar chave PIX</h2>
-                  <p className="text-[12px] text-gray-400 mb-5">Os participantes verao o QR Code para pagar a inscricao</p>
+                  <p className="text-[12px] text-gray-400 mb-5">Os participantes verão o QR Code para pagar a inscrição</p>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Tipo de chave</label>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['cpf','telefone','email','aleatoria'] as PixKeyType[]).map(type => (
+                        {(['cpf','telefone','email','aleatória'] as PixKeyType[]).map(type => (
                           <button key={type} onClick={() => { setPixKeyType(type); setPixCpf('') }}
                             className={`py-2.5 rounded-xl text-[12px] font-semibold border transition-all ${pixKeyType === type ? 'bg-[#0099CC] text-white border-[#0099CC]' : 'bg-white text-gray-500 border-gray-200 hover:border-[#0099CC]/40'}`}>
-                            {type === 'cpf' ? 'CPF' : type === 'telefone' ? 'Telefone' : type === 'email' ? 'E-mail' : 'Aleatoria'}
+                            {type === 'cpf' ? 'CPF' : type === 'telefone' ? 'Telefone' : type === 'email' ? 'E-mail' : 'Aleatória'}
                           </button>
                         ))}
                       </div>
@@ -877,13 +902,13 @@ export default function AdminPage() {
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Chave PIX</label>
                       <input type={pixKeyType === 'email' ? 'email' : 'text'}
-                        placeholder={pixKeyType === 'cpf' ? '000.000.000-00' : pixKeyType === 'telefone' ? '(11) 99999-9999' : pixKeyType === 'email' ? 'exemplo@email.com' : 'Cole a chave aleatoria aqui'}
+                        placeholder={pixKeyType === 'cpf' ? '000.000.000-00' : pixKeyType === 'telefone' ? '(11) 99999-9999' : pixKeyType === 'email' ? 'exemplo@email.com' : 'Cole a chave aleatória aqui'}
                         value={pixCpf} onChange={e => setPixCpf(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] font-mono"/>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Beneficiario</label>
+                        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Beneficiário</label>
                         <input type="text" placeholder="Nome completo" value={pixNome} onChange={e => setPixNome(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
                       </div>
@@ -894,7 +919,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Descricao</label>
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Descrição</label>
                       <input type="text" value={pixDesc} onChange={e => setPixDesc(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
                     </div>
@@ -905,14 +930,14 @@ export default function AdminPage() {
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Link grupo WhatsApp</label>
+                        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Link do grupo WhatsApp</label>
                         <input type="url" placeholder="https://chat.whatsapp.com/..." value={pixGroupLink} onChange={e => setPixGroupLink(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[13px] focus:outline-none focus:border-[#0099CC] font-mono"/>
                       </div>
                     </div>
                     <button onClick={savePix} disabled={savingPix || !pixCpf || !pixNome}
                       className={`w-full py-3.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 ${pixSaved ? 'bg-green-500 text-white' : 'bg-[#0099CC] text-white hover:bg-[#007aa8] disabled:opacity-50'}`}>
-                      {savingPix ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : pixSaved ? <><Ico.Check /> Salvo!</> : 'Salvar configuracao PIX'}
+                      {savingPix ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : pixSaved ? <><Ico.Check /> Salvo!</> : 'Salvar configuração PIX'}
                     </button>
                   </div>
                 </div>
@@ -970,40 +995,125 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* ── NOTIFICACOES ───────────────────────────── */}
+            {/* ── NOTIFICAÇÕES ──────────────────────────── */}
             {page === 'notifications' && (
               <div className="max-w-2xl mx-auto space-y-4">
+
+                {/* Notificações automáticas */}
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <h2 className="text-[14px] font-semibold text-gray-800 mb-1">Enviar notificacao push</h2>
-                  <p className="text-[12px] text-gray-400 mb-5">Envia para todos que ativaram as notificacoes no app</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h2 className="text-[14px] font-semibold text-gray-800">Notificações automáticas</h2>
+                      <p className="text-[12px] text-gray-400 mt-0.5">Avisa os colaboradores automaticamente nos momentos certos</p>
+                    </div>
+                    <button onClick={() => setAutoNotify(v => !v)}
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${autoNotify ? 'bg-[#0099CC]' : 'bg-gray-200'}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${autoNotify ? 'translate-x-6' : 'translate-x-0.5'}`}/>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {[
+                      { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-blue-50 text-blue-600', title: '6 horas antes de cada jogo', desc: 'Avisa todos para fazerem ou revisarem o palpite antes do fechamento.', example: '"⚽ Jogo em 6 horas! Brasil × México começa às 15h. Faça seu palpite!"' },
+                      { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-green-50 text-green-600', title: 'Quando o resultado for confirmado', desc: 'Após salvar o placar, todos recebem o resultado e são convidados a ver a pontuação.', example: '"⚽ Brasil venceu! Brasil 2×0 México. Confira o placar e sua pontuação!"' },
+                    ].map((item, i) => (
+                      <div key={i} className={`rounded-xl p-3.5 ${autoNotify ? item.color.split(' ')[0] : 'bg-gray-50'} border ${autoNotify ? 'border-current/10' : 'border-gray-100'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${autoNotify ? item.color : 'bg-gray-200 text-gray-400'}`}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d={item.icon}/></svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-[12px] font-semibold ${autoNotify ? 'text-gray-800' : 'text-gray-400'}`}>{item.title}</p>
+                            <p className={`text-[11px] mt-0.5 leading-relaxed ${autoNotify ? 'text-gray-500' : 'text-gray-400'}`}>{item.desc}</p>
+                            <p className={`text-[10px] mt-1.5 font-mono leading-relaxed ${autoNotify ? 'text-gray-400' : 'text-gray-300'}`}>{item.example}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                      <span className={`w-2 h-2 rounded-full ${autoNotify ? 'bg-green-400' : 'bg-gray-300'}`}/>
+                      {autoNotify ? `Verificando a cada 10 min${lastAutoNotify ? ` · última verificação: ${lastAutoNotify}` : ''}` : 'Desativado'}
+                    </div>
+                    <button onClick={async () => {
+                      const res = await fetch('/api/push/auto-notify', { method: 'POST' })
+                      const data = await res.json()
+                      const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                      setLastAutoNotify(time)
+                      if (data.notifications?.length > 0) {
+                        const msgs = data.notifications.map((n: { title: string; sent: number }) => `${time} — ${n.title} (${n.sent} enviado${n.sent !== 1 ? 's' : ''})`)
+                        setAutoNotifyLog(prev => [...msgs, ...prev].slice(0, 20))
+                        setPushMsg(`${data.total} notificação${data.total !== 1 ? 'ões' : ''} disparada${data.total !== 1 ? 's' : ''}`)
+                      } else {
+                        setPushMsg('Nenhuma notificação pendente agora.')
+                      }
+                      setTimeout(() => setPushMsg(''), 4000)
+                    }} className="text-[11px] text-[#0099CC] border border-[#0099CC]/20 bg-[#E6F4FA] hover:bg-[#d0ebf7] px-3 py-1.5 rounded-lg transition-colors">
+                      Verificar agora
+                    </button>
+                  </div>
+
+                  {autoNotifyLog.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Histórico automático</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {autoNotifyLog.map((log, i) => <p key={i} className="text-[11px] text-gray-500 font-mono">{log}</p>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-200"/>
+                  <span className="text-[11px] text-gray-400 whitespace-nowrap">ou envie manualmente</span>
+                  <div className="flex-1 h-px bg-gray-200"/>
+                </div>
+
+                {/* Envio manual */}
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h2 className="text-[14px] font-semibold text-gray-800 mb-1">Enviar notificação manual</h2>
+                  <p className="text-[12px] text-gray-400 mb-4">Para todos que ativaram as notificações no app</p>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Titulo</label>
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Título</label>
                       <input type="text" placeholder="Ex: Jogo em 1 hora!" value={pushTitle} onChange={e => setPushTitle(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC]"/>
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Mensagem</label>
-                      <textarea placeholder="Ex: Brasil x Argentina comeca as 16h. Faca seu palpite!" value={pushBody} onChange={e => setPushBody(e.target.value)} rows={3}
+                      <textarea placeholder="Ex: Brasil × Argentina começa às 16h. Último aviso para palpites!" value={pushBody} onChange={e => setPushBody(e.target.value)} rows={3}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] resize-none"/>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Modelos rápidos</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: 'Jogo em breve', title: '⚽ Jogo em breve!', body: 'Último aviso para fazer seu palpite antes do fechamento!' },
+                          { label: 'Ranking atualizado', title: '📊 Ranking atualizado', body: 'Confira sua posição após os últimos resultados!' },
+                          { label: 'Jogos amanhã', title: '⚽ Jogos amanhã!', body: 'Faça seus palpites antes do fechamento de amanhã.' },
+                        ].map(t => (
+                          <button key={t.label} onClick={() => { setPushTitle(t.title); setPushBody(t.body) }}
+                            className="text-[11px] text-gray-600 border border-gray-200 bg-gray-50 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <button onClick={sendPush} disabled={pushSending || !pushTitle || !pushBody}
                       className="w-full py-3.5 rounded-xl bg-[#0099CC] text-white font-bold text-[14px] hover:bg-[#007aa8] disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                       {pushSending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Bell />}
                       {pushSending ? 'Enviando...' : 'Enviar para todos'}
                     </button>
-                    {pushMsg && <p className="text-[12px] text-green-600 text-center">{pushMsg}</p>}
+                    {pushMsg && <p className="text-[12px] text-green-600 text-center font-medium">{pushMsg}</p>}
                   </div>
                 </div>
 
                 <div className="bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl p-4">
-                  <p className="text-[12px] font-semibold text-[#0099CC] mb-2">Como funciona</p>
+                  <p className="text-[12px] font-semibold text-[#0099CC] mb-2">Como os colaboradores ativam</p>
                   <div className="space-y-1.5">
-                    {[
-                      'O colaborador precisa clicar no sino no header do app e autorizar',
-                      'Notificacoes chegam mesmo com o app fechado (Android/Chrome)',
-                      'No iOS e necessario ter o app instalado na tela inicial',
-                    ].map((s,i) => (
+                    {['No app, clique no ícone de sino no topo da tela', 'Autorize quando o navegador perguntar', 'Notificações chegam mesmo com o app fechado (Android/Chrome)', 'No iOS é necessário ter o app instalado na tela inicial'].map((s, i) => (
                       <p key={i} className="text-[12px] text-[#0064a8] flex items-start gap-2">
                         <span className="w-4 h-4 rounded-full bg-[#0099CC]/20 text-[#0099CC] text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i+1}</span>
                         {s}
@@ -1030,7 +1140,7 @@ export default function AdminPage() {
               </div>
               <h3 className="text-[16px] font-bold text-gray-900 text-center mb-1">Excluir participante?</h3>
               <p className="text-[13px] text-gray-500 text-center mb-1"><strong>{p.nickname || p.username}</strong> (@{p.username})</p>
-              <p className="text-[12px] text-red-500 text-center mb-5">Todos os palpites serao apagados permanentemente.</p>
+              <p className="text-[12px] text-red-500 text-center mb-5">Todos os palpites serão apagados permanentemente.</p>
               <div className="flex gap-3">
                 <button onClick={() => setConfirmDelete(null)} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-[14px] font-semibold hover:bg-gray-50 transition-colors">Cancelar</button>
                 <button onClick={() => deletePlayer(p.id)} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-[14px] font-semibold hover:bg-red-600 transition-colors">Excluir</button>
