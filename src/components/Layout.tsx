@@ -170,18 +170,28 @@ export default function Layout({ children, title }: Props) {
   // Check current notification permission state
   useEffect(() => {
     if (!player || !('Notification' in window)) return
+
     const enabled = Notification.permission === 'granted'
     setNotifyEnabled(enabled)
 
-    // Show prompt if not yet decided and not dismissed before
-    if (Notification.permission === 'default') {
-      const dismissed = sessionStorage.getItem('notify_modal_dismissed')
-      if (!dismissed) {
-        // Small delay so it doesn't pop on top of everything immediately
-        const t = setTimeout(() => setShowNotifyModal(true), 2500)
-        return () => clearTimeout(t)
-      }
-    }
+    // Already granted or permanently denied — nothing to do
+    if (Notification.permission !== 'default') return
+
+    // Check dismissal history
+    const dismissed   = parseInt(localStorage.getItem('notify_dismissed_count') || '0')
+    const lastDismiss = parseInt(localStorage.getItem('notify_dismissed_at')    || '0')
+    const hoursSince  = (Date.now() - lastDismiss) / 3_600_000
+
+    // Stop showing after 3 dismissals
+    if (dismissed >= 3) return
+
+    // First visit: show after 2.5s
+    // Subsequent visits: wait 24h between prompts
+    const delay = dismissed === 0 ? 2500 : hoursSince >= 24 ? 2500 : null
+    if (delay === null) return
+
+    const t = setTimeout(() => setShowNotifyModal(true), delay)
+    return () => clearTimeout(t)
   }, [player?.id])
 
   // Refresh player on route change
@@ -272,6 +282,8 @@ export default function Layout({ children, title }: Props) {
         body: JSON.stringify({ player_id: player.id, subscription: sub }),
       })
       setNotifyEnabled(true)
+      localStorage.removeItem('notify_dismissed_count')
+      localStorage.removeItem('notify_dismissed_at')
       return true
     } catch { return false }
   }
@@ -306,7 +318,9 @@ export default function Layout({ children, title }: Props) {
           }}
           onDismiss={() => {
             setShowNotifyModal(false)
-            sessionStorage.setItem('notify_modal_dismissed', '1')
+            const count = parseInt(localStorage.getItem('notify_dismissed_count') || '0')
+            localStorage.setItem('notify_dismissed_count', String(count + 1))
+            localStorage.setItem('notify_dismissed_at', String(Date.now()))
           }}
         />
       )}
