@@ -97,6 +97,13 @@ export default function AdminPage() {
   const [autoNotify,    setAutoNotify]    = useState(true)
   const [lastAutoNotify,setLastAutoNotify]= useState('')
   const [autoNotifyLog, setAutoNotifyLog] = useState<string[]>([])
+  // Live dashboard features
+  const [liveScores,    setLiveScores]    = useState<Record<string, {h:number;a:number}>>({})
+  const [liveLastTick,  setLiveLastTick]  = useState<string>('')
+  const [upcomingAlerts,setUpcomingAlerts]= useState<{match:Match;unpicked:number}[]>([])
+  const [rankingTop5,   setRankingTop5]   = useState<{player_id:string;name:string;pts:number;avatar?:string;prev_pos?:number}[]>([])
+  const [copaBloqueada, setCopaBloqueada] = useState(false)
+  const [savingLock,    setSavingLock]    = useState(false)
 
   useEffect(() => {
     if (!loading) {
@@ -156,8 +163,106 @@ export default function AdminPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Auto-sync every 2h
+  // Live scores polling — every 30s when there are live matches
   useEffect(() => {
+    async function pollLive() {
+      const live = matches.filter(m => m.status === 'live')
+      if (live.length === 0) return
+      const { data } = await supabase
+        .from('matches')
+        .select('id, score_home, score_away, status')
+        .in('id', live.map(m => m.id))
+      if (data) {
+        const map: Record<string, {h:number;a:number}> = {}
+        data.forEach((m: {id:string;score_home:number;score_away:number}) => {
+          if (m.score_home != null) map[m.id] = { h: m.score_home, a: m.score_away }
+        })
+        setLiveScores(map)
+        setLiveLastTick(new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }))
+        // Update matches state with fresh scores
+        setMatches(prev => prev.map(m => {
+          const fresh = data.find((d: {id:string}) => d.id === m.id)
+          return fresh ? { ...m, score_home: fresh.score_home, score_away: fresh.score_away, status: fresh.status } : m
+        }))
+      }
+    }
+    pollLive()
+    const interval = setInterval(pollLive, 30_000)
+    return () => clearInterval(interval)
+  }, [matches.filter(m => m.status === 'live').length])
+
+  // Upcoming alerts — games in next 2h with unpicked players
+  useEffect(() => {
+    if (!player) return
+    async function checkAlerts() {
+      const now   = new Date()
+      const in2h  = new Date(now.getTime() + 2 * 3600_000)
+      const soon  = matches.filter(m =>
+        m.status === 'upcoming' && m.match_date &&
+        new Date(m.match_date) > now &&
+        new Date(m.match_date) <= in2h
+      )
+      if (soon.length === 0) { setUpcomingAlerts([]); return }
+      const alerts: {match:Match;unpicked:number}[] = []
+      const paidIds = players.filter(p => p.payment_ok && !p.is_admin).map(p => p.id)
+      for (const m of soon) {
+        const { count } = await supabase
+          .from('picks')
+          .select('*', { count: 'exact', head: true })
+          .eq('match_id', m.id)
+        const picked   = count || 0
+        const unpicked = Math.max(0, paidIds.length - picked)
+        alerts.push({ match: m, unpicked })
+      }
+      setUpcomingAlerts(alerts.filter(a => a.unpicked > 0))
+    }
+    checkAlerts()
+    const interval = setInterval(checkAlerts, 60_000)
+    return () => clearInterval(interval)
+  }, [matches, players])
+
+  // Top 5 ranking live
+  useEffect(() => {
+    if (!player) return
+    async function loadRanking() {
+      const [{ data: scores }, { data: pls }] = await Promise.all([
+        supabase.from('scores').select('player_id, total_pts').order('total_pts', { ascending: false }).limit(5),
+        supabase.from('players').select('id, nickname, username, avatar_url').eq('is_admin', false),
+      ])
+      if (!scores || !pls) return
+      const top = scores.map((s: {player_id:string;total_pts:number}) => {
+        const p = pls.find((pl: {id:string}) => pl.id === s.player_id)
+        return {
+          player_id: s.player_id,
+          name: (p as {nickname?:string;username?:string})?.nickname || (p as {username?:string})?.username || '?',
+          pts: s.total_pts,
+          avatar: (p as {avatar_url?:string})?.avatar_url,
+        }
+      })
+      setRankingTop5(top)
+    }
+    loadRanking()
+    const interval = setInterval(loadRanking, 30_000)
+    return () => clearInterval(interval)
+  }, [player?.id])
+
+  // Load copa lock state
+  useEffect(() => {
+    supabase.from('pix_config').select('copa_bloqueada').limit(1).then(({ data }) => {
+      if (data?.[0]) setCopaBloqueada(data[0].copa_bloqueada || false)
+    })
+  }, [])
+
+  async function toggleCopaLock() {
+    setSavingLock(true)
+    const newVal = !copaBloqueada
+    const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
+    if (rows?.[0]) {
+      await supabase.from('pix_config').update({ copa_bloqueada: newVal }).eq('id', rows[0].id)
+    }
+    setCopaBloqueada(newVal)
+    setSavingLock(false)
+  }
     async function autoSync() {
       setAutoSyncing(true)
       try {
@@ -532,7 +637,374 @@ export default function AdminPage() {
 
             {/* ── DASHBOARD ─────────────────────────────── */}
             {page === 'dashboard' && (
-              <div className="max-w-5xl mx-auto space-y-5">
+              <div className="max-w-7xl mx-auto space-y-4">
+
+                {/* ── UPCOMING ALERTS ── */}
+                {upcomingAlerts.length > 0 && (
+                  <div className="space-y-2">
+                    {upcomingAlerts.map(({ match: m, unpicked }) => {
+                      const minsLeft = m.match_date
+                        ? Math.round((new Date(m.match_date).getTime() - Date.now()) / 60_000)
+                        : 0
+                      const hLeft = Math.floor(minsLeft / 60)
+                      const minLeft = minsLeft % 60
+                      return (
+                        <div key={m.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
+                              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-amber-900">
+                              {m.home_team} × {m.away_team}
+                            </p>
+                            <p className="text-[11px] text-amber-700">
+                              Começa em {hLeft > 0 ? `${hLeft}h ` : ''}{minLeft}min —
+                              <span className="font-semibold"> {unpicked} participante{unpicked !== 1 ? 's' : ''} sem palpite</span>
+                            </p>
+                          </div>
+                          {pixWhatsApp && (
+                            <a href={`https://wa.me/${pixWhatsApp.replace(/\D/g,'')}?text=${encodeURIComponent(`Aviso Bolão Copa BEL: ${m.home_team} × ${m.away_team} começa em ${hLeft > 0 ? `${hLeft}h ` : ''}${minLeft}min! Faça seu palpite antes de fechar!`)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-100 border border-amber-200 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                              Cobrar no WA
+                            </a>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* ── KPI CARDS ── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Participantes', value: nonAdminPlayers.length, sub: `${onlineCount} online agora`, subColor: 'text-green-600', dot: 'bg-green-400' },
+                    { label: 'Pagamentos', value: `${paidCount}/${nonAdminPlayers.length}`, sub: pendingCount > 0 ? `${pendingCount} aguardando` : 'Todos confirmados', subColor: pendingCount > 0 ? 'text-amber-600' : 'text-green-600', dot: pendingCount > 0 ? 'bg-amber-400' : 'bg-green-400' },
+                    { label: 'Prêmio total', value: `R$ ${prizePool.toFixed(0)}`, sub: `60% · 25% · 15%`, subColor: 'text-gray-400', dot: 'bg-[#0099CC]' },
+                    { label: 'Jogos', value: `${doneCount}/${matches.length}`, sub: liveMatches.length > 0 ? `${liveMatches.length} ao vivo` : `${upcomingCount} em breve`, subColor: liveMatches.length > 0 ? 'text-red-500' : 'text-gray-400', dot: liveMatches.length > 0 ? 'bg-red-500 animate-pulse' : 'bg-gray-300' },
+                  ].map(k => (
+                    <div key={k.label} className="bg-white rounded-xl border border-gray-200 p-3 md:p-4">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">{k.label}</p>
+                      <p className="text-[22px] md:text-[28px] font-semibold text-gray-900 leading-none mb-1.5">{k.value}</p>
+                      <p className={`text-[10px] flex items-center gap-1.5 ${k.subColor}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${k.dot}`}/>
+                        {k.sub}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── LIVE MATCHES (full width when active) ── */}
+                {liveMatches.length > 0 && (
+                  <div className="bg-white border border-red-200 rounded-xl overflow-hidden">
+                    <div className="bg-red-50 px-4 py-2.5 flex items-center justify-between border-b border-red-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                        <span className="text-[12px] font-bold text-red-700 uppercase tracking-wide">Ao vivo agora</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {liveLastTick && (
+                          <span className="text-[10px] text-red-400">atualizado {liveLastTick}</span>
+                        )}
+                        <button onClick={triggerSync} disabled={syncing}
+                          className="flex items-center gap-1 text-[11px] text-red-600 border border-red-200 bg-white hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50">
+                          <span className={syncing ? 'animate-spin' : ''}><Ico.Sync /></span>
+                          Atualizar placar
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-red-100">
+                      {liveMatches.map(m => {
+                        const score = liveScores[m.id]
+                        const sh = score?.h ?? m.score_home
+                        const sa = score?.a ?? m.score_away
+                        return (
+                          <div key={m.id} className="px-5 py-4 flex items-center gap-4">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] text-gray-400 mb-1">{m.group_name || m.fase}</p>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[13px] font-semibold text-gray-800 truncate flex-1 text-right">{m.home_team}</span>
+                                <div className="flex-shrink-0 flex items-center gap-1.5">
+                                  {sh != null
+                                    ? <span className="text-[22px] font-bold text-red-600 tabular-nums w-6 text-center">{sh}</span>
+                                    : <span className="text-[18px] text-gray-300 w-6 text-center">-</span>
+                                  }
+                                  <span className="text-gray-300 text-[14px]">×</span>
+                                  {sa != null
+                                    ? <span className="text-[22px] font-bold text-red-600 tabular-nums w-6 text-center">{sa}</span>
+                                    : <span className="text-[18px] text-gray-300 w-6 text-center">-</span>
+                                  }
+                                </div>
+                                <span className="text-[13px] font-semibold text-gray-800 truncate flex-1">{m.away_team}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── MAIN GRID: 3 cols on desktop ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                  {/* Prize + Copa lock */}
+                  <div className="space-y-4">
+                    {/* Prize */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Ico.Trophy />
+                        <h2 className="text-[13px] font-semibold text-gray-800">Distribuição do prêmio</h2>
+                      </div>
+                      <div className="space-y-2.5">
+                        {[
+                          { pos: '1º lugar', pct: 60, color: 'bg-amber-400' },
+                          { pos: '2º lugar', pct: 25, color: 'bg-gray-300' },
+                          { pos: '3º lugar', pct: 15, color: 'bg-amber-700/40' },
+                        ].map(p => (
+                          <div key={p.pos}>
+                            <div className="flex justify-between text-[12px] mb-1">
+                              <span className="text-gray-600">{p.pos} ({p.pct}%)</span>
+                              <span className="font-semibold text-gray-800">R$ {(prizePool * p.pct / 100).toFixed(2).replace('.',',')}</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${p.color} rounded-full`} style={{ width: `${p.pct}%` }}/>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-gray-400">R$</span>
+                          <input type="number" min="0" step="0.01" placeholder="0,00" value={extraAmount} onChange={e => setExtraAmount(e.target.value)}
+                            className="w-full pl-8 pr-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 text-[12px] focus:outline-none focus:border-[#0099CC]"/>
+                        </div>
+                        <button onClick={saveExtra} disabled={savingExtra || !extraAmount}
+                          className="px-3 py-1.5 rounded-lg bg-[#0099CC] text-white text-[12px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors">
+                          {extraSaved ? 'Adicionado!' : 'Bônus'}
+                        </button>
+                        {currentExtra > 0 && (
+                          <button onClick={resetExtra} className="px-2 py-1.5 rounded-lg border border-red-200 text-red-500 text-[12px] hover:bg-red-50 transition-colors">Zerar</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Copa lock toggle */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h2 className="text-[13px] font-semibold text-gray-800 mb-0.5">Modo Copa em andamento</h2>
+                          <p className="text-[11px] text-gray-400 leading-relaxed">
+                            {copaBloqueada
+                              ? 'Novos cadastros estão bloqueados. Nenhum colaborador novo pode se registrar.'
+                              : 'Ative para bloquear novos cadastros durante os jogos.'}
+                          </p>
+                        </div>
+                        <button onClick={toggleCopaLock} disabled={savingLock}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5 disabled:opacity-50 ${copaBloqueada ? 'bg-red-500' : 'bg-gray-200'}`}>
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${copaBloqueada ? 'translate-x-5' : 'translate-x-0.5'}`}/>
+                        </button>
+                      </div>
+                      {copaBloqueada && (
+                        <div className="mt-3 flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          <span className="text-[11px] text-red-600 font-medium">Cadastros bloqueados</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Phase progress + Ranking top 5 */}
+                  <div className="space-y-4">
+                    {/* Phase progress */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <h2 className="text-[13px] font-semibold text-gray-800">Progresso da Copa</h2>
+                      </div>
+                      <div className="space-y-3">
+                        {FASE_ORDER.map(fase => {
+                          const total = matches.filter(m => m.fase === fase).length
+                          const done  = matches.filter(m => m.fase === fase && m.status === 'done').length
+                          const live  = matches.filter(m => m.fase === fase && m.status === 'live').length
+                          if (total === 0) return null
+                          const pct = total > 0 ? Math.round((done / total) * 100) : 0
+                          return (
+                            <div key={fase}>
+                              <div className="flex justify-between text-[11px] mb-1">
+                                <span className="text-gray-600 flex items-center gap-1.5">
+                                  {live > 0 && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>}
+                                  {fase === 'Fase de Grupos' ? 'Grupos' : fase}
+                                </span>
+                                <span className="text-gray-400">{done}/{total}</span>
+                              </div>
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-400' : live > 0 ? 'bg-red-400' : 'bg-[#0099CC]'}`}
+                                  style={{ width: `${pct}%` }}/>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Ranking top 5 */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Ico.Trophy />
+                          <h2 className="text-[13px] font-semibold text-gray-800">Ranking ao vivo</h2>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400"/>
+                          <span className="text-[10px] text-gray-400">atualiza a cada 30s</span>
+                        </div>
+                      </div>
+                      {rankingTop5.length === 0 ? (
+                        <p className="text-[12px] text-gray-400 text-center py-4">Nenhuma pontuação ainda</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {rankingTop5.map((r, i) => {
+                            const pos = i + 1
+                            const medal = pos === 1 ? 'text-amber-500' : pos === 2 ? 'text-gray-400' : pos === 3 ? 'text-amber-700' : 'text-gray-300'
+                            const av = r.avatar ? (r.avatar.startsWith('http') ? r.avatar : supabase.storage.from('avatars').getPublicUrl(r.avatar).data.publicUrl) : null
+                            return (
+                              <div key={r.player_id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${pos === 1 ? 'bg-amber-50 border border-amber-100' : 'bg-gray-50'}`}>
+                                <span className={`text-[14px] font-bold w-5 text-center flex-shrink-0 ${medal}`}>{pos}</span>
+                                {av
+                                  ? <img src={av} alt={r.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                                  : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC] flex-shrink-0">
+                                      {r.name.split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
+                                    </div>
+                                }
+                                <span className="flex-1 text-[12px] font-medium text-gray-800 truncate">{r.name}</span>
+                                <span className={`text-[13px] font-bold flex-shrink-0 ${pos <= 3 ? 'text-[#0099CC]' : 'text-gray-500'}`}>{r.pts} pts</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <button onClick={() => setPage('players')} className="mt-3 w-full text-[11px] text-[#0099CC] hover:underline text-center block">
+                        Ver ranking completo
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Participants + Upcoming matches */}
+                  <div className="space-y-4">
+                    {/* Participants */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Ico.Users />
+                          <h2 className="text-[13px] font-semibold text-gray-800">Participantes</h2>
+                        </div>
+                        <button onClick={() => setPage('players')} className="text-[11px] text-[#0099CC] hover:underline">Ver todos</button>
+                      </div>
+                      <div className="mb-3">
+                        <div className="flex justify-between text-[11px] text-gray-500 mb-1">
+                          <span>Pagamentos</span>
+                          <span className="font-semibold text-gray-700">{paidCount}/{nonAdminPlayers.length}</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#0099CC] rounded-full transition-all"
+                            style={{ width: nonAdminPlayers.length > 0 ? `${Math.round((paidCount/nonAdminPlayers.length)*100)}%` : '0%' }}/>
+                        </div>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {nonAdminPlayers.slice(0, 5).map(p => {
+                          const av = p.avatar_url ? (p.avatar_url.startsWith('http') ? p.avatar_url : supabase.storage.from('avatars').getPublicUrl(p.avatar_url).data.publicUrl) : null
+                          const name = p.nickname || p.username
+                          const presence = getPresence(p.last_seen_at)
+                          const picks = picksCount[p.id] || 0
+                          return (
+                            <div key={p.id} className="flex items-center gap-2.5 py-2">
+                              <div className="relative flex-shrink-0">
+                                {av
+                                  ? <img src={av} alt={name} className="w-7 h-7 rounded-full object-cover"/>
+                                  : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC]">
+                                      {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
+                                    </div>
+                                }
+                                <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${presence.status === 'online' ? 'bg-green-500' : presence.status === 'recent' ? 'bg-amber-400' : 'bg-gray-300'}`}/>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-semibold text-gray-800 truncate">{name}</p>
+                                <p className="text-[9px] text-gray-400">{picks} palpites</p>
+                              </div>
+                              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${p.payment_ok ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {p.payment_ok ? 'Pago' : 'Pendente'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Upcoming matches */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Ico.Ball />
+                          <h2 className="text-[13px] font-semibold text-gray-800">Próximas partidas</h2>
+                        </div>
+                        <button onClick={() => setPage('matches')} className="text-[11px] text-[#0099CC] hover:underline">Ver todas</button>
+                      </div>
+                      <div className="space-y-2">
+                        {matches.filter(m => m.status === 'upcoming').slice(0, 5).map(m => (
+                          <div key={m.id} className="flex items-center gap-2 py-1 border-b border-gray-50 last:border-0">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-medium text-gray-700 truncate">{m.home_team} × {m.away_team}</p>
+                              {m.group_name && <p className="text-[9px] text-gray-400">{m.group_name}</p>}
+                            </div>
+                            {m.match_date && (
+                              <p className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">{fmtBRT(m.match_date)}</p>
+                            )}
+                          </div>
+                        ))}
+                        {matches.filter(m => m.status === 'upcoming').length === 0 && (
+                          <p className="text-[12px] text-gray-400 py-2 text-center">Nenhuma partida agendada</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── ACTION BUTTONS ── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <button onClick={triggerSync} disabled={syncing}
+                    className="flex items-center justify-center gap-2 bg-[#0099CC] text-white rounded-xl py-3 text-[13px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors">
+                    <span className={syncing ? 'animate-spin' : ''}><Ico.Sync /></span>
+                    {syncing ? 'Sincronizando...' : 'Sincronizar API'}
+                  </button>
+                  <button onClick={recalcScores} disabled={recalcing}
+                    className="flex items-center justify-center gap-2 bg-gray-800 text-white rounded-xl py-3 text-[13px] font-semibold hover:bg-gray-900 disabled:opacity-50 transition-colors">
+                    {recalcing ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Star />}
+                    {recalcMsg || 'Recalcular ranking'}
+                  </button>
+                  <button onClick={calcBadges} disabled={calcingBadges}
+                    className="flex items-center justify-center gap-2 bg-amber-500 text-white rounded-xl py-3 text-[13px] font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors">
+                    {calcingBadges ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Trophy />}
+                    {badgesMsg || 'Calc. conquistas'}
+                  </button>
+                  <button onClick={() => setPage('players')}
+                    className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-xl py-3 text-[13px] font-semibold hover:bg-gray-50 transition-colors">
+                    <Ico.Users />
+                    Confirmar pagtos
+                    {pendingCount > 0 && <span className="bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+                  </button>
+                </div>
+
+                {syncResult && (
+                  <div className={`rounded-xl px-4 py-3 text-[12px] ${syncResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                    {syncResult.ok ? `Sincronizado: +${syncResult.synced} novos · ${syncResult.updated} atualizados` : `Erro: ${syncResult.error}`}
+                  </div>
+                )}
+              </div>
+            )}
 
                 {/* KPI cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import TutorialModal from '@/components/TutorialModal'
+import { supabase } from '@/lib/supabase'
 
 // SVG Icons inline (no emoji)
 const IcoUser = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -108,6 +109,14 @@ export default function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault(); setError('')
     if (mode==='register' && password!==confirm) { setError('As senhas não coincidem.'); return }
+    // Check copa lock before registering
+    if (mode === 'register') {
+      const { data: cfg } = await supabase.from('pix_config').select('copa_bloqueada').limit(1).single()
+      if (cfg?.copa_bloqueada) {
+        setError('Novos cadastros estão encerrados. O bolão já está em andamento.')
+        return
+      }
+    }
     setLoading(true)
     const result = mode==='login' ? await login(username,password) : await register(username,password)
     setLoading(false)
