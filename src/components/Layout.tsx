@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import Head from 'next/head'
 import { useEffect, useState, useRef } from 'react'
 import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconInfo } from '@/components/Icons'
+import TutorialModal from '@/components/TutorialModal'
 
 // Bottom nav
 const NAV = [
@@ -104,6 +105,7 @@ export default function Layout({ children, title }: Props) {
   const [showIosModal, setShowIosModal] = useState(false)
   const [isIos, setIsIos] = useState(false)
   const [groupLink, setGroupLink] = useState<string | null>(null)
+  const [showTutorial, setShowTutorial] = useState(false)
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
 
   // Refresh player on route change
@@ -197,6 +199,7 @@ export default function Layout({ children, title }: Props) {
       </Head>
 
       {showIosModal && <IosInstallModal onClose={() => setShowIosModal(false)} />}
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
       <div className="min-h-screen bg-gray-50 pb-[68px]">
 
@@ -236,6 +239,16 @@ export default function Layout({ children, title }: Props) {
                 className="h-9 w-9 rounded-lg object-cover flex-shrink-0"/>
               <span className="text-[13px] text-gray-600 font-bold hidden sm:block">Bolão Copa 2026 BEL</span>
             </div>
+
+            {/* Tutorial button */}
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-[#0099CC] bg-[#E6F4FA] hover:bg-[#d0ebf7] border border-[#0099CC]/20 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              <span className="hidden xs:inline">Tutorial</span>
+            </button>
 
             {/* WhatsApp group button — center, visible when configured */}
             {groupLink && (
