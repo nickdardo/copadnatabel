@@ -91,6 +91,18 @@ export default function LoginPage() {
   const [showTutorial, setShowTutorial] = useState(false)
   const tutorialDelay = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Load saved credentials on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('bolao_saved_user')
+    const remember = localStorage.getItem('bolao_remember') === '1'
+    if (remember && saved) {
+      setUsername(saved)
+      setRememberMe(true)
+    } else {
+      setRememberMe(false)
+    }
+  }, [])
+
   function switchMode(m: Mode) { setMode(m); setError(''); setUsername(''); setPassword(''); setConfirm('') }
 
   async function handleSubmit(e: FormEvent) {
@@ -100,7 +112,13 @@ export default function LoginPage() {
     const result = mode==='login' ? await login(username,password) : await register(username,password)
     setLoading(false)
     if (result.error) { setError(result.error); return }
-    if (rememberMe) localStorage.setItem('bolao_remember','1')
+    if (rememberMe) {
+      localStorage.setItem('bolao_remember', '1')
+      localStorage.setItem('bolao_saved_user', username.trim().toLowerCase())
+    } else {
+      localStorage.removeItem('bolao_remember')
+      localStorage.removeItem('bolao_saved_user')
+    }
     router.push(mode==='register' ? '/profile-setup' : '/champion')
   }
 
