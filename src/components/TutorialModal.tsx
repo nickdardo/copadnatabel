@@ -261,7 +261,7 @@ const SCENES: Scene[] = [
               <span style={{ fontSize: 9, color: 'rgba(255,255,255,.4)' }}>BRT</span>
             </div>
             {[
-              { title: 'Brasil venceu! Confira o placar', body: 'Brasil 2×0 Mexico. Palpites para o próximo jogo fecham em 4h.', time: 'agora' },
+              { title: 'Brasil venceu! Confira o placar', body: 'Brasil 2×0 Mexico. Palpites para o próximo jogo fecham em 2h.', time: 'agora' },
               { title: 'Jogo em 1 hora!', body: 'Argentina x Polonia comeca as 18h. Ultimo aviso para palpites!', time: '3 min' },
               { title: 'Ranking atualizado', body: 'Você subiu para o 2 lugar! Veja a pontuação completa.', time: '15 min' },
             ].map((n, i) => (
