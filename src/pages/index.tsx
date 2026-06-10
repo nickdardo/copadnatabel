@@ -118,13 +118,10 @@ export default function LoginPage() {
       }
     }
     setLoading(true)
-    const result = mode==='login' ? await login(username,password) : await register(username,password)
+    const result = mode==='login' ? await login(username, password, rememberMe) : await register(username, password)
     setLoading(false)
     if (result.error) { setError(result.error); return }
-    if (rememberMe) {
-      localStorage.setItem('bolao_remember', '1')
-      localStorage.setItem('bolao_saved_user', username.trim().toLowerCase())
-    } else {
+    if (!rememberMe) {
       localStorage.removeItem('bolao_remember')
       localStorage.removeItem('bolao_saved_user')
     }
