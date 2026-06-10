@@ -891,15 +891,17 @@ export default function AdminPage() {
                   return (
                     <>
                       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                        {paginated.map(p => {
+                        {paginated.map((p, idx) => {
+                          const rowNumber = playerPage * 20 + idx + 1
                           const av = p.avatar_url ? (p.avatar_url.startsWith('http') ? p.avatar_url : supabase.storage.from('avatars').getPublicUrl(p.avatar_url).data.publicUrl) : null
                           const name = p.nickname || p.username
                           const presence = getPresence(p.last_seen_at)
                           const picks = picksCount[p.id] || 0
                           return (
                             <div key={p.id} className="px-3 py-3 sm:px-4">
-                              {/* Row 1: avatar + info + payment */}
+                              {/* Row 1: number + avatar + info + payment */}
                               <div className="flex items-center gap-3">
+                                <span className="text-[11px] font-bold text-gray-300 w-5 text-right flex-shrink-0">{rowNumber}</span>
                                 <div className="relative flex-shrink-0">
                                   {av
                                     ? <img src={av} alt={name} className="w-9 h-9 rounded-full object-cover"/>
@@ -936,7 +938,7 @@ export default function AdminPage() {
                                 </button>
                               </div>
                               {/* Row 2: actions */}
-                              <div className="flex items-center gap-1.5 mt-2 ml-12">
+                              <div className="flex items-center gap-1.5 mt-2 ml-[52px]">
 
                                 {/* Reset games */}
                                 <button onClick={() => resetPlayerEdits(p.id, name)} disabled={resettingId === p.id}
