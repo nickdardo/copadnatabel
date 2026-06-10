@@ -759,7 +759,18 @@ export default function AdminPage() {
                   <p className="text-[11px] text-gray-400 mt-1.5">{paidCount} de {nonAdminPlayers.length} confirmados ({nonAdminPlayers.length > 0 ? Math.round((paidCount/nonAdminPlayers.length)*100) : 0}%)</p>
                 </div>
 
-                {/* Search + legend */}
+                {/* Push config warning — if table is empty, VAPID may not be configured */}
+                {pushEnabled.size === 0 && nonAdminPlayers.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div className="flex-1">
+                      <p className="text-[12px] font-semibold text-amber-800">Nenhuma notificação registrada ainda</p>
+                      <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                        Verifique se as variáveis <code className="bg-amber-100 px-1 rounded">VAPID_PUBLIC_KEY</code>, <code className="bg-amber-100 px-1 rounded">VAPID_PRIVATE_KEY</code> e <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_VAPID_PUBLIC_KEY</code> estão configuradas na Vercel e se o arquivo <code className="bg-amber-100 px-1 rounded">public/sw.js</code> existe no repositório.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
