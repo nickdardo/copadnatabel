@@ -80,9 +80,11 @@ export default function AdminPage() {
   const [playerPage,    setPlayerPage]    = useState(0)
   const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
   const [pushEnabled,   setPushEnabled]   = useState<Set<string>>(new Set())
-  const [resettingId,   setResettingId]   = useState<string | null>(null)
-  const [resettingAll,  setResettingAll]  = useState(false)
-  const [resetMsg,      setResetMsg]      = useState('')
+  const [resettingId,       setResettingId]       = useState<string | null>(null)
+  const [resettingAll,      setResettingAll]      = useState(false)
+  const [resettingChampId,  setResettingChampId]  = useState<string | null>(null)
+  const [resettingChampAll, setResettingChampAll] = useState(false)
+  const [resetMsg,          setResetMsg]          = useState('')
   const [presenceTick,  setPresenceTick]  = useState(0)
   const [paymentLogs,   setPaymentLogs]   = useState<{id:string;player_name:string;action:string;confirmed_by:string;valor:number;created_at:string}[]>([])
   const [calcingBadges, setCalcingBadges] = useState(false)
@@ -321,7 +323,7 @@ export default function AdminPage() {
     setResettingId(playerId)
     await supabase.from('pick_edit_limits').delete().eq('player_id', playerId)
     setResettingId(null)
-    setResetMsg(`Alterações de ${playerName} liberadas!`)
+    setResetMsg(`Palpites de ${playerName} liberados!`)
     setTimeout(() => setResetMsg(''), 3000)
   }
 
@@ -329,7 +331,29 @@ export default function AdminPage() {
     setResettingAll(true)
     await supabase.from('pick_edit_limits').delete().neq('player_id', '00000000-0000-0000-0000-000000000000')
     setResettingAll(false)
-    setResetMsg('Alterações de todos os participantes liberadas!')
+    setResetMsg('Palpites de todos liberados!')
+    setTimeout(() => setResetMsg(''), 4000)
+  }
+
+  async function resetPlayerChampion(playerId: string, playerName: string) {
+    setResettingChampId(playerId)
+    await supabase
+      .from('champion_picks')
+      .update({ edit_count: 0, locked: false })
+      .eq('player_id', playerId)
+    setResettingChampId(null)
+    setResetMsg(`Campeão de ${playerName} liberado!`)
+    setTimeout(() => setResetMsg(''), 3000)
+  }
+
+  async function resetAllChampion() {
+    setResettingChampAll(true)
+    await supabase
+      .from('champion_picks')
+      .update({ edit_count: 0, locked: false })
+      .neq('player_id', '00000000-0000-0000-0000-000000000000')
+    setResettingChampAll(false)
+    setResetMsg('Palpites de campeão de todos liberados!')
     setTimeout(() => setResetMsg(''), 4000)
   }
 
@@ -779,21 +803,52 @@ export default function AdminPage() {
                   <p className="text-[11px] text-gray-400 mt-1.5">{paidCount} de {nonAdminPlayers.length} confirmados ({nonAdminPlayers.length > 0 ? Math.round((paidCount/nonAdminPlayers.length)*100) : 0}%)</p>
                 </div>
 
-                {/* Global reset + toast */}
-                <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
-                  <div>
-                    <p className="text-[13px] font-semibold text-gray-800">Liberar alterações de palpites</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Reseta o limite de 3 alterações por rodada para todos</p>
+                {/* Reset panels — separated by type */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Games reset */}
+                  <div className="bg-white rounded-xl border border-gray-200 px-4 py-3.5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-gray-800">Liberar palpites dos jogos</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">Reseta o limite de 3 alterações por rodada. Não afeta jogos já encerrados.</p>
+                      </div>
+                    </div>
+                    <button onClick={resetAllEdits} disabled={resettingAll}
+                      className="mt-3 w-full flex items-center justify-center gap-1.5 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-50">
+                      {resettingAll
+                        ? <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-600 rounded-full animate-spin"/>
+                        : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      }
+                      Liberar todos — Jogos
+                    </button>
                   </div>
-                  <button onClick={resetAllEdits} disabled={resettingAll}
-                    className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap flex-shrink-0">
-                    {resettingAll
-                      ? <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-600 rounded-full animate-spin"/>
-                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    }
-                    Liberar todos
-                  </button>
+
+                  {/* Champion reset */}
+                  <div className="bg-white rounded-xl border border-gray-200 px-4 py-3.5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-gray-800">Liberar palpite de campeão</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">Reseta o limite de 3 trocas do palpite de campeão, vice e 3º lugar.</p>
+                      </div>
+                    </div>
+                    <button onClick={resetAllChampion} disabled={resettingChampAll}
+                      className="mt-3 w-full flex items-center justify-center gap-1.5 text-[12px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-50">
+                      {resettingChampAll
+                        ? <span className="w-3.5 h-3.5 border-2 border-blue-400/30 border-t-blue-600 rounded-full animate-spin"/>
+                        : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      }
+                      Liberar todos — Campeão
+                    </button>
+                  </div>
                 </div>
+
+                {/* Toast */}
                 {resetMsg && (
                   <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -842,61 +897,77 @@ export default function AdminPage() {
                           const presence = getPresence(p.last_seen_at)
                           const picks = picksCount[p.id] || 0
                           return (
-                            <div key={p.id} className="flex items-center gap-4 px-4 py-3.5">
-                              <div className="relative flex-shrink-0">
-                                {av
-                                  ? <img src={av} alt={name} className="w-10 h-10 rounded-full object-cover"/>
-                                  : <div className="w-10 h-10 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[11px] font-bold text-[#0099CC]">
-                                      {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
-                                    </div>
-                                }
-                                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${presence.status === 'online' ? 'bg-green-500' : presence.status === 'recent' ? 'bg-amber-400' : 'bg-gray-300'}`}/>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-[13px] font-semibold text-gray-900 truncate">{name}</p>
-                                  {presence.status === 'online' && <span className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">ONLINE</span>}
-                                  {pushEnabled.has(p.id)
-                                    ? <span className="text-[9px] font-semibold text-[#0099CC] bg-[#E6F4FA] px-1.5 py-0.5 rounded flex items-center gap-1">
-                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                                        Notif. ativa
-                                      </span>
-                                    : <span className="text-[9px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M17.73 17.73A10.06 10.06 0 0 1 6 8c0-.34.02-.67.05-1"/><path d="M10.27 6.27A6 6 0 0 1 18 8c0 2.68-.54 4.9-1.4 6.59"/><path d="M21 21H3"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                                        Sem notif.
-                                      </span>
+                            <div key={p.id} className="px-3 py-3 sm:px-4">
+                              {/* Row 1: avatar + info + payment */}
+                              <div className="flex items-center gap-3">
+                                <div className="relative flex-shrink-0">
+                                  {av
+                                    ? <img src={av} alt={name} className="w-9 h-9 rounded-full object-cover"/>
+                                    : <div className="w-9 h-9 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[10px] font-bold text-[#0099CC]">
+                                        {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
+                                      </div>
                                   }
+                                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${presence.status === 'online' ? 'bg-green-500' : presence.status === 'recent' ? 'bg-amber-400' : 'bg-gray-300'}`}/>
                                 </div>
-                                <p className="text-[11px] text-gray-400">@{p.username} · {picks} palpites · {presence.label}</p>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-[13px] font-semibold text-gray-900 truncate">{name}</p>
+                                    {presence.status === 'online' && <span className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">ONLINE</span>}
+                                    {pushEnabled.has(p.id)
+                                      ? <span className="text-[9px] font-semibold text-[#0099CC] bg-[#E6F4FA] px-1.5 py-0.5 rounded flex items-center gap-1">
+                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                          Notif.
+                                        </span>
+                                      : <span className="text-[9px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M17.73 17.73A10.06 10.06 0 0 1 6 8c0-.34.02-.67.05-1"/><path d="M10.27 6.27A6 6 0 0 1 18 8c0 2.68-.54 4.9-1.4 6.59"/><path d="M21 21H3"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                          Sem
+                                        </span>
+                                    }
+                                  </div>
+                                  <p className="text-[11px] text-gray-400">@{p.username} · {picks} palpites · {presence.label}</p>
+                                </div>
+                                {/* Payment button */}
+                                <button onClick={() => togglePayment(p)} disabled={togglingId === p.id}
+                                  className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-all disabled:opacity-60 ${p.payment_ok ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
+                                  {togglingId === p.id
+                                    ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
+                                    : p.payment_ok ? <><Ico.Check /><span className="hidden sm:inline">Confirmado</span></> : <span>Confirmar</span>
+                                  }
+                                </button>
                               </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
+                              {/* Row 2: actions */}
+                              <div className="flex items-center gap-1.5 mt-2 ml-12">
+                                {/* WhatsApp */}
                                 {pixWhatsApp && (
                                   <a href={`https://wa.me/${pixWhatsApp.replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${name}! Aqui é o admin do Bolão Copa 2026 BEL`)}`}
                                     target="_blank" rel="noopener noreferrer"
-                                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-green-200 text-green-500 hover:bg-green-50 transition-colors">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                                    className="flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-lg hover:bg-green-100 transition-colors">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                                    WA
                                   </a>
                                 )}
-                                <button onClick={() => togglePayment(p)} disabled={togglingId === p.id}
-                                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold border transition-all disabled:opacity-60 ${p.payment_ok ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
-                                  {togglingId === p.id
-                                    ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
-                                    : p.payment_ok ? <><Ico.Check /> Confirmado</> : 'Confirmar pagto'
-                                  }
-                                </button>
-                                {/* Reset edit limits */}
-                                <button
-                                  onClick={() => resetPlayerEdits(p.id, p.nickname || p.username)}
-                                  disabled={resettingId === p.id}
-                                  title="Liberar alterações de palpites"
-                                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-amber-200 text-amber-500 hover:bg-amber-50 hover:text-amber-700 transition-colors disabled:opacity-50">
+                                {/* Reset games */}
+                                <button onClick={() => resetPlayerEdits(p.id, name)} disabled={resettingId === p.id}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50">
                                   {resettingId === p.id
-                                    ? <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-500 rounded-full animate-spin"/>
-                                    : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                    ? <span className="w-3 h-3 border border-amber-400/30 border-t-amber-500 rounded-full animate-spin"/>
+                                    : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                   }
+                                  Jogos
                                 </button>
+                                {/* Reset champion */}
+                                <button onClick={() => resetPlayerChampion(p.id, name)} disabled={resettingChampId === p.id}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50">
+                                  {resettingChampId === p.id
+                                    ? <span className="w-3 h-3 border border-blue-400/30 border-t-blue-500 rounded-full animate-spin"/>
+                                    : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/></svg>
+                                  }
+                                  Campeão
+                                </button>
+                                <div className="flex-1"/>
+                                {/* Delete */}
                                 <button onClick={() => setConfirmDelete(p.id)}
-                                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
                                   <Ico.Trash />
                                 </button>
                               </div>
