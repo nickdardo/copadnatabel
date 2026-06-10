@@ -53,8 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).end()
 
   const now      = new Date()
-  const in6h     = new Date(now.getTime() + 6 * 3600 * 1000)
-  const in6h15   = new Date(now.getTime() + 6.25 * 3600 * 1000)
+  const in2h     = new Date(now.getTime() + 2 * 3600 * 1000)
+  const in2h15   = new Date(now.getTime() + 2.25 * 3600 * 1000)
   const ago5min  = new Date(now.getTime() - 5 * 60 * 1000)
   const ago35min = new Date(now.getTime() - 35 * 60 * 1000)
 
@@ -65,16 +65,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('matches')
     .select('id, home_team, away_team, match_date, fase, notified_6h')
     .eq('status', 'upcoming')
-    .gte('match_date', in6h.toISOString())
-    .lte('match_date', in6h15.toISOString())
+    .gte('match_date', in2h.toISOString())
+    .lte('match_date', in2h15.toISOString())
     .neq('notified_6h', true)
 
   for (const match of (upcoming || [])) {
     const homeTime = new Date(match.match_date).toLocaleTimeString('pt-BR', {
       timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
     })
-    const title = `⚽ Jogo em 6 horas!`
-    const body  = `${match.home_team} × ${match.away_team} começa às ${homeTime} (Brasília). Faça seu palpite antes de fechar!`
+    const title = `⚽ Jogo em 2 horas!`
+    const body  = `${match.home_team} × ${match.away_team} começa às ${homeTime} (Brasília). Palpites fecham em 2h — faça o seu!`
 
     const sent = await sendToAll(title, body)
 
