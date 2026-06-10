@@ -86,6 +86,7 @@ export default function AdminPage() {
   const [pushBody,      setPushBody]      = useState('')
   const [pushSending,   setPushSending]   = useState(false)
   const [pushMsg,       setPushMsg]       = useState('')
+  const [refreshing,    setRefreshing]    = useState(false)
 
   useEffect(() => {
     if (!loading) {
@@ -425,9 +426,17 @@ export default function AdminPage() {
                   {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
                 </button>
               )}
-              <button onClick={async () => { await fetchAll() }}
-                className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors">
-                <Ico.Sync /> Atualizar
+              <button
+                onClick={async () => {
+                  setRefreshing(true)
+                  await fetchAll()
+                  if (page === 'logs') await loadPaymentLogs()
+                  setRefreshing(false)
+                }}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                <span className={refreshing ? 'animate-spin' : ''}><Ico.Sync /></span>
+                {refreshing ? 'Atualizando...' : 'Atualizar'}
               </button>
             </div>
           </header>
