@@ -125,6 +125,10 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
   function logout() {
     setPlayer(null)
     localStorage.removeItem('bolao_player')
+    // Only clear saved credentials if remember me was not set
+    if (localStorage.getItem('bolao_remember') !== '1') {
+      localStorage.removeItem('bolao_saved_user')
+    }
   }
 
   const isAdmin = player?.is_admin === true
