@@ -62,6 +62,8 @@ export default function AdminPage() {
   const [togglingId,    setTogglingId]    = useState<string | null>(null)
   const [lastAutoSync,  setLastAutoSync]  = useState<string>('')
   const [autoSyncing,   setAutoSyncing]   = useState(false)
+  const [quotaRemaining,setQuotaRemaining]= useState<number|null>(null)
+  const [lastSyncTime,  setLastSyncTime]  = useState<string>('')
   const [pixCpf,        setPixCpf]        = useState('')
   const [pixKeyType,    setPixKeyType]    = useState<PixKeyType>('cpf')
   const [pixNome,       setPixNome]       = useState('')
@@ -263,22 +265,9 @@ export default function AdminPage() {
     setCopaBloqueada(newVal)
     setSavingLock(false)
   }
-    async function autoSync() {
-      setAutoSyncing(true)
-      try {
-        const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual' }) })
-        const data = await res.json()
-        if (data.ok) {
-          setLastAutoSync(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
-          await fetchAll()
-        }
-      } catch {}
-      setAutoSyncing(false)
-    }
-    autoSync()
-    const interval = setInterval(autoSync, 2 * 60 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+  // No auto-sync — manual only to preserve API quota
+  // Just do an initial fetchAll on mount
+  useEffect(() => { fetchAll() }, [fetchAll])
 
   // Auto-notify: check every 10 minutes when enabled
   useEffect(() => {
@@ -331,7 +320,11 @@ export default function AdminPage() {
       const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual' }) })
       const data = await res.json()
       setSyncResult(data)
-      if (data.ok) fetchAll()
+      if (data.ok) {
+        fetchAll()
+        setLastSyncTime(new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }))
+        if (data.quotaRemaining != null) setQuotaRemaining(data.quotaRemaining)
+      }
     } catch { setSyncResult({ ok: false, synced: 0, updated: 0, recalculated: false, quotaRemaining: null, error: 'Erro de rede' }) }
     setSyncing(false)
   }
@@ -598,10 +591,15 @@ export default function AdminPage() {
               {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'PIX' : page === 'logs' ? 'Pagamentos' : 'Notificações'}
             </h1>
 
-            {/* Sync status — hidden on small mobile */}
+            {/* Sync status */}
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 flex-shrink-0">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${autoSyncing ? 'bg-[#0099CC] animate-pulse' : 'bg-green-400'}`}/>
-              {autoSyncing ? 'Sincronizando...' : lastAutoSync ? `Sync ${lastAutoSync}` : 'Aguardando'}
+              <span className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"/>
+              {lastSyncTime ? `Último sync: ${lastSyncTime}` : 'Sync manual'}
+              {quotaRemaining != null && (
+                <span className={`ml-1 font-semibold ${quotaRemaining < 50 ? 'text-red-500' : quotaRemaining < 200 ? 'text-amber-500' : 'text-green-600'}`}>
+                  · {quotaRemaining} req restantes
+                </span>
+              )}
             </div>
 
             <div className="ml-auto flex items-center gap-1.5 md:gap-2 flex-shrink-0">
@@ -609,7 +607,9 @@ export default function AdminPage() {
                 <button onClick={triggerSync} disabled={syncing}
                   className="flex items-center gap-1 text-[11px] md:text-[12px] font-semibold text-white bg-[#0099CC] hover:bg-[#007aa8] px-2 md:px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                   <span className={syncing ? 'animate-spin' : ''}><Ico.Sync /></span>
-                  <span className="hidden sm:inline">{syncing ? 'Sincronizando...' : 'Sincronizar'}</span>
+                  <span className="hidden sm:inline">
+                    {syncing ? 'Sincronizando...' : lastSyncTime ? `Sync · ${lastSyncTime}` : 'Sincronizar agora'}
+                  </span>
                 </button>
               )}
               <button
@@ -973,29 +973,81 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* ── ACTION BUTTONS ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <button onClick={triggerSync} disabled={syncing}
-                    className="flex items-center justify-center gap-2 bg-[#0099CC] text-white rounded-xl py-3 text-[13px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors">
-                    <span className={syncing ? 'animate-spin' : ''}><Ico.Sync /></span>
-                    {syncing ? 'Sincronizando...' : 'Sincronizar API'}
-                  </button>
-                  <button onClick={recalcScores} disabled={recalcing}
-                    className="flex items-center justify-center gap-2 bg-gray-800 text-white rounded-xl py-3 text-[13px] font-semibold hover:bg-gray-900 disabled:opacity-50 transition-colors">
-                    {recalcing ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Star />}
-                    {recalcMsg || 'Recalcular ranking'}
-                  </button>
-                  <button onClick={calcBadges} disabled={calcingBadges}
-                    className="flex items-center justify-center gap-2 bg-amber-500 text-white rounded-xl py-3 text-[13px] font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors">
-                    {calcingBadges ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Trophy />}
-                    {badgesMsg || 'Calc. conquistas'}
-                  </button>
-                  <button onClick={() => setPage('players')}
-                    className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-xl py-3 text-[13px] font-semibold hover:bg-gray-50 transition-colors">
-                    <Ico.Users />
-                    Confirmar pagtos
-                    {pendingCount > 0 && <span className="bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
-                  </button>
+                {/* ── ACTION CARDS ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+                  {/* Sync */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <button onClick={triggerSync} disabled={syncing}
+                      className="w-full flex items-center justify-center gap-2 bg-[#0099CC] text-white rounded-lg py-2.5 text-[13px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors mb-3">
+                      <span className={syncing ? 'animate-spin' : ''}><Ico.Sync /></span>
+                      {syncing ? 'Sincronizando...' : 'Sincronizar API'}
+                    </button>
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        Busca jogos e placares na The Odds API. Use <strong>antes e após cada rodada</strong>.
+                      </p>
+                      {lastSyncTime && (
+                        <p className="text-[10px] text-gray-400">Último: {lastSyncTime}</p>
+                      )}
+                      {quotaRemaining != null && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${quotaRemaining < 50 ? 'bg-red-400' : quotaRemaining < 200 ? 'bg-amber-400' : 'bg-green-400'}`}
+                              style={{ width: `${Math.min(100, (quotaRemaining / 500) * 100)}%` }}/>
+                          </div>
+                          <span className={`text-[10px] font-semibold whitespace-nowrap ${quotaRemaining < 50 ? 'text-red-500' : quotaRemaining < 200 ? 'text-amber-500' : 'text-green-600'}`}>
+                            {quotaRemaining} req
+                          </span>
+                        </div>
+                      )}
+                      {!lastSyncTime && (
+                        <p className="text-[10px] text-[#0099CC] font-medium">Sync automático desativado — manual salva quota</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recalculate */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <button onClick={recalcScores} disabled={recalcing}
+                      className="w-full flex items-center justify-center gap-2 bg-gray-800 text-white rounded-lg py-2.5 text-[13px] font-semibold hover:bg-gray-900 disabled:opacity-50 transition-colors mb-3">
+                      {recalcing ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Star />}
+                      Recalcular ranking
+                    </button>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      Recalcula pontos de todos. Use <strong>após confirmar resultados</strong> manualmente ou depois de sincronizar.
+                    </p>
+                    {recalcMsg && <p className="text-[10px] text-green-600 mt-1.5 font-medium">{recalcMsg}</p>}
+                  </div>
+
+                  {/* Badges */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <button onClick={calcBadges} disabled={calcingBadges}
+                      className="w-full flex items-center justify-center gap-2 bg-amber-500 text-white rounded-lg py-2.5 text-[13px] font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors mb-3">
+                      {calcingBadges ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Ico.Trophy />}
+                      Calc. conquistas
+                    </button>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      Atribui badges como Vidente, Atirador de Elite etc. Use <strong>ao fim de cada fase</strong>.
+                    </p>
+                    {badgesMsg && <p className="text-[10px] text-amber-600 mt-1.5 font-medium">{badgesMsg}</p>}
+                  </div>
+
+                  {/* Payments */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <button onClick={() => setPage('players')}
+                      className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-700 rounded-lg py-2.5 text-[13px] font-semibold hover:bg-gray-50 transition-colors mb-3">
+                      <Ico.Users />
+                      Confirmar pagamentos
+                      {pendingCount > 0 && <span className="bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+                    </button>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      {pendingCount > 0
+                        ? <><strong className="text-amber-600">{pendingCount} participante{pendingCount !== 1 ? 's' : ''}</strong> aguardando confirmação de pagamento.</>
+                        : 'Todos os participantes pagos estão confirmados.'
+                      }
+                    </p>
+                  </div>
                 </div>
 
                 {syncResult && (
