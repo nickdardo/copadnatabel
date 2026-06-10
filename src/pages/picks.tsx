@@ -423,12 +423,12 @@ export default function PicksPage() {
                           ) : (
                             <>
                               <input type="number" min="0" max="20" inputMode="numeric"
-                                className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:border-[#0099CC] transition-colors ${pick.home !== '' ? 'border-gray-200' : 'border-dashed border-gray-300'}`}
-                                value={pick.home} onChange={e=>updatePick(m.id,'home',e.target.value)} placeholder="–"/>
+                                className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-xl bg-white text-gray-900 focus:outline-none transition-colors appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] ${pick.home !== '' ? 'border-green-400 bg-green-50 text-green-700' : 'border-[#0099CC]/40 focus:border-[#0099CC]'}`}
+                                value={pick.home} onChange={e=>updatePick(m.id,'home',e.target.value)} placeholder=""/>
                               <span className="text-gray-200 text-sm">×</span>
                               <input type="number" min="0" max="20" inputMode="numeric"
-                                className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:border-[#0099CC] transition-colors ${pick.away !== '' ? 'border-gray-200' : 'border-dashed border-gray-300'}`}
-                                value={pick.away} onChange={e=>updatePick(m.id,'away',e.target.value)} placeholder="–"/>
+                                className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-xl bg-white text-gray-900 focus:outline-none transition-colors appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] ${pick.away !== '' ? 'border-green-400 bg-green-50 text-green-700' : 'border-[#0099CC]/40 focus:border-[#0099CC]'}`}
+                                value={pick.away} onChange={e=>updatePick(m.id,'away',e.target.value)} placeholder=""/>
                             </>
                           )}
                         </div>
