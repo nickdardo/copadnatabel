@@ -197,7 +197,7 @@ export default function OnboardingPage() {
 
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
                   <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wide mb-2">⚡ Limites</p>
-                  {['Palpites fecham 5h antes de cada jogo','Máximo 3 alterações por rodada','Palpite de campeão: 3 trocas no total'].map(r => (
+                  {['Palpites fecham 2h antes de cada jogo','Máximo 3 alterações por rodada','Palpite de campeão: 3 trocas no total'].map(r => (
                     <p key={r} className="text-[12px] text-amber-700 flex items-start gap-1.5 mt-1">
                       <span className="text-amber-400 mt-0.5 flex-shrink-0">•</span>{r}
                     </p>

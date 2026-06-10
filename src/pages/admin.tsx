@@ -1093,7 +1093,7 @@ export default function AdminPage() {
 
                   <div className="space-y-2.5">
                     {[
-                      { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-blue-50 text-blue-600', title: '6 horas antes de cada jogo', desc: 'Avisa todos para fazerem ou revisarem o palpite antes do fechamento.', example: '"⚽ Jogo em 6 horas! Brasil × México começa às 15h. Faça seu palpite!"' },
+                      { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-blue-50 text-blue-600', title: '2 horas antes de cada jogo', desc: 'Avisa todos para fazerem ou revisarem o palpite antes do fechamento.', example: '"⚽ Jogo em 2 horas! Brasil × México começa às 15h. Faça seu palpite!"' },
                       { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-green-50 text-green-600', title: 'Quando o resultado for confirmado', desc: 'Após salvar o placar, todos recebem o resultado e são convidados a ver a pontuação.', example: '"⚽ Brasil venceu! Brasil 2×0 México. Confira o placar e sua pontuação!"' },
                     ].map((item, i) => (
                       <div key={i} className={`rounded-xl p-3.5 ${autoNotify ? item.color.split(' ')[0] : 'bg-gray-50'} border ${autoNotify ? 'border-current/10' : 'border-gray-100'}`}>
