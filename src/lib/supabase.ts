@@ -77,8 +77,11 @@ export function getAvatarUrl(path:string|null|undefined):string|null {
   return data.publicUrl + '?v=' + Date.now()
 }
 
-// PWA BeforeInstallPromptEvent (not in default TS types)
+// Screen Wake Lock API (not in all TS versions)
 declare global {
+  interface WakeLockSentinel {
+    release(): Promise<void>
+  }
   interface BeforeInstallPromptEvent extends Event {
     prompt(): Promise<void>
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
