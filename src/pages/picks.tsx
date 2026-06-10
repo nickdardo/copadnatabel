@@ -423,12 +423,12 @@ export default function PicksPage() {
                           ) : (
                             <>
                               <input type="number" min="0" max="20" inputMode="numeric"
-                                className="w-10 h-10 text-center text-lg font-bold border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:border-[#0099CC] transition-colors"
-                                value={pick.home} onChange={e=>updatePick(m.id,'home',e.target.value)} placeholder="0"/>
+                                className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:border-[#0099CC] transition-colors ${pick.home !== '' ? 'border-gray-200' : 'border-dashed border-gray-300'}`}
+                                value={pick.home} onChange={e=>updatePick(m.id,'home',e.target.value)} placeholder="–"/>
                               <span className="text-gray-200 text-sm">×</span>
                               <input type="number" min="0" max="20" inputMode="numeric"
-                                className="w-10 h-10 text-center text-lg font-bold border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:border-[#0099CC] transition-colors"
-                                value={pick.away} onChange={e=>updatePick(m.id,'away',e.target.value)} placeholder="0"/>
+                                className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:border-[#0099CC] transition-colors ${pick.away !== '' ? 'border-gray-200' : 'border-dashed border-gray-300'}`}
+                                value={pick.away} onChange={e=>updatePick(m.id,'away',e.target.value)} placeholder="–"/>
                             </>
                           )}
                         </div>

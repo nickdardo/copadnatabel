@@ -401,7 +401,25 @@ export default function AdminPage() {
       await fetchAll()
       const name = p.nickname || p.username
       await fetch('/api/admin/payment-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: p.id, player_name: name, action: nowPaid ? 'confirmed' : 'reversed', confirmed_by: player?.username, valor: parseFloat(pixValor) || 10 }) })
-      if (nowPaid) await fetch('/api/activity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'payment_confirmed', player_id: p.id, player_name: name }) })
+      if (nowPaid) {
+        await fetch('/api/activity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'payment_confirmed', player_id: p.id, player_name: name }) })
+        // Ensure player appears in ranking immediately with 0 pts
+        const { data: existing } = await supabase.from('scores').select('id').eq('player_id', p.id).maybeSingle()
+        if (!existing) {
+          await supabase.from('scores').insert({
+            player_id:   p.id,
+            total_pts:   0,
+            picks_count: 0,
+            f10_count:   0,
+            f7_count:    0,
+            f5_count:    0,
+            f2_count:    0,
+            f0_count:    0,
+            champion_pts:0,
+            updated_at:  new Date().toISOString(),
+          })
+        }
+      }
     }
     setTogglingId(null)
   }
