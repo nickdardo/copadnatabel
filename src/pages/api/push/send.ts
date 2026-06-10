@@ -19,8 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { title, body, player_id } = req.body
   if (!title || !body) return res.status(400).json({ error: 'title and body required' })
 
-  // Buscar subscriptions (todos ou um específico)
-  const query = admin.from('push_subscriptions').select('subscription')
+  const query = admin.from('push_subscriptions').select('player_id, subscription')
   if (player_id) query.eq('player_id', player_id)
   const { data: subs } = await query
 
@@ -30,13 +29,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let sent = 0
 
   await Promise.allSettled(
-    subs.map(async (row) => {
+    subs.map(async (row: { player_id: string; subscription: PushSubscription }) => {
       try {
-        await webpush.sendNotification(row.subscription, payload)
+        await webpush.sendNotification(row.subscription as unknown as webpush.PushSubscription, payload)
         sent++
       } catch {}
     })
   )
+
+  // ── Save to notification_log so collaborators see it in the bell dropdown
+  const now = new Date().toISOString()
+  const playerIds = subs.map((r: { player_id: string }) => r.player_id)
+
+  // Insert one log entry per recipient
+  const logEntries = playerIds.map((pid: string) => ({
+    player_id: pid,
+    title,
+    body,
+    sent_at: now,
+  }))
+
+  if (logEntries.length > 0) {
+    await admin.from('notification_log').insert(logEntries)
+
+    // Keep only last 5 per player — delete older ones
+    for (const pid of playerIds) {
+      const { data: old } = await admin
+        .from('notification_log')
+        .select('id')
+        .eq('player_id', pid)
+        .order('sent_at', { ascending: false })
+        .range(5, 100)
+      if (old && old.length > 0) {
+        await admin.from('notification_log').delete().in('id', old.map((r: { id: string }) => r.id))
+      }
+    }
+  }
 
   return res.json({ ok: true, sent })
 }

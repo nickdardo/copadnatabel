@@ -167,8 +167,22 @@ export default function Layout({ children, title }: Props) {
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [showNotifyLog, setShowNotifyLog] = useState(false)
   const [notifyLog, setNotifyLog] = useState<{title:string;body:string;time:number}[]>([])
+  const [loadingLog, setLoadingLog] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
   const [hasUpdate, setHasUpdate] = useState(false)
+
+  async function fetchNotifyLog() {
+    if (!player) return
+    setLoadingLog(true)
+    try {
+      const res = await fetch(`/api/push/log?player_id=${player.id}`)
+      const { data } = await res.json()
+      setNotifyLog((data || []).map((n: { title: string; body: string; sent_at: string }) => ({
+        title: n.title, body: n.body, time: new Date(n.sent_at).getTime(),
+      })))
+    } catch {}
+    setLoadingLog(false)
+  }
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
 
   // Check current notification permission state + load log
@@ -177,12 +191,6 @@ export default function Layout({ children, title }: Props) {
 
     const enabled = Notification.permission === 'granted'
     setNotifyEnabled(enabled)
-
-    // Load notification history from localStorage
-    try {
-      const saved = localStorage.getItem('notify_log')
-      if (saved) setNotifyLog(JSON.parse(saved))
-    } catch {}
 
     // Already granted or permanently denied — nothing to do for prompt
     if (Notification.permission !== 'default') return
@@ -200,21 +208,7 @@ export default function Layout({ children, title }: Props) {
     return () => clearTimeout(t)
   }, [player?.id])
 
-  // Save new notification to log (called from service worker message)
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return
-    function onMessage(e: MessageEvent) {
-      if (e.data?.type !== 'PUSH_RECEIVED') return
-      const { title, body } = e.data
-      setNotifyLog(prev => {
-        const updated = [{ title, body, time: Date.now() }, ...prev].slice(0, 5)
-        localStorage.setItem('notify_log', JSON.stringify(updated))
-        return updated
-      })
-    }
-    navigator.serviceWorker.addEventListener('message', onMessage)
-    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
-  }, [])
+
 
   // Refresh player on route change
   useEffect(() => { refreshPlayer() }, [router.pathname])
@@ -475,6 +469,7 @@ export default function Layout({ children, title }: Props) {
                     title={notifyEnabled ? 'Notificações' : 'Ativar notificações'}
                     onClick={() => {
                       if (!notifyEnabled) { setShowNotifyModal(true); return }
+                      if (!showNotifyLog) fetchNotifyLog()
                       setShowNotifyLog(v => !v)
                     }}
                     className={`relative p-1.5 rounded-lg transition-colors ${
@@ -512,9 +507,8 @@ export default function Layout({ children, title }: Props) {
                           <p className="text-[13px] font-semibold text-gray-800">Notificações</p>
                           {notifyLog.length > 0 && (
                             <button
-                              onClick={() => {
+                              onClick={async () => {
                                 setNotifyLog([])
-                                localStorage.removeItem('notify_log')
                               }}
                               className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">
                               Limpar
@@ -522,7 +516,11 @@ export default function Layout({ children, title }: Props) {
                           )}
                         </div>
                         {/* List */}
-                        {notifyLog.length === 0 ? (
+                        {loadingLog ? (
+                          <div className="px-4 py-8 flex justify-center">
+                            <span className="w-6 h-6 border-2 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin"/>
+                          </div>
+                        ) : notifyLog.length === 0 ? (
                           <div className="px-4 py-8 text-center">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-2">
                               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>

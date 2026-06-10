@@ -20,7 +20,7 @@ webpush.setVapidDetails(
 async function sendToAll(title: string, body: string) {
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('subscription')
+    .select('player_id, subscription')
 
   if (!subs || subs.length === 0) return 0
 
@@ -33,7 +33,6 @@ async function sendToAll(title: string, body: string) {
         await webpush.sendNotification(row.subscription, payload)
         sent++
       } catch (err: unknown) {
-        // Remove expired subscriptions
         if (err && typeof err === 'object' && 'statusCode' in err) {
           const e = err as { statusCode: number }
           if (e.statusCode === 410 || e.statusCode === 404) {
@@ -46,6 +45,22 @@ async function sendToAll(title: string, body: string) {
       }
     })
   )
+
+  // Save to notification_log for each recipient
+  const now = new Date().toISOString()
+  const logEntries = subs.map((r: { player_id: string }) => ({ player_id: r.player_id, title, body, sent_at: now }))
+  if (logEntries.length > 0) {
+    await supabaseAdmin.from('notification_log').insert(logEntries)
+    // Keep only last 5 per player
+    for (const sub of subs) {
+      const { data: old } = await supabaseAdmin
+        .from('notification_log').select('id').eq('player_id', sub.player_id)
+        .order('sent_at', { ascending: false }).range(5, 100)
+      if (old && old.length > 0) {
+        await supabaseAdmin.from('notification_log').delete().in('id', old.map((r: { id: string }) => r.id))
+      }
+    }
+  }
   return sent
 }
 
