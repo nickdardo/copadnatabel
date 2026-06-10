@@ -79,6 +79,7 @@ export default function AdminPage() {
   const [playerSearch,  setPlayerSearch]  = useState('')
   const [playerPage,    setPlayerPage]    = useState(0)
   const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
+  const [pushEnabled,   setPushEnabled]   = useState<Set<string>>(new Set())
   const [presenceTick,  setPresenceTick]  = useState(0)
   const [paymentLogs,   setPaymentLogs]   = useState<{id:string;player_name:string;action:string;confirmed_by:string;valor:number;created_at:string}[]>([])
   const [calcingBadges, setCalcingBadges] = useState(false)
@@ -123,6 +124,11 @@ export default function AdminPage() {
       const map: Record<string, number> = {}
       scoresData.forEach((s: { player_id: string; picks_count: number }) => { map[s.player_id] = s.picks_count || 0 })
       setPicksCount(map)
+    }
+    // Load push subscriptions to show who enabled notifications
+    const { data: pushData } = await supabase.from('push_subscriptions').select('player_id')
+    if (pushData) {
+      setPushEnabled(new Set(pushData.map((r: { player_id: string }) => r.player_id)))
     }
     setFetching(false)
   }, [])
@@ -621,7 +627,13 @@ export default function AdminPage() {
                               <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${presence.status === 'online' ? 'bg-green-500' : presence.status === 'recent' ? 'bg-amber-400' : 'bg-gray-300'}`}/>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-semibold text-gray-800 truncate">{name}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-[12px] font-semibold text-gray-800 truncate">{name}</p>
+                                {pushEnabled.has(p.id)
+                                  ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round" title="Notificações ativas"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                  : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" title="Sem notificações"><line x1="1" y1="1" x2="23" y2="23"/><path d="M17.73 17.73A10.06 10.06 0 0 1 6 8c0-.34.02-.67.05-1"/><path d="M10.27 6.27A6 6 0 0 1 18 8c0 2.68-.54 4.9-1.4 6.59"/></svg>
+                                }
+                              </div>
                               <p className="text-[10px] text-gray-400">{picks} palpites · {presence.label}</p>
                             </div>
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${p.payment_ok ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -720,15 +732,16 @@ export default function AdminPage() {
               <div className="max-w-3xl mx-auto space-y-4">
 
                 {/* Stats bar */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { label: 'Total', value: nonAdminPlayers.length, color: 'text-gray-800' },
-                    { label: 'Pagos', value: paidCount, color: 'text-green-600' },
-                    { label: 'Pendentes', value: pendingCount, color: 'text-amber-600' },
+                    { label: 'Total',      value: nonAdminPlayers.length, color: 'text-gray-800' },
+                    { label: 'Pagos',      value: paidCount,              color: 'text-green-600' },
+                    { label: 'Pendentes',  value: pendingCount,           color: 'text-amber-600' },
+                    { label: 'Com notif.', value: pushEnabled.size,       color: 'text-[#0099CC]' },
                   ].map(s => (
-                    <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                      <p className={`text-[24px] font-semibold ${s.color}`}>{s.value}</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{s.label}</p>
+                    <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+                      <p className={`text-[22px] font-semibold ${s.color}`}>{s.value}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{s.label}</p>
                     </div>
                   ))}
                 </div>
@@ -787,9 +800,19 @@ export default function AdminPage() {
                                 <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${presence.status === 'online' ? 'bg-green-500' : presence.status === 'recent' ? 'bg-amber-400' : 'bg-gray-300'}`}/>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <p className="text-[13px] font-semibold text-gray-900 truncate">{name}</p>
                                   {presence.status === 'online' && <span className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">ONLINE</span>}
+                                  {pushEnabled.has(p.id)
+                                    ? <span className="text-[9px] font-semibold text-[#0099CC] bg-[#E6F4FA] px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                        Notif. ativa
+                                      </span>
+                                    : <span className="text-[9px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M17.73 17.73A10.06 10.06 0 0 1 6 8c0-.34.02-.67.05-1"/><path d="M10.27 6.27A6 6 0 0 1 18 8c0 2.68-.54 4.9-1.4 6.59"/><path d="M21 21H3"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                        Sem notif.
+                                      </span>
+                                  }
                                 </div>
                                 <p className="text-[11px] text-gray-400">@{p.username} · {picks} palpites · {presence.label}</p>
                               </div>
