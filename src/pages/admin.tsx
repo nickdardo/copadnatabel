@@ -630,8 +630,8 @@ export default function AdminPage() {
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="text-[12px] font-semibold text-gray-800 truncate">{name}</p>
                                 {pushEnabled.has(p.id)
-                                  ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round" title="Notificações ativas"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                                  : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" title="Sem notificações"><line x1="1" y1="1" x2="23" y2="23"/><path d="M17.73 17.73A10.06 10.06 0 0 1 6 8c0-.34.02-.67.05-1"/><path d="M10.27 6.27A6 6 0 0 1 18 8c0 2.68-.54 4.9-1.4 6.59"/></svg>
+                                  ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                  : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M17.73 17.73A10.06 10.06 0 0 1 6 8c0-.34.02-.67.05-1"/><path d="M10.27 6.27A6 6 0 0 1 18 8c0 2.68-.54 4.9-1.4 6.59"/></svg>
                                 }
                               </div>
                               <p className="text-[10px] text-gray-400">{picks} palpites · {presence.label}</p>
