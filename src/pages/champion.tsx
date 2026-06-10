@@ -201,9 +201,14 @@ export default function ChampionPage() {
                 </div>
               ))}
             </div>
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-center gap-1.5">
-              <IcoInfo/>
-              <p className="text-[11px] text-gray-400">Total: {formatBRL(prizePool)} · Atualiza com novos pagamentos</p>
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0099CC] opacity-50"/>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#0099CC]"/>
+              </span>
+              <p className="text-[15px] font-bold text-[#0099CC] tracking-tight">
+                Total: {formatBRL(prizePool)}
+              </p>
             </div>
           </div>
         )}
