@@ -205,13 +205,23 @@ export default function PicksPage() {
     setPicks(p => { const n = { ...p }; toSave.forEach(m => { n[m.id] = { ...n[m.id], saved: true } }); return n })
 
     // Update picks_count in scores table so ranking bar reflects immediately
+    // Use update only (not upsert with zeros) to avoid overwriting points
     const { count: totalPicks } = await supabase
       .from('picks').select('*', { count: 'exact', head: true }).eq('player_id', player.id)
     if (totalPicks !== null) {
-      await supabase.from('scores').upsert(
-        { player_id: player.id, picks_count: totalPicks, total_pts: 0, f10_count: 0, f7_count: 0, f5_count: 0, f2_count: 0, f0_count: 0, champion_pts: 0, updated_at: new Date().toISOString() },
-        { onConflict: 'player_id', ignoreDuplicates: false }
-      )
+      // Try update first — only touches picks_count, never overwrites points
+      const { error: upErr } = await supabase
+        .from('scores')
+        .update({ picks_count: totalPicks, updated_at: new Date().toISOString() })
+        .eq('player_id', player.id)
+      // If row doesn't exist yet, insert with zeros (first time saving picks)
+      if (upErr) {
+        await supabase.from('scores').insert({
+          player_id: player.id, picks_count: totalPicks,
+          total_pts: 0, f10_count: 0, f7_count: 0, f5_count: 0, f2_count: 0, f0_count: 0,
+          champion_pts: 0, updated_at: new Date().toISOString(),
+        })
+      }
     }
 
     setSaving(false); setBatchSaved(true)

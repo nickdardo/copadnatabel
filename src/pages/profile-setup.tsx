@@ -97,7 +97,9 @@ export default function ProfileSetupPage() {
     await refreshPlayer()
     setSaving(false)
     setSaved(true)
-    setTimeout(() => router.push('/onboarding'), 800)
+    // Paid users already in the app go back — new users go through onboarding
+    const dest = player.payment_ok ? '/ranking' : '/onboarding'
+    setTimeout(() => router.push(dest), 800)
   }
 
   if (loading) return (
