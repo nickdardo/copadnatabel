@@ -7,7 +7,7 @@ import { generatePixPayload, formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } 
 
 type PixConfig = {
   cpf: string; key_type: PixKeyType; nome: string
-  valor: number; descricao: string; whatsapp?: string; group_link?: string
+  valor: number; descrição: string; whatsapp?: string; group_link?: string
 }
 type Step = 'rules' | 'payment' | 'waiting'
 
@@ -39,7 +39,7 @@ export default function OnboardingPage() {
         const p = generatePixPayload({
           key: cfg.cpf, keyType: cfg.key_type || 'cpf',
           nome: cfg.nome, valor: cfg.valor,
-          cidade: 'Belem', descricao: cfg.descricao || 'Bolao Copa 2026 BEL',
+          cidade: 'Belem', descrição: cfg.descrição || 'Bolão Copa 2026 BEL',
           txid: `BEL${player.id.slice(0, 8).replace(/-/g, '')}`,
         })
         setPayload(p)
