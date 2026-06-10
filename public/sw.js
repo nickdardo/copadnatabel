@@ -1,20 +1,8 @@
-// Service Worker — Bolão Copa 2026 BEL
-// Handles: Push Notifications + Offline Cache
-
 const CACHE_NAME = 'bolao-v1'
-const STATIC_ASSETS = [
-  '/',
-  '/champion',
-  '/picks',
-  '/ranking',
-  '/copa2026-logo.jpg',
-  '/manifest.json',
-]
+const STATIC_ASSETS = ['/', '/champion', '/picks', '/ranking', '/copa2026-logo.jpg', '/manifest.json']
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
-  )
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)))
   self.skipWaiting()
 })
 
@@ -31,7 +19,6 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return
   if (e.request.url.includes('/api/')) return
   if (e.request.url.includes('supabase')) return
-
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -50,14 +37,25 @@ self.addEventListener('push', e => {
   let data = {}
   try { data = e.data.json() } catch { data = { title: 'Bolão Copa 2026', body: e.data.text() } }
 
+  const title = data.title || 'Bolão Copa 2026 BEL'
+  const body  = data.body  || ''
+
+  // Notify all open tabs so they can save to notification log
   e.waitUntil(
-    self.registration.showNotification(data.title || 'Bolão Copa 2026 BEL', {
-      body:    data.body || '',
-      icon:    data.icon  || '/icon-192.png',
-      badge:   data.badge || '/icon-192.png',
-      vibrate: [200, 100, 200],
-      data:    { url: data.url || '/' },
-    })
+    Promise.all([
+      self.registration.showNotification(title, {
+        body,
+        icon:    data.icon  || '/icon-192.png',
+        badge:   data.badge || '/icon-192.png',
+        vibrate: [200, 100, 200],
+        data:    { url: data.url || '/' },
+      }),
+      self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'PUSH_RECEIVED', title, body })
+        })
+      }),
+    ])
   )
 })
 

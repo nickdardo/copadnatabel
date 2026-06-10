@@ -165,16 +165,25 @@ export default function Layout({ children, title }: Props) {
   const [showTutorial, setShowTutorial] = useState(false)
   const [notifyEnabled, setNotifyEnabled] = useState(false)
   const [showNotifyModal, setShowNotifyModal] = useState(false)
+  const [showNotifyLog, setShowNotifyLog] = useState(false)
+  const [notifyLog, setNotifyLog] = useState<{title:string;body:string;time:number}[]>([])
+  const bellRef = useRef<HTMLButtonElement>(null)
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
 
-  // Check current notification permission state
+  // Check current notification permission state + load log
   useEffect(() => {
     if (!player || !('Notification' in window)) return
 
     const enabled = Notification.permission === 'granted'
     setNotifyEnabled(enabled)
 
-    // Already granted or permanently denied — nothing to do
+    // Load notification history from localStorage
+    try {
+      const saved = localStorage.getItem('notify_log')
+      if (saved) setNotifyLog(JSON.parse(saved))
+    } catch {}
+
+    // Already granted or permanently denied — nothing to do for prompt
     if (Notification.permission !== 'default') return
 
     // Check dismissal history
@@ -182,17 +191,29 @@ export default function Layout({ children, title }: Props) {
     const lastDismiss = parseInt(localStorage.getItem('notify_dismissed_at')    || '0')
     const hoursSince  = (Date.now() - lastDismiss) / 3_600_000
 
-    // Stop showing after 3 dismissals
     if (dismissed >= 3) return
-
-    // First visit: show after 2.5s
-    // Subsequent visits: wait 24h between prompts
     const delay = dismissed === 0 ? 2500 : hoursSince >= 24 ? 2500 : null
     if (delay === null) return
 
     const t = setTimeout(() => setShowNotifyModal(true), delay)
     return () => clearTimeout(t)
   }, [player?.id])
+
+  // Save new notification to log (called from service worker message)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    function onMessage(e: MessageEvent) {
+      if (e.data?.type !== 'PUSH_RECEIVED') return
+      const { title, body } = e.data
+      setNotifyLog(prev => {
+        const updated = [{ title, body, time: Date.now() }, ...prev].slice(0, 5)
+        localStorage.setItem('notify_log', JSON.stringify(updated))
+        return updated
+      })
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [])
 
   // Refresh player on route change
   useEffect(() => { refreshPlayer() }, [router.pathname])
@@ -390,32 +411,95 @@ export default function Layout({ children, title }: Props) {
 
             {/* Right side */}
             <div className="flex items-center gap-1.5">
-              {/* Push notification bell */}
+              {/* Push notification bell + history dropdown */}
               {player && (
-                <button
-                  title={notifyEnabled ? 'Notificações ativadas' : 'Ativar notificações'}
-                  onClick={async () => {
-                    if (notifyEnabled) return // already active, nothing to do
-                    setShowNotifyModal(true)
-                  }}
-                  className={`relative p-1.5 rounded-lg transition-colors ${
-                    notifyEnabled
-                      ? 'text-green-500 bg-green-50 hover:bg-green-100'
-                      : 'text-gray-400 hover:text-[#0099CC] hover:bg-gray-100'
-                  }`}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                  </svg>
-                  {/* Green dot when active */}
-                  {notifyEnabled && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-500 border border-white"/>
+                <div className="relative">
+                  <button
+                    ref={bellRef}
+                    title={notifyEnabled ? 'Notificações' : 'Ativar notificações'}
+                    onClick={() => {
+                      if (!notifyEnabled) { setShowNotifyModal(true); return }
+                      setShowNotifyLog(v => !v)
+                    }}
+                    className={`relative p-1.5 rounded-lg transition-colors ${
+                      notifyEnabled
+                        ? 'text-green-500 bg-green-50 hover:bg-green-100'
+                        : 'text-gray-400 hover:text-[#0099CC] hover:bg-gray-100'
+                    }`}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    {notifyEnabled && (
+                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-500 border border-white"/>
+                    )}
+                    {!notifyEnabled && (
+                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-400 border border-white animate-pulse"/>
+                    )}
+                    {/* Unread badge */}
+                    {notifyEnabled && notifyLog.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#0099CC] text-white text-[8px] font-bold flex items-center justify-center border border-white">
+                        {notifyLog.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown */}
+                  {showNotifyLog && notifyEnabled && (
+                    <>
+                      {/* Backdrop */}
+                      <div className="fixed inset-0 z-40" onClick={() => setShowNotifyLog(false)}/>
+                      {/* Card */}
+                      <div className="absolute right-0 top-10 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                          <p className="text-[13px] font-semibold text-gray-800">Notificações</p>
+                          {notifyLog.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setNotifyLog([])
+                                localStorage.removeItem('notify_log')
+                              }}
+                              className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">
+                              Limpar
+                            </button>
+                          )}
+                        </div>
+                        {/* List */}
+                        {notifyLog.length === 0 ? (
+                          <div className="px-4 py-8 text-center">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-2">
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                            </svg>
+                            <p className="text-[12px] text-gray-400">Nenhum aviso recebido ainda</p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-50">
+                            {notifyLog.map((n, i) => (
+                              <div key={i} className="px-4 py-3">
+                                <p className="text-[12px] font-semibold text-gray-800 leading-tight">{n.title}</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{n.body}</p>
+                                <p className="text-[10px] text-gray-300 mt-1">
+                                  {new Date(n.time).toLocaleString('pt-BR', {
+                                    timeZone: 'America/Sao_Paulo',
+                                    day: '2-digit', month: '2-digit',
+                                    hour: '2-digit', minute: '2-digit',
+                                  })}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Footer */}
+                        <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100">
+                          <p className="text-[10px] text-gray-400 text-center">
+                            Últimos {notifyLog.length > 0 ? notifyLog.length : 0} de 5 avisos
+                          </p>
+                        </div>
+                      </div>
+                    </>
                   )}
-                  {/* Red dot when not active (nudge) */}
-                  {!notifyEnabled && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-400 border border-white animate-pulse"/>
-                  )}
-                </button>
+                </div>
               )}
 
               {/* Admin badge */}
