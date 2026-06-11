@@ -105,8 +105,9 @@ export default function AdminPage() {
   const [liveLastTick,  setLiveLastTick]  = useState<string>('')
   const [upcomingAlerts,setUpcomingAlerts]= useState<{match:Match;unpicked:number}[]>([])
   const [rankingTop5,   setRankingTop5]   = useState<{player_id:string;name:string;pts:number;avatar?:string;prev_pos?:number}[]>([])
-  const [copaBloqueada, setCopaBloqueada] = useState(false)
-  const [savingLock,    setSavingLock]    = useState(false)
+  const [copaBloqueada,  setCopaBloqueada]  = useState(false)
+  const [champBloqueado, setChampBloqueado] = useState(false)
+  const [savingLock,     setSavingLock]     = useState(false)
 
   useEffect(() => {
     if (!loading) {
@@ -251,8 +252,11 @@ export default function AdminPage() {
 
   // Load copa lock state
   useEffect(() => {
-    supabase.from('pix_config').select('copa_bloqueada').limit(1).then(({ data }) => {
-      if (data?.[0]) setCopaBloqueada(data[0].copa_bloqueada || false)
+    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado').limit(1).then(({ data }) => {
+      if (data?.[0]) {
+        setCopaBloqueada(data[0].copa_bloqueada || false)
+        setChampBloqueado(data[0].champ_bloqueado || false)
+      }
     })
   }, [])
 
@@ -260,10 +264,17 @@ export default function AdminPage() {
     setSavingLock(true)
     const newVal = !copaBloqueada
     const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
-    if (rows?.[0]) {
-      await supabase.from('pix_config').update({ copa_bloqueada: newVal }).eq('id', rows[0].id)
-    }
+    if (rows?.[0]) await supabase.from('pix_config').update({ copa_bloqueada: newVal }).eq('id', rows[0].id)
     setCopaBloqueada(newVal)
+    setSavingLock(false)
+  }
+
+  async function toggleChampLock() {
+    setSavingLock(true)
+    const newVal = !champBloqueado
+    const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
+    if (rows?.[0]) await supabase.from('pix_config').update({ champ_bloqueado: newVal }).eq('id', rows[0].id)
+    setChampBloqueado(newVal)
     setSavingLock(false)
   }
   // No auto-sync — manual only to preserve API quota
@@ -864,6 +875,30 @@ export default function AdminPage() {
                         <div className="mt-3 flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                           <span className="text-[11px] text-red-600 font-medium">Cadastros bloqueados</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Champion lock toggle */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h2 className="text-[13px] font-semibold text-gray-800 mb-0.5">Prazo do palpite de campeão</h2>
+                          <p className="text-[11px] text-gray-400 leading-relaxed">
+                            {champBloqueado
+                              ? 'Palpite de campeão está bloqueado. Ninguém pode escolher ou alterar.'
+                              : 'Ative para bloquear os palpites de campeão, vice e 3º lugar.'}
+                          </p>
+                        </div>
+                        <button onClick={toggleChampLock} disabled={savingLock}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5 disabled:opacity-50 ${champBloqueado ? 'bg-red-500' : 'bg-gray-200'}`}>
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${champBloqueado ? 'translate-x-5' : 'translate-x-0.5'}`}/>
+                        </button>
+                      </div>
+                      {champBloqueado && (
+                        <div className="mt-3 flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          <span className="text-[11px] text-red-600 font-medium">Palpite de campeão bloqueado</span>
                         </div>
                       )}
                     </div>

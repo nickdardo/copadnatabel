@@ -59,6 +59,14 @@ export default function ChampionPage() {
   const [saved,    setSaved]    = useState(false)
   const [deadlinePassed, setDeadlinePassed] = useState(isDeadlinePassed())
   const [countdown, setCountdown] = useState(getCountdown())
+  const [adminLocked, setAdminLocked] = useState(false)
+
+  // Load admin lock state from pix_config
+  useEffect(() => {
+    supabase.from('pix_config').select('champ_bloqueado').limit(1).then(({ data }) => {
+      if (data?.[0]) setAdminLocked(data[0].champ_bloqueado || false)
+    })
+  }, [])
 
   // Update countdown every minute
   useEffect(() => {
@@ -108,7 +116,7 @@ export default function ChampionPage() {
   async function handleSave() {
     if (!player || !champion || !runner || !third) return
     if (champion === runner || champion === third || runner === third) return
-    if (locked || deadlinePassed) return
+    if (locked || deadlinePassed || adminLocked) return
     // Block saving for unpaid users
     if (!player.payment_ok) { router.push('/onboarding'); return }
     setSaving(true)
@@ -246,7 +254,15 @@ export default function ChampionPage() {
 
         {/* Edit limit indicator */}
         {/* Deadline banner */}
-        {!deadlinePassed ? (
+        {adminLocked ? (
+          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
+            <IcoLock/>
+            <div className="flex-1">
+              <p className="text-[12px] font-semibold text-red-700">Palpite bloqueado pelo administrador</p>
+              <p className="text-[11px] text-red-500 mt-0.5">O admin desativou temporariamente os palpites de campeão. Aguarde a liberação.</p>
+            </div>
+          </div>
+        ) : !deadlinePassed ? (
           <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-amber-50 border-amber-200">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -273,7 +289,7 @@ export default function ChampionPage() {
               <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou às 14h de hoje.</p>
             </div>
           </div>
-        )}
+        )}}
 
         {/* ── Selects ──────────────────────────────────────── */}
         <div className="space-y-3">
@@ -298,7 +314,7 @@ export default function ChampionPage() {
                     <p className="text-[14px] font-bold text-gray-900">{state}</p>
                     <p className="text-[11px] text-gray-400">Selecionado</p>
                   </div>
-                  {!locked && !deadlinePassed && (
+                  {!locked && !deadlinePassed && !adminLocked && (
                     <button onClick={()=>set('')} className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Trocar</button>
                   )}
                 </div>
@@ -309,7 +325,7 @@ export default function ChampionPage() {
               <div className="px-4 pb-3.5">
                 <select
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
-                  value={state} onChange={e=>set(e.target.value)} disabled={locked || deadlinePassed || !player?.payment_ok}>
+                  value={state} onChange={e=>set(e.target.value)} disabled={locked || deadlinePassed || adminLocked || !player?.payment_ok}>
                   <option value="">Selecione a seleção...</option>
                   {exclude(ex1,ex2).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
@@ -320,7 +336,7 @@ export default function ChampionPage() {
 
 
 
-        {!locked && !deadlinePassed && (
+        {!locked && !deadlinePassed && !adminLocked && (
           <button onClick={handleSave} disabled={!canSave||saving||saved}
             className="w-full py-4 rounded-xl font-bold text-[15px] text-white flex items-center justify-center gap-2 transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed bg-[#0099CC] hover:bg-[#007aa8] shadow-sm">
             {saved?<><IcoCheck/> Salvo! Abrindo palpites...</>
