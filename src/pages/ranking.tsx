@@ -349,7 +349,7 @@ export default function RankingPage() {
 
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="text-right">
-                      <p className={`font-bold text-[17px] leading-none ${i===0?'text-[#0099CC]':'text-gray-800'}`}>{entry.total_pts}</p>
+                      <p className="font-bold text-[17px] leading-none text-gray-900">{entry.total_pts}</p>
                       <p className="text-[10px] text-gray-400">pts</p>
                     </div>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2.5" strokeLinecap="round"
