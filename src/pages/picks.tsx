@@ -477,7 +477,7 @@ export default function PicksPage() {
                           f2:  { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Empate certo',    pts:'+2 pts'  },
                           f0:  { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Não pontuou',     pts:'0 pts'   },
                         }
-                        const c = f ? colors[f] : colors.f0
+                        const c = f ? colors[f as keyof typeof colors] : colors.f0
                         const iconChar = f === 'f10' || f === 'f7' ? '✓' : f === 'f5' ? '↗' : f === 'f2' ? '=' : '✕'
                         return (
                           <div className="mt-2 space-y-2">
