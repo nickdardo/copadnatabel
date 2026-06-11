@@ -116,7 +116,7 @@ export default function ChampionPage() {
   async function handleSave() {
     if (!player || !champion || !runner || !third) return
     if (champion === runner || champion === third || runner === third) return
-    if (locked || deadlinePassed || adminLocked) return
+    if (locked || adminLocked) return
     // Block saving for unpaid users
     if (!player.payment_ok) { router.push('/onboarding'); return }
     setSaving(true)
@@ -253,7 +253,7 @@ export default function ChampionPage() {
         )}
 
         {/* Edit limit indicator */}
-        {/* Deadline banner */}
+        {/* Status banner — admin lock takes priority over deadline */}
         {adminLocked ? (
           <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
             <IcoLock/>
@@ -262,32 +262,24 @@ export default function ChampionPage() {
               <p className="text-[11px] text-red-500 mt-0.5">O admin desativou temporariamente os palpites de campeão. Aguarde a liberação.</p>
             </div>
           </div>
-        ) : !deadlinePassed ? (
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-amber-50 border-amber-200">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        ) : (
+          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-green-50 border-green-200">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12"/>
             </svg>
             <div className="flex-1">
-              <p className="text-[12px] font-semibold text-amber-800">Prazo: hoje às 14h (horário de Brasília)</p>
-              <p className="text-[11px] text-amber-600 mt-0.5">
-                {countdown ? `Fecha em ${countdown} — ` : ''}Após isso, os palpites de campeão ficam travados!
+              <p className="text-[12px] font-semibold text-green-800">Palpite de campeão aberto</p>
+              <p className="text-[11px] text-green-600 mt-0.5">
+                {editCount > 0 ? `${editsLeft} alteração${editsLeft !== 1 ? 'ões' : ''} restante${editsLeft !== 1 ? 's' : ''}` : 'Escolha seu campeão, vice e 3º lugar.'}
               </p>
             </div>
             {editCount > 0 && (
               <div className="flex gap-1 flex-shrink-0">
                 {Array.from({length:MAX_CHAMP_EDITS}).map((_,i)=>(
-                  <div key={i} className={`w-2 h-2 rounded-full ${i<editCount?'bg-amber-400':'bg-gray-200'}`}/>
+                  <div key={i} className={`w-2 h-2 rounded-full ${i<editCount?'bg-green-400':'bg-gray-200'}`}/>
                 ))}
               </div>
             )}
-          </div>
-        ) : (
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
-            <IcoLock/>
-            <div className="flex-1">
-              <p className="text-[12px] font-semibold text-red-700">Prazo encerrado — palpite bloqueado</p>
-              <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou às 14h de hoje.</p>
-            </div>
           </div>
         )}
 
@@ -314,7 +306,7 @@ export default function ChampionPage() {
                     <p className="text-[14px] font-bold text-gray-900">{state}</p>
                     <p className="text-[11px] text-gray-400">Selecionado</p>
                   </div>
-                  {!locked && !deadlinePassed && !adminLocked && (
+                  {!locked && !adminLocked && (
                     <button onClick={()=>set('')} className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Trocar</button>
                   )}
                 </div>
@@ -325,7 +317,7 @@ export default function ChampionPage() {
               <div className="px-4 pb-3.5">
                 <select
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
-                  value={state} onChange={e=>set(e.target.value)} disabled={locked || deadlinePassed || adminLocked || !player?.payment_ok}>
+                  value={state} onChange={e=>set(e.target.value)} disabled={locked || adminLocked || !player?.payment_ok}>
                   <option value="">Selecione a seleção...</option>
                   {exclude(ex1,ex2).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
@@ -336,7 +328,7 @@ export default function ChampionPage() {
 
 
 
-        {!locked && !deadlinePassed && !adminLocked && (
+        {!locked && !adminLocked && (
           <button onClick={handleSave} disabled={!canSave||saving||saved}
             className="w-full py-4 rounded-xl font-bold text-[15px] text-white flex items-center justify-center gap-2 transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed bg-[#0099CC] hover:bg-[#007aa8] shadow-sm">
             {saved?<><IcoCheck/> Salvo! Abrindo palpites...</>

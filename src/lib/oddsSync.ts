@@ -79,7 +79,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
     const events: OddsEvent[] = await eventsRes.json()
 
     const scoresRes = await fetch(
-      `${ODDS_BASE}/sports/${SPORT_KEY}/scores?apiKey=${apiKey}&daysFrom=5&dateFormat=iso`,
+      `${ODDS_BASE}/sports/${SPORT_KEY}/scores?apiKey=${apiKey}&daysFrom=3&dateFormat=iso`,
       { cache: 'no-store' }
     )
     quotaRemaining = Number(scoresRes.headers.get('x-requests-remaining') ?? quotaRemaining)
@@ -119,10 +119,11 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       const commenceMs = new Date(ev.commence_time).getTime()
       const minsSince  = (now - commenceMs) / 60000
       let status: 'upcoming'|'live'|'done'
-      if (score?.completed)             status = 'done'
-      else if (minsSince>=0 && minsSince<130) status = 'live'
-      else if (commenceMs > now)        status = 'upcoming'
-      else                              status = 'live'
+      if (score?.completed)                       status = 'done'
+      else if (existing?.status === 'done')       status = 'done'  // keep manual done
+      else if (minsSince>=0 && minsSince<130)     status = 'live'
+      else if (commenceMs > now)                  status = 'upcoming'
+      else                                        status = 'live'
 
       const matchData = {
         odds_event_id: ev.id,
@@ -140,7 +141,11 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
         const { error } = await supabaseAdmin.from('matches').insert(matchData)
         if (!error) synced++
       } else {
-        const changed = existing.status !== status || existing.score_home !== scoreHome || existing.score_away !== scoreAway
+        const changed = existing.status !== status
+          || existing.score_home !== scoreHome
+          || existing.score_away !== scoreAway
+          || (scoreHome !== null && existing.score_home === null)
+          || (scoreAway !== null && existing.score_away === null)
         if (changed) {
           const { error } = await supabaseAdmin.from('matches').update(matchData).eq('odds_event_id', ev.id)
           if (!error) {
