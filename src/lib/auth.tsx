@@ -73,7 +73,7 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
         const savedPass = typeof localStorage !== 'undefined' && localStorage.getItem('bolao_saved_pass')
         if (remember && savedUser && savedPass) {
           const { data: ok } = await import('@/lib/supabase').then(m =>
-            m.supabase.rpc('check_password', { p_username: savedUser, p_password: atob(savedPass) })
+            m.supabase.rpc('check_password', { p_username: savedUser, p_password: (() => { try { return atob(savedPass) } catch { return '' } })() })
           )
           if (ok) {
             const { supabase } = await import('@/lib/supabase')

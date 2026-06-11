@@ -190,7 +190,8 @@ export default function Layout({ children, title }: Props) {
   useEffect(() => {
     if (!player || !('Notification' in window)) return
 
-    const enabled = Notification.permission === 'granted'
+    const hasNotifAPI = typeof Notification !== 'undefined'
+    const enabled = hasNotifAPI && Notification.permission === 'granted'
     setNotifyEnabled(enabled)
 
     // Check if banner was dismissed this session
@@ -203,7 +204,7 @@ export default function Layout({ children, title }: Props) {
     window.addEventListener('notify_banner_hide', onHide)
 
     // Already granted or permanently denied — nothing to do for prompt
-    if (Notification.permission !== 'default') {
+    if (!hasNotifAPI || Notification.permission !== 'default') {
       return () => window.removeEventListener('notify_banner_hide', onHide)
     }
 
@@ -212,7 +213,7 @@ export default function Layout({ children, title }: Props) {
     const lastDismiss = parseInt(localStorage.getItem('notify_dismissed_at')    || '0')
     const hoursSince  = (Date.now() - lastDismiss) / 3_600_000
 
-    if (dismissed >= 3) return () => window.removeEventListener('notify_banner_hide', onHide)
+    if (!hasNotifAPI || dismissed >= 3) return () => window.removeEventListener('notify_banner_hide', onHide)
     const delay = dismissed === 0 ? 2500 : hoursSince >= 24 ? 2500 : null
     if (delay === null) return () => window.removeEventListener('notify_banner_hide', onHide)
 
@@ -321,6 +322,7 @@ export default function Layout({ children, title }: Props) {
 
   async function subscribeToPush(): Promise<boolean> {
     if (!player || !('Notification' in window) || !('serviceWorker' in navigator)) return false
+    if (typeof Notification === 'undefined') return false
     const perm = await Notification.requestPermission()
     if (perm !== 'granted') return false
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -414,7 +416,7 @@ export default function Layout({ children, title }: Props) {
         )}
 
         {/* ── Notification activation banner ──────────────── */}
-        {player && !notifyEnabled && !notifyBannerHidden && Notification.permission !== 'denied' && (
+        {player && !notifyEnabled && !notifyBannerHidden && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
           <div className="bg-[#003a6e] text-white px-4 py-3 flex items-center gap-3">
             {/* Icon */}
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">

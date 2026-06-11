@@ -100,7 +100,7 @@ export default function LoginPage() {
     if (remember && savedUser) {
       setUsername(savedUser)
       setRememberMe(true)
-      if (savedPass) setPassword(atob(savedPass))
+      try { if (savedPass) setPassword(atob(savedPass)) } catch {}
     } else {
       setRememberMe(false)
     }
@@ -126,7 +126,7 @@ export default function LoginPage() {
     if (rememberMe && mode === 'login') {
       localStorage.setItem('bolao_remember',  '1')
       localStorage.setItem('bolao_saved_user', username.trim().toLowerCase())
-      localStorage.setItem('bolao_saved_pass', btoa(password))
+      try { localStorage.setItem('bolao_saved_pass', btoa(password)) } catch {}
     } else if (!rememberMe) {
       localStorage.removeItem('bolao_remember')
       localStorage.removeItem('bolao_saved_user')
