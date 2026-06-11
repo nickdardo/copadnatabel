@@ -83,9 +83,8 @@ export default function OnboardingPage() {
     if (whatsapp) {
       const name = player?.nickname || player?.username || 'Participante'
       const msg = encodeURIComponent(
-        `💰 *Bolão Copa 2026 BEL*\n\n` +
-        `*${name}* (@${player?.username}) acabou de realizar o pagamento da inscrição e está aguardando confirmação.\n\n` +
-        `Acesse o painel admin para confirmar. ✅`
+        `-Bolão dnata COPA 2026 BEL-\n\n` +
+        `Olá, sou *${name}*, acabei de realizar o pagamento para a inscrição. Aguardando a liberação para o acesso!`
       )
       window.open(`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${msg}`, '_blank')
     }
