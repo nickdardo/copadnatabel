@@ -385,7 +385,7 @@ export default function PicksPage() {
                     {/* Card header */}
                     <div className={`px-3 py-1.5 flex items-center justify-between border-b ${m.status==='live'?'bg-red-50 border-red-100':m.status==='done'?'bg-gray-50 border-gray-100':'bg-blue-50/40 border-blue-100/40'}`}>
                       <div className="flex items-center gap-1.5 min-w-0">
-                        {m.status==='live' && <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0"/>AO VIVO</span>}
+                        {m.status==='live' && <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full whitespace-nowrap"><span className="relative flex h-2 w-2 flex-shrink-0"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"/></span>AO VIVO</span>}
                         {m.status==='done' && <span className="text-[10px] font-medium text-gray-500">Encerrado</span>}
                         {m.status==='upcoming' && <span className="text-[10px] font-bold text-[#0099CC] whitespace-nowrap">{timeBRT}</span>}
                         {m.group_name && <span className="text-[10px] text-gray-400 truncate">· {m.group_name}</span>}

@@ -382,7 +382,7 @@ export default function Layout({ children, title }: Props) {
         />
       )}
 
-      <div className="min-h-screen bg-gray-50 pb-[68px]">
+      <div className="min-h-screen bg-gray-50 pb-[80px]">
 
         {/* ── Update banner ──────────────────────────────── */}
         {hasUpdate && (
@@ -696,19 +696,19 @@ export default function Layout({ children, title }: Props) {
         <main>{children}</main>
 
         {/* ── Bottom nav ──────────────────────────────────── */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20 safe-area-bottom">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
           <div className="max-w-lg mx-auto flex">
             {NAV.map(({ href, Icon, label }) => {
               const isActive = router.pathname === href
               return (
                 <button key={href} onClick={() => router.push(href)}
-                  className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors relative
+                  className={`flex-1 flex flex-col items-center justify-center py-4 gap-1 transition-colors relative
                     ${isActive ? 'text-[#0099CC]' : 'text-gray-400 hover:text-gray-500'}`}>
                   {isActive && (
                     <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full"/>
                   )}
-                  <Icon size={20}/>
-                  <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+                  <Icon size={22}/>
+                  <span className="text-[11px] font-semibold tracking-wide">{label}</span>
                 </button>
               )
             })}
