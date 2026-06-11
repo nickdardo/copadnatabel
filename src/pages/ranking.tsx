@@ -129,7 +129,7 @@ export default function RankingPage() {
         player: playerMap[s.player_id],
         champ: champMap[s.player_id],
       }))
-      .filter((e:any) => e.player && !e.player.is_admin)
+      .filter((e:any) => e.player && !e.player.is_admin && e.player.payment_ok)
       .sort((a:any, b:any) => {
         if (b.total_pts !== a.total_pts) return b.total_pts - a.total_pts
         if (b.f10_count !== a.f10_count) return b.f10_count - a.f10_count
