@@ -398,9 +398,26 @@ export default function Layout({ children, title }: Props) {
               <p className="text-[10px] text-white/70 leading-tight">Atualize para continuar usando o bolão corretamente.</p>
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 sessionStorage.removeItem('app_version')
-                window.location.reload()
+                setHasUpdate(false)
+                try {
+                  // 1. Unregister all service workers
+                  if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations()
+                    await Promise.all(regs.map(r => r.unregister()))
+                  }
+                  // 2. Clear all caches
+                  if ('caches' in window) {
+                    const keys = await caches.keys()
+                    await Promise.all(keys.map(k => caches.delete(k)))
+                  }
+                  // 3. Small delay to let SW finish unregistering
+                  await new Promise(r => setTimeout(r, 300))
+                } catch {}
+                // 4. Hard navigation with cache-bust — avoids PWA stuck loading
+                const url = window.location.origin + window.location.pathname + '?v=' + Date.now()
+                window.location.replace(url)
               }}
               className="flex-shrink-0 bg-white text-[#0099CC] text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors hover:bg-white/90 whitespace-nowrap">
               Atualizar agora

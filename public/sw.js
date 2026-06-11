@@ -17,8 +17,15 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return
+  // Never cache these — always fresh
   if (e.request.url.includes('/api/')) return
+  if (e.request.url.includes('/api/version')) return
   if (e.request.url.includes('supabase')) return
+  if (e.request.url.includes('_next/webpack-hmr')) return
+  // Don't cache JS/CSS chunks — let browser handle normally
+  if (e.request.url.includes('_next/static/chunks')) return
+  if (e.request.url.includes('_next/static/css')) return
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -35,12 +42,11 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   if (!e.data) return
   let data = {}
-  try { data = e.data.json() } catch { data = { title: 'Bolão Copa 2026', body: e.data.text() } }
+  try { data = e.data.json() } catch { data = { title: 'Bolão Copa 2026 BEL', body: e.data.text() } }
 
   const title = data.title || 'Bolão Copa 2026 BEL'
   const body  = data.body  || ''
 
-  // Notify all open tabs so they can save to notification log
   e.waitUntil(
     Promise.all([
       self.registration.showNotification(title, {
@@ -51,9 +57,7 @@ self.addEventListener('push', e => {
         data:    { url: data.url || '/' },
       }),
       self.clients.matchAll({ type: 'window' }).then(clients => {
-        clients.forEach(client => {
-          client.postMessage({ type: 'PUSH_RECEIVED', title, body })
-        })
+        clients.forEach(client => client.postMessage({ type: 'PUSH_RECEIVED', title, body }))
       }),
     ])
   )
@@ -69,4 +73,9 @@ self.addEventListener('notificationclick', e => {
       return clients.openWindow(url)
     })
   )
+})
+
+// Listen for skip-waiting message from update flow
+self.addEventListener('message', e => {
+  if (e.data === 'skipWaiting') self.skipWaiting()
 })
