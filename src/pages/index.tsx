@@ -90,7 +90,26 @@ export default function LoginPage() {
   const [loading,    setLoading]    = useState(false)
   const [showRules,  setShowRules]  = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showIosInstall, setShowIosInstall] = useState(false)
+  const [canInstall, setCanInstall] = useState(false)
+  const [isIosDevice, setIsIosDevice] = useState(false)
+  const deferredInstall = useRef<BeforeInstallPromptEvent | null>(null)
   const tutorialDelay = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Detect install availability
+  useEffect(() => {
+    const ios = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase())
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+    setIsIosDevice(ios)
+    if (ios && !standalone) { setCanInstall(true); return }
+    function handler(e: Event) {
+      e.preventDefault()
+      deferredInstall.current = e as BeforeInstallPromptEvent
+      if (!standalone) setCanInstall(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler as EventListener)
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener)
+  }, [])
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -243,9 +262,57 @@ export default function LoginPage() {
               <button onClick={() => setShowTutorial(true)}
                 className="flex-1 py-2.5 rounded-xl border border-[#0099CC]/20 bg-[#E6F4FA] text-[13px] font-semibold text-[#0099CC] hover:bg-[#d0ebf7] transition-all flex items-center justify-center gap-2">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Ver tutorial
+                Tutorial
               </button>
             </div>
+            {/* Install button */}
+            {canInstall && (
+              <button
+                onClick={async () => {
+                  if (isIosDevice) { setShowIosInstall(true); return }
+                  if (deferredInstall.current) {
+                    deferredInstall.current.prompt()
+                    const { outcome } = await deferredInstall.current.userChoice
+                    if (outcome === 'accepted') { setCanInstall(false); deferredInstall.current = null }
+                  }
+                }}
+                className="mt-2 w-full py-2.5 rounded-xl bg-[#003a6e] text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-[#002a52] transition-all">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 2v13M8 11l4 4 4-4"/><path d="M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/>
+                </svg>
+                Instalar app na tela inicial
+              </button>
+            )}
+
+            {/* iOS install modal */}
+            {showIosInstall && (
+              <div className="fixed inset-0 z-50 flex items-end justify-center p-4" style={{background:'rgba(0,0,0,0.6)'}} onClick={() => setShowIosInstall(false)}>
+                <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4"/>
+                  <h3 className="text-[16px] font-bold text-gray-900 text-center mb-1">Instalar no iPhone</h3>
+                  <p className="text-[12px] text-gray-500 text-center mb-4">Siga os passos abaixo para instalar o app na tela inicial</p>
+                  <div className="space-y-3">
+                    {[
+                      { n:1, text:'Toque no botão de compartilhar', sub:'Ícone de quadrado com seta para cima na barra inferior do Safari' },
+                      { n:2, text:'Role para baixo e toque em "Adicionar à Tela de Início"', sub:'Procure o ícone de quadrado com um +' },
+                      { n:3, text:'Toque em "Adicionar" no canto superior direito', sub:'O app vai aparecer na sua tela inicial' },
+                    ].map(s => (
+                      <div key={s.n} className="flex gap-3">
+                        <div className="w-6 h-6 rounded-full bg-[#0099CC] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{s.n}</div>
+                        <div>
+                          <p className="text-[13px] font-semibold text-gray-800">{s.text}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{s.sub}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setShowIosInstall(false)}
+                    className="mt-5 w-full py-3 rounded-xl bg-[#0099CC] text-white font-bold text-[14px]">
+                    Entendi
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="absolute bottom-0 left-0 right-0 h-1" style={{background:'linear-gradient(90deg,#0099CC 65%,#8DC63F 100%)'}} />
           </div>
         </div>
