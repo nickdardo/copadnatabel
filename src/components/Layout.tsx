@@ -168,6 +168,7 @@ export default function Layout({ children, title }: Props) {
   const [showNotifyLog, setShowNotifyLog] = useState(false)
   const [notifyLog, setNotifyLog] = useState<{title:string;body:string;time:number}[]>([])
   const [loadingLog, setLoadingLog] = useState(false)
+  const [notifyBannerHidden, setNotifyBannerHidden] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
   const [hasUpdate, setHasUpdate] = useState(false)
 
@@ -192,20 +193,34 @@ export default function Layout({ children, title }: Props) {
     const enabled = Notification.permission === 'granted'
     setNotifyEnabled(enabled)
 
+    // Check if banner was dismissed this session
+    if (sessionStorage.getItem('notify_banner_hidden') === '1') {
+      setNotifyBannerHidden(true)
+    }
+
+    // Listen for banner hide event from dismiss button
+    function onHide() { setNotifyBannerHidden(true) }
+    window.addEventListener('notify_banner_hide', onHide)
+
     // Already granted or permanently denied — nothing to do for prompt
-    if (Notification.permission !== 'default') return
+    if (Notification.permission !== 'default') {
+      return () => window.removeEventListener('notify_banner_hide', onHide)
+    }
 
     // Check dismissal history
     const dismissed   = parseInt(localStorage.getItem('notify_dismissed_count') || '0')
     const lastDismiss = parseInt(localStorage.getItem('notify_dismissed_at')    || '0')
     const hoursSince  = (Date.now() - lastDismiss) / 3_600_000
 
-    if (dismissed >= 3) return
+    if (dismissed >= 3) return () => window.removeEventListener('notify_banner_hide', onHide)
     const delay = dismissed === 0 ? 2500 : hoursSince >= 24 ? 2500 : null
-    if (delay === null) return
+    if (delay === null) return () => window.removeEventListener('notify_banner_hide', onHide)
 
     const t = setTimeout(() => setShowNotifyModal(true), delay)
-    return () => clearTimeout(t)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('notify_banner_hide', onHide)
+    }
   }, [player?.id])
 
 
@@ -395,6 +410,68 @@ export default function Layout({ children, title }: Props) {
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
+          </div>
+        )}
+
+        {/* ── Notification activation banner ──────────────── */}
+        {player && !notifyEnabled && !notifyBannerHidden && Notification.permission !== 'denied' && (
+          <div className="bg-[#003a6e] text-white px-4 py-3 flex items-center gap-3">
+            {/* Icon */}
+            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold leading-tight text-white">Não perca nenhum jogo!</p>
+              <p className="text-[10px] text-white/65 leading-snug mt-0.5">
+                Ative as notificações e receba avisos dos jogos e seus palpites na hora certa.
+              </p>
+            </div>
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {/* Install button — show if not installed yet */}
+              {showInstallBanner && (
+                <button onClick={handleInstallClick}
+                  className="text-[10px] font-semibold text-white/80 border border-white/20 hover:bg-white/10 px-2 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+                  {isIos ? 'Instalar' : 'Instalar'}
+                </button>
+              )}
+              {/* Activate notifications */}
+              <button
+                onClick={async () => {
+                  setShowNotifyModal(false)
+                  const ok = await subscribeToPush()
+                  if (!ok && isIos && !window.matchMedia('(display-mode: standalone)').matches) {
+                    setShowIosModal(true)
+                  }
+                }}
+                className="text-[11px] font-bold bg-[#0099CC] hover:bg-[#007aa8] text-white px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Ativar agora
+              </button>
+              {/* Dismiss */}
+              <button
+                onClick={() => {
+                  const count = parseInt(localStorage.getItem('notify_dismissed_count') || '0')
+                  localStorage.setItem('notify_dismissed_count', String(count + 1))
+                  localStorage.setItem('notify_dismissed_at', String(Date.now()))
+                  // Force re-render by toggling state
+                  setNotifyEnabled(false)
+                  // Hide banner temporarily by setting a flag
+                  sessionStorage.setItem('notify_banner_hidden', '1')
+                  window.dispatchEvent(new Event('notify_banner_hide'))
+                }}
+                className="text-white/40 hover:text-white/70 transition-colors p-1">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
