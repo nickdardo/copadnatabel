@@ -10,6 +10,24 @@ const MAX_CHAMP_EDITS = 3
 const PRIZE_PCT = { first: 60, second: 25, third: 15 }
 const ENTRY_FEE = 10
 
+// Prazo final para palpite de campeão — 11/06/2026 às 14h (horário de Brasília)
+const CHAMP_DEADLINE = new Date('2026-06-11T17:00:00Z') // 14h BRT = 17h UTC
+
+function isDeadlinePassed(): boolean {
+  return new Date() >= CHAMP_DEADLINE
+}
+
+function getCountdown(): string {
+  const diff = CHAMP_DEADLINE.getTime() - Date.now()
+  if (diff <= 0) return ''
+  const days  = Math.floor(diff / 86_400_000)
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000)
+  const mins  = Math.floor((diff % 3_600_000) / 60_000)
+  if (days > 0)  return `${days}d ${hours}h restantes`
+  if (hours > 0) return `${hours}h ${mins}min restantes`
+  return `${mins}min restantes`
+}
+
 const IcoLock  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
 const IcoCheck = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
 const IcoArrow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -39,6 +57,19 @@ export default function ChampionPage() {
   const [editCount,setEditCount]= useState(0)
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
+  const [deadlinePassed, setDeadlinePassed] = useState(isDeadlinePassed())
+  const [countdown, setCountdown] = useState(getCountdown())
+
+  // Update countdown every minute
+  useEffect(() => {
+    const tick = () => {
+      setDeadlinePassed(isDeadlinePassed())
+      setCountdown(getCountdown())
+    }
+    tick()
+    const interval = setInterval(tick, 30_000)
+    return () => clearInterval(interval)
+  }, [])
   const [fetching, setFetching] = useState(true)
   const [paidCount,setPaidCount]= useState(0)
   const [extraAmount,setExtraAmount]= useState(0)
@@ -77,7 +108,7 @@ export default function ChampionPage() {
   async function handleSave() {
     if (!player || !champion || !runner || !third) return
     if (champion === runner || champion === third || runner === third) return
-    if (locked) return
+    if (locked || deadlinePassed) return
     // Block saving for unpaid users
     if (!player.payment_ok) { router.push('/onboarding'); return }
     setSaving(true)
@@ -214,19 +245,32 @@ export default function ChampionPage() {
         )}
 
         {/* Edit limit indicator */}
-        {editCount > 0 && (
-          <div className={`rounded-xl px-4 py-3 flex items-center gap-3 border ${locked?'bg-red-50 border-red-200':editsLeft===1?'bg-amber-50 border-amber-200':'bg-blue-50 border-blue-100'}`}>
+        {/* Deadline banner */}
+        {!deadlinePassed ? (
+          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-amber-50 border-amber-200">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <div className="flex-1">
+              <p className="text-[12px] font-semibold text-amber-800">Prazo: hoje às 14h (horário de Brasília)</p>
+              <p className="text-[11px] text-amber-600 mt-0.5">
+                {countdown ? `Fecha em ${countdown} — ` : ''}Após isso, os palpites de campeão ficam travados!
+              </p>
+            </div>
+            {editCount > 0 && (
+              <div className="flex gap-1 flex-shrink-0">
+                {Array.from({length:MAX_CHAMP_EDITS}).map((_,i)=>(
+                  <div key={i} className={`w-2 h-2 rounded-full ${i<editCount?'bg-amber-400':'bg-gray-200'}`}/>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
             <IcoLock/>
             <div className="flex-1">
-              <p className={`text-[12px] font-semibold ${locked?'text-red-700':editsLeft===1?'text-amber-700':'text-blue-700'}`}>
-                {locked?'Limite de alterações atingido':`${editsLeft} alteração${editsLeft===1?'':'ões'} restante${editsLeft===1?'':'s'}`}
-              </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Máximo de {MAX_CHAMP_EDITS} trocas</p>
-            </div>
-            <div className="flex gap-1">
-              {Array.from({length:MAX_CHAMP_EDITS}).map((_,i)=>(
-                <div key={i} className={`w-2 h-2 rounded-full ${i<editCount?(locked?'bg-red-400':'bg-amber-400'):'bg-gray-200'}`}/>
-              ))}
+              <p className="text-[12px] font-semibold text-red-700">Prazo encerrado — palpite bloqueado</p>
+              <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou às 14h de hoje.</p>
             </div>
           </div>
         )}
@@ -254,7 +298,7 @@ export default function ChampionPage() {
                     <p className="text-[14px] font-bold text-gray-900">{state}</p>
                     <p className="text-[11px] text-gray-400">Selecionado</p>
                   </div>
-                  {!locked && (
+                  {!locked && !deadlinePassed && (
                     <button onClick={()=>set('')} className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Trocar</button>
                   )}
                 </div>
@@ -265,7 +309,7 @@ export default function ChampionPage() {
               <div className="px-4 pb-3.5">
                 <select
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
-                  value={state} onChange={e=>set(e.target.value)} disabled={locked || !player?.payment_ok}>
+                  value={state} onChange={e=>set(e.target.value)} disabled={locked || deadlinePassed || !player?.payment_ok}>
                   <option value="">Selecione a seleção...</option>
                   {exclude(ex1,ex2).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
@@ -274,19 +318,9 @@ export default function ChampionPage() {
           ))}
         </div>
 
-        {locked && (
-          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-            <IcoLock/>
-            <div>
-              <p className="text-[13px] font-semibold text-red-700">Palpite bloqueado</p>
-              <p className="text-[11px] text-red-500 mt-0.5">
-                {editCount>=MAX_CHAMP_EDITS?`Limite de ${MAX_CHAMP_EDITS} alterações atingido.`:'A Copa já começou.'}
-              </p>
-            </div>
-          </div>
-        )}
 
-        {!locked && (
+
+        {!locked && !deadlinePassed && (
           <button onClick={handleSave} disabled={!canSave||saving||saved}
             className="w-full py-4 rounded-xl font-bold text-[15px] text-white flex items-center justify-center gap-2 transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed bg-[#0099CC] hover:bg-[#007aa8] shadow-sm">
             {saved?<><IcoCheck/> Salvo! Abrindo palpites...</>
