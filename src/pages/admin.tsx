@@ -88,6 +88,10 @@ export default function AdminPage() {
   const [resettingChampId,  setResettingChampId]  = useState<string | null>(null)
   const [resettingChampAll, setResettingChampAll] = useState(false)
   const [resetMsg,          setResetMsg]          = useState('')
+  const [resetPassPlayer,   setResetPassPlayer]   = useState<Player | null>(null)
+  const [newPassword,       setNewPassword]       = useState('')
+  const [savingPass,        setSavingPass]        = useState(false)
+  const [passMsg,           setPassMsg]           = useState('')
   const [presenceTick,  setPresenceTick]  = useState(0)
   const [paymentLogs,   setPaymentLogs]   = useState<{id:string;player_name:string;action:string;confirmed_by:string;valor:number;created_at:string}[]>([])
   const [calcingBadges, setCalcingBadges] = useState(false)
@@ -501,6 +505,25 @@ export default function AdminPage() {
     setResettingChampAll(false)
     setResetMsg('Palpites de campeão de todos liberados!')
     setTimeout(() => setResetMsg(''), 4000)
+  }
+
+  async function resetPlayerPassword() {
+    if (!resetPassPlayer || !newPassword || newPassword.length < 4) return
+    setSavingPass(true)
+    const res = await fetch('/api/admin/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: resetPassPlayer.id, new_password: newPassword }),
+    })
+    const data = await res.json()
+    setSavingPass(false)
+    if (data.ok) {
+      setPassMsg('Senha alterada com sucesso!')
+      setNewPassword('')
+      setTimeout(() => { setPassMsg(''); setResetPassPlayer(null) }, 2500)
+    } else {
+      setPassMsg(data.error || 'Erro ao alterar senha')
+    }
   }
 
   async function resetPendingChampion() {
@@ -1391,6 +1414,12 @@ export default function AdminPage() {
                                   }
                                   Liberar campeão
                                 </button>
+                                {/* Reset password */}
+                                <button onClick={() => { setResetPassPlayer(p); setNewPassword(''); setPassMsg('') }}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-gray-500 bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                  Senha
+                                </button>
                                 <div className="flex-1"/>
                                 {/* Delete */}
                                 <button onClick={() => setConfirmDelete(p.id)}
@@ -1796,6 +1825,46 @@ export default function AdminPage() {
           </nav>
         </div>
       </div>
+
+      {/* Reset password modal */}
+      {resetPassPlayer && (() => {
+        const name = resetPassPlayer.nickname || resetPassPlayer.username
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+              <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <h3 className="text-[16px] font-bold text-gray-900 text-center mb-1">Resetar senha</h3>
+              <p className="text-[13px] text-gray-500 text-center mb-5">
+                Defina uma nova senha para <strong>{name}</strong>.<br/>
+                <span className="text-[11px] text-gray-400">Informe a senha temporária para o colaborador e peça para ele trocar depois.</span>
+              </p>
+              <input
+                type="text"
+                placeholder="Nova senha (mín. 4 caracteres)"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] mb-3"
+                autoFocus
+              />
+              {passMsg && (
+                <p className={`text-[12px] text-center mb-3 font-medium ${passMsg.includes('sucesso') ? 'text-green-600' : 'text-red-500'}`}>{passMsg}</p>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => { setResetPassPlayer(null); setNewPassword(''); setPassMsg('') }}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-[14px] font-semibold hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={resetPlayerPassword} disabled={savingPass || newPassword.length < 4}
+                  className="flex-1 py-3 rounded-xl bg-[#0099CC] text-white text-[14px] font-semibold hover:bg-[#007aa8] disabled:opacity-50 transition-colors">
+                  {savingPass ? 'Salvando...' : 'Salvar senha'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Confirm delete modal */}
       {confirmDelete && (() => {
