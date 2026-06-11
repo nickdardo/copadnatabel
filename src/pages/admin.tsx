@@ -277,9 +277,27 @@ export default function AdminPage() {
     setChampBloqueado(newVal)
     setSavingLock(false)
   }
-  // No auto-sync — manual only to preserve API quota
-  // Just do an initial fetchAll on mount
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // Auto-sync every 1h while admin panel is open
+  useEffect(() => {
+    async function autoSync() {
+      setAutoSyncing(true)
+      try {
+        const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual' }) })
+        const data = await res.json()
+        if (data.ok) {
+          const time = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+          setLastSyncTime(time)
+          if (data.quotaRemaining != null) setQuotaRemaining(data.quotaRemaining)
+          await fetchAll()
+        }
+      } catch {}
+      setAutoSyncing(false)
+    }
+    // First sync on load, then every 1h
+    autoSync()
+    const interval = setInterval(autoSync, 60 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Auto-notify: check every 10 minutes when enabled
   useEffect(() => {
@@ -656,11 +674,11 @@ export default function AdminPage() {
 
             {/* Sync status */}
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 flex-shrink-0">
-              <span className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"/>
-              {lastSyncTime ? `Último sync: ${lastSyncTime}` : 'Sync manual'}
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${autoSyncing ? 'bg-[#0099CC] animate-pulse' : 'bg-green-400'}`}/>
+              {autoSyncing ? 'Sincronizando...' : lastSyncTime ? `Sync ${lastSyncTime}` : 'Auto-sync 1h'}
               {quotaRemaining != null && (
                 <span className={`ml-1 font-semibold ${quotaRemaining < 50 ? 'text-red-500' : quotaRemaining < 200 ? 'text-amber-500' : 'text-green-600'}`}>
-                  · {quotaRemaining} req restantes
+                  · {quotaRemaining} req
                 </span>
               )}
             </div>

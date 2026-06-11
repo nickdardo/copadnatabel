@@ -410,7 +410,27 @@ export default function PicksPage() {
 
                         {/* Score inputs */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {locked ? (
+                          {m.status === 'live' ? (
+                            /* LIVE: real score big + user pick below */
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-1">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold bg-red-50 border border-red-200 text-red-600">
+                                  {m.score_home ?? '–'}
+                                </div>
+                                <span className="text-red-300 text-sm font-bold">×</span>
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold bg-red-50 border border-red-200 text-red-600">
+                                  {m.score_away ?? '–'}
+                                </div>
+                              </div>
+                              {pick.home !== '' ? (
+                                <span className="text-[9px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
+                                  Meu palpite: <strong className="text-gray-600">{pick.home}×{pick.away}</strong>
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-amber-500 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Sem palpite</span>
+                              )}
+                            </div>
+                          ) : locked ? (
                             <>
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold border ${pick.home!==''?'border-gray-200 bg-gray-50 text-gray-800':'border-gray-100 bg-gray-50 text-gray-300'}`}>
                                 {pick.home!==''?pick.home:'–'}
