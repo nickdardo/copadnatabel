@@ -80,7 +80,7 @@ export default function AdminPage() {
   const [currentExtra,  setCurrentExtra]  = useState(0)
   const [playerSearch,  setPlayerSearch]  = useState('')
   const [playerPage,    setPlayerPage]    = useState(0)
-  const [playerFilter,  setPlayerFilter]  = useState<'all'|'paid'|'pending'>('all')
+  const [playerFilter,  setPlayerFilter]  = useState<'all'|'paid'|'pending'|'nopicks'>('all')
   const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
   const [pushEnabled,   setPushEnabled]   = useState<Set<string>>(new Set())
   const [resettingId,       setResettingId]       = useState<string | null>(null)
@@ -501,6 +501,7 @@ export default function AdminPage() {
   const filteredPlayers = nonAdminPlayers.filter(p => {
     if (playerFilter === 'paid'    && !p.payment_ok) return false
     if (playerFilter === 'pending' &&  p.payment_ok) return false
+    if (playerFilter === 'nopicks' && (picksCount[p.id] || 0) > 0) return false
     if (!playerSearch) return true
     const q = playerSearch.toLowerCase()
     return (p.nickname || '').toLowerCase().includes(q) || p.username.toLowerCase().includes(q)
@@ -1167,9 +1168,10 @@ export default function AdminPage() {
                 {/* Filter tabs */}
                 <div className="flex gap-2">
                   {([
-                    { id: 'all',     label: 'Todos',     count: nonAdminPlayers.length,            color: 'gray' },
-                    { id: 'paid',    label: 'Pagos',     count: paidCount,                         color: 'green' },
-                    { id: 'pending', label: 'Pendentes', count: pendingCount,                      color: 'amber' },
+                    { id: 'all',     label: 'Todos',          count: nonAdminPlayers.length,                                               color: 'gray'  },
+                    { id: 'paid',    label: 'Pagos',           count: paidCount,                                                            color: 'green' },
+                    { id: 'pending', label: 'Pendentes',       count: pendingCount,                                                         color: 'amber' },
+                    { id: 'nopicks', label: 'Sem palpites',    count: nonAdminPlayers.filter(p => (picksCount[p.id] || 0) === 0).length,   color: 'red'   },
                   ] as const).map(f => (
                     <button key={f.id}
                       onClick={() => { setPlayerFilter(f.id); setPlayerPage(0) }}
@@ -1177,9 +1179,11 @@ export default function AdminPage() {
                         playerFilter === f.id
                           ? f.color === 'green' ? 'bg-green-500 text-white border-green-500'
                           : f.color === 'amber' ? 'bg-amber-500 text-white border-amber-500'
+                          : f.color === 'red'   ? 'bg-red-500 text-white border-red-500'
                           : 'bg-gray-800 text-white border-gray-800'
                           : f.color === 'green' ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                           : f.color === 'amber' ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                          : f.color === 'red'   ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                       }`}>
                       {f.label}
@@ -1187,6 +1191,7 @@ export default function AdminPage() {
                         playerFilter === f.id ? 'bg-white/25 text-white'
                         : f.color === 'green' ? 'bg-green-100 text-green-700'
                         : f.color === 'amber' ? 'bg-amber-100 text-amber-700'
+                        : f.color === 'red'   ? 'bg-red-100 text-red-600'
                         : 'bg-gray-100 text-gray-600'
                       }`}>{f.count}</span>
                     </button>
@@ -1284,7 +1289,7 @@ export default function AdminPage() {
                                     ? <span className="w-3 h-3 border border-amber-400/30 border-t-amber-500 rounded-full animate-spin"/>
                                     : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                   }
-                                  Jogos
+                                  Liberar jogos
                                 </button>
                                 {/* Reset champion */}
                                 <button onClick={() => resetPlayerChampion(p.id, name)} disabled={resettingChampId === p.id}
@@ -1293,7 +1298,7 @@ export default function AdminPage() {
                                     ? <span className="w-3 h-3 border border-blue-400/30 border-t-blue-500 rounded-full animate-spin"/>
                                     : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/></svg>
                                   }
-                                  Campeão
+                                  Liberar campeão
                                 </button>
                                 <div className="flex-1"/>
                                 {/* Delete */}
