@@ -48,7 +48,7 @@ function Medal({ pos }: { pos: number }) {
   if (pos === 1) return <svg width="26" height="26" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="26" r="11" fill="#FFF8E1" stroke="#B8860B" strokeWidth="1.5"/><path d="M13 14 11 7l9 3 9-3-2 7" fill="#FFD700" stroke="#B8860B" strokeWidth="1.2" strokeLinejoin="round"/><text x="20" y="30" textAnchor="middle" fontSize="11" fontWeight="700" fill="#7a5800" fontFamily="sans-serif">1</text></svg>
   if (pos === 2) return <svg width="26" height="26" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="26" r="11" fill="#F5F5F5" stroke="#6C757D" strokeWidth="1.5"/><path d="M13 14 11 7l9 3 9-3-2 7" fill="#CED4DA" stroke="#6C757D" strokeWidth="1.2" strokeLinejoin="round"/><text x="20" y="30" textAnchor="middle" fontSize="11" fontWeight="700" fill="#495057" fontFamily="sans-serif">2</text></svg>
   if (pos === 3) return <svg width="26" height="26" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="26" r="11" fill="#FFF0E6" stroke="#A0522D" strokeWidth="1.5"/><path d="M13 14 11 7l9 3 9-3-2 7" fill="#E8A87C" stroke="#A0522D" strokeWidth="1.2" strokeLinejoin="round"/><text x="20" y="30" textAnchor="middle" fontSize="11" fontWeight="700" fill="#7B3F00" fontFamily="sans-serif">3</text></svg>
-  return <span className="text-[13px] font-bold text-gray-400 w-[26px] text-center block">{pos}º</span>
+  return <span className="text-[13px] font-bold text-gray-600 w-[26px] text-center block">{pos}º</span>
 }
 
 type BadgeMap = Record<string, string[]>
@@ -338,7 +338,7 @@ export default function RankingPage() {
                       <span className="font-bold text-[14px] text-gray-900 truncate">{name}</span>
                       {isMe && <span className="text-[10px] text-[#0099CC] font-semibold bg-[#0099CC]/10 px-1.5 py-0.5 rounded-full">você</span>}
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5">
+                    <p className="text-[11px] text-gray-700 mt-0.5 font-medium">
                       F10:{entry.f10_count} · F7:{entry.f7_count} · F5:{entry.f5_count} · F2:{entry.f2_count}
                     </p>
                     <PicksBar count={entry.picks_count||0} total={totalMatches}/>

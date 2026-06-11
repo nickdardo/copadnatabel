@@ -22,6 +22,16 @@ export default function ProfileSetupPage() {
   const [error,      setError]      = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Password change state
+  const [currentPass,  setCurrentPass]  = useState('')
+  const [newPass,      setNewPass]      = useState('')
+  const [confirmPass,  setConfirmPass]  = useState('')
+  const [passError,    setPassError]    = useState('')
+  const [passSuccess,  setPassSuccess]  = useState('')
+  const [savingPass,   setSavingPass]   = useState(false)
+  const [showCurrent,  setShowCurrent]  = useState(false)
+  const [showNew,      setShowNew]      = useState(false)
+
   useEffect(() => {
     if (!loading && !player) { router.push('/'); return }
     // Pre-fill if already has a real name (not just username)
@@ -100,6 +110,29 @@ export default function ProfileSetupPage() {
     // Paid users already in the app go back — new users go through onboarding
     const dest = player.payment_ok ? '/ranking' : '/onboarding'
     setTimeout(() => router.push(dest), 800)
+  }
+
+  async function handleChangePassword() {
+    setPassError(''); setPassSuccess('')
+    if (!currentPass) return setPassError('Digite a senha atual')
+    if (!newPass)     return setPassError('Digite a nova senha')
+    if (newPass.length < 6) return setPassError('A nova senha deve ter pelo menos 6 caracteres')
+    if (newPass !== confirmPass) return setPassError('As senhas não coincidem')
+    if (newPass === currentPass) return setPassError('A nova senha deve ser diferente da atual')
+    setSavingPass(true)
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: player?.id, current_password: currentPass, new_password: newPass }),
+    })
+    const data = await res.json()
+    setSavingPass(false)
+    if (data.ok) {
+      setPassSuccess('Senha alterada com sucesso!')
+      setCurrentPass(''); setNewPass(''); setConfirmPass('')
+    } else {
+      setPassError(data.error || 'Erro ao alterar senha')
+    }
   }
 
   if (loading) return (
@@ -221,6 +254,75 @@ export default function ProfileSetupPage() {
                 className="w-full py-2.5 rounded-xl text-[13px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
                 Voltar sem salvar
               </button>
+            </div>
+          </div>
+
+          {/* Change password card — separate section */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mt-4">
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-2 mb-4">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <p className="text-[13px] font-semibold text-gray-800">Alterar senha</p>
+              </div>
+              <div className="space-y-3">
+                  {/* Current password */}
+                  <div className="relative">
+                    <label className="block text-[11px] text-gray-500 mb-1">Senha atual (ou temporária)</label>
+                    <input
+                      type={showCurrent ? 'text' : 'password'}
+                      placeholder="••••••"
+                      value={currentPass}
+                      onChange={e => setCurrentPass(e.target.value)}
+                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] transition-all"
+                    />
+                    <button type="button" onClick={() => setShowCurrent(v => !v)}
+                      className="absolute right-3 top-[30px] text-gray-400 hover:text-gray-600">
+                      {showCurrent
+                        ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      }
+                    </button>
+                  </div>
+                  {/* New password */}
+                  <div className="relative">
+                    <label className="block text-[11px] text-gray-500 mb-1">Nova senha</label>
+                    <input
+                      type={showNew ? 'text' : 'password'}
+                      placeholder="Mínimo 6 caracteres"
+                      value={newPass}
+                      onChange={e => setNewPass(e.target.value)}
+                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:border-[#0099CC] transition-all"
+                    />
+                    <button type="button" onClick={() => setShowNew(v => !v)}
+                      className="absolute right-3 top-[30px] text-gray-400 hover:text-gray-600">
+                      {showNew
+                        ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      }
+                    </button>
+                  </div>
+                  {/* Confirm */}
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-1">Confirmar nova senha</label>
+                    <input
+                      type="password"
+                      placeholder="Repita a nova senha"
+                      value={confirmPass}
+                      onChange={e => setConfirmPass(e.target.value)}
+                      className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50 text-gray-900 text-[14px] focus:outline-none transition-all ${confirmPass && confirmPass !== newPass ? 'border-red-300' : confirmPass && confirmPass === newPass ? 'border-green-400' : 'border-gray-200 focus:border-[#0099CC]'}`}
+                    />
+                  </div>
+                  {passError   && <p className="text-[12px] text-red-500 font-medium">{passError}</p>}
+                  {passSuccess && <p className="text-[12px] text-green-600 font-medium flex items-center gap-1"><IcoCheck />{passSuccess}</p>}
+                  <button onClick={handleChangePassword} disabled={savingPass || !currentPass || !newPass || !confirmPass}
+                    className="w-full py-3 rounded-xl bg-gray-800 text-white text-[13px] font-semibold hover:bg-gray-900 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
+                    {savingPass
+                      ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    }
+                    {savingPass ? 'Alterando...' : 'Alterar senha'}
+                  </button>
+              </div>
             </div>
           </div>
         </div>
