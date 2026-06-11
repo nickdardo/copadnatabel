@@ -289,7 +289,7 @@ export default function ChampionPage() {
               <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou às 14h de hoje.</p>
             </div>
           </div>
-        )}}
+        )}
 
         {/* ── Selects ──────────────────────────────────────── */}
         <div className="space-y-3">
