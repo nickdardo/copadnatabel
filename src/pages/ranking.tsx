@@ -318,7 +318,7 @@ export default function RankingPage() {
                 <button
                   onClick={() => setExpanded(isOpen ? null : entry.player_id)}
                   className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50
-                    ${i===0?'bg-[#0099CC]/5':i===1?'bg-[#0077b6]/4':i===2?'bg-[#48cae4]/3':''}
+                    ${i===0?'bg-amber-50/60':i===1?'bg-gray-50/80':i===2?'bg-orange-50/40':''}
                     ${isMe?'ring-inset ring-1 ring-[#0099CC]/20':''}`}>
 
                   <div className="w-7 flex-shrink-0 flex justify-center">
@@ -337,19 +337,17 @@ export default function RankingPage() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-[14px] text-gray-900 truncate">{name}</span>
                       {isMe && <span className="text-[10px] text-[#0099CC] font-semibold bg-[#0099CC]/10 px-1.5 py-0.5 rounded-full">você</span>}
-                      {entry.player.payment_ok
-                        ? <span className="text-[9px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">pago</span>
-                        : <span className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">pend.</span>}
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
+                    <p className="text-[11px] text-gray-500 mt-0.5">
                       F10:{entry.f10_count} · F7:{entry.f7_count} · F5:{entry.f5_count} · F2:{entry.f2_count}
                     </p>
                     <PicksBar count={entry.picks_count||0} total={totalMatches}/>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-[17px] leading-none text-gray-900">{entry.total_pts}</p>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Position indicator — placeholder for future movement tracking */}
+                    <div className="flex flex-col items-center">
+                      <p className="font-bold text-[20px] leading-none text-gray-900">{entry.total_pts}</p>
                       <p className="text-[10px] text-gray-400">pts</p>
                     </div>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2.5" strokeLinecap="round"

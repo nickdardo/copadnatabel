@@ -696,13 +696,14 @@ export default function Layout({ children, title }: Props) {
         <main>{children}</main>
 
         {/* ── Bottom nav ──────────────────────────────────── */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20"
+          style={{paddingBottom: 'max(env(safe-area-inset-bottom), 8px)'}}>
           <div className="max-w-lg mx-auto flex">
             {NAV.map(({ href, Icon, label }) => {
               const isActive = router.pathname === href
               return (
                 <button key={href} onClick={() => router.push(href)}
-                  className={`flex-1 flex flex-col items-center justify-center py-4 gap-1 transition-colors relative
+                  className={`flex-1 flex flex-col items-center justify-center pt-3 pb-1 gap-1 transition-colors relative
                     ${isActive ? 'text-[#0099CC]' : 'text-gray-400 hover:text-gray-500'}`}>
                   {isActive && (
                     <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full"/>

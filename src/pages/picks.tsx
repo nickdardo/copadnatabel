@@ -465,26 +465,62 @@ export default function PicksPage() {
                         </div>
                       </div>
 
-                      {/* Official result */}
-                      {m.status==='done' && m.score_home!==undefined && (
-                        <div className="text-center">
-                          <span className="text-[10px] text-gray-400">Resultado: <strong className="text-gray-600">{m.score_home}×{m.score_away}</strong></span>
-                        </div>
-                      )}
-
-                      {/* Group consensus — most popular pick */}
-                      {m.status==='done' && consensus[m.id] && (
-                        <div className="flex justify-center mt-1">
-                          <span className="text-[9px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                            Grupo apostou {consensus[m.id]!.home}×{consensus[m.id]!.away} ({consensus[m.id]!.count}x)
-                          </span>
-                        </div>
-                      )}
-
+                      {/* Done match — rich result card */}
+                      {m.status==='done' && m.score_home!=null && (() => {
+                        const f = factor
+                        const hasPick = pick.home !== ''
+                        // Colors by factor
+                        const colors = {
+                          f10: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',    pts:'+10 pts' },
+                          f7:  { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',    pts:'+7 pts'  },
+                          f5:  { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Vencedor certo',  pts:'+5 pts'  },
+                          f2:  { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Empate certo',    pts:'+2 pts'  },
+                          f0:  { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Não pontuou',     pts:'0 pts'   },
+                        }
+                        const c = f ? colors[f] : colors.f0
+                        const iconChar = f === 'f10' || f === 'f7' ? '✓' : f === 'f5' ? '↗' : f === 'f2' ? '=' : '✕'
+                        return (
+                          <div className="mt-2 space-y-2">
+                            {hasPick && (
+                              <div className="flex items-center justify-between px-1">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-gray-400 font-medium">Meu palpite</span>
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-6 h-6 rounded-md flex items-center justify-center text-[13px] font-bold border"
+                                      style={{background:c.bg,borderColor:c.border,color:c.text}}>{pick.home}</div>
+                                    <span className="text-[10px] text-gray-300">×</span>
+                                    <div className="w-6 h-6 rounded-md flex items-center justify-center text-[13px] font-bold border"
+                                      style={{background:c.bg,borderColor:c.border,color:c.text}}>{pick.away}</div>
+                                  </div>
+                                </div>
+                                {f && (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                                        style={{background:c.icon}}>{iconChar}</div>
+                                      <span className="text-[11px] font-semibold" style={{color:c.text}}>{c.label}</span>
+                                    </div>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                      style={{background:c.bg,color:c.text}}>{c.pts}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Official result + consensus */}
+                            <div className="bg-gray-50 rounded-lg px-3 py-2 space-y-1">
+                              <p className="text-[10px] text-gray-500">
+                                Resultado oficial do jogo: <strong className="text-gray-800">{m.score_home}×{m.score_away}</strong>
+                              </p>
+                              {consensus[m.id] && (
+                                <p className="text-[10px] text-gray-500">
+                                  <strong className="text-gray-800">{consensus[m.id]!.count} {consensus[m.id]!.count === 1 ? 'pessoa' : 'pessoas'}</strong> do grupo {consensus[m.id]!.count === 1 ? 'cravou' : 'cravaram'} o resultado{' '}
+                                  <strong className="text-gray-800">{consensus[m.id]!.home}×{consensus[m.id]!.away}</strong>!
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })()}
                       {/* Locked no pick */}
                       {locked && pick.home==='' && m.status==='upcoming' && (
                         <div className="flex justify-center">

@@ -258,8 +258,8 @@ export default function ChampionPage() {
           <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
             <IcoLock/>
             <div className="flex-1">
-              <p className="text-[12px] font-semibold text-red-700">Palpite bloqueado pelo administrador</p>
-              <p className="text-[11px] text-red-500 mt-0.5">O admin desativou temporariamente os palpites de campeão. Aguarde a liberação.</p>
+              <p className="text-[12px] font-semibold text-red-700">Prazo encerrado — palpite bloqueado</p>
+              <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou hoje às 14h.</p>
             </div>
           </div>
         ) : (
