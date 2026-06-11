@@ -80,6 +80,7 @@ export default function AdminPage() {
   const [currentExtra,  setCurrentExtra]  = useState(0)
   const [playerSearch,  setPlayerSearch]  = useState('')
   const [playerPage,    setPlayerPage]    = useState(0)
+  const [playerFilter,  setPlayerFilter]  = useState<'all'|'paid'|'pending'>('all')
   const [picksCount,    setPicksCount]    = useState<Record<string, number>>({})
   const [pushEnabled,   setPushEnabled]   = useState<Set<string>>(new Set())
   const [resettingId,       setResettingId]       = useState<string | null>(null)
@@ -498,6 +499,8 @@ export default function AdminPage() {
   // Derived
   const nonAdminPlayers = players.filter(p => !p.is_admin)
   const filteredPlayers = nonAdminPlayers.filter(p => {
+    if (playerFilter === 'paid'    && !p.payment_ok) return false
+    if (playerFilter === 'pending' &&  p.payment_ok) return false
     if (!playerSearch) return true
     const q = playerSearch.toLowerCase()
     return (p.nickname || '').toLowerCase().includes(q) || p.username.toLowerCase().includes(q)
@@ -1160,6 +1163,35 @@ export default function AdminPage() {
                     <p className="text-[12px] text-green-700 font-medium">{resetMsg}</p>
                   </div>
                 )}
+
+                {/* Filter tabs */}
+                <div className="flex gap-2">
+                  {([
+                    { id: 'all',     label: 'Todos',     count: nonAdminPlayers.length,            color: 'gray' },
+                    { id: 'paid',    label: 'Pagos',     count: paidCount,                         color: 'green' },
+                    { id: 'pending', label: 'Pendentes', count: pendingCount,                      color: 'amber' },
+                  ] as const).map(f => (
+                    <button key={f.id}
+                      onClick={() => { setPlayerFilter(f.id); setPlayerPage(0) }}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold border transition-all ${
+                        playerFilter === f.id
+                          ? f.color === 'green' ? 'bg-green-500 text-white border-green-500'
+                          : f.color === 'amber' ? 'bg-amber-500 text-white border-amber-500'
+                          : 'bg-gray-800 text-white border-gray-800'
+                          : f.color === 'green' ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                          : f.color === 'amber' ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      }`}>
+                      {f.label}
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                        playerFilter === f.id ? 'bg-white/25 text-white'
+                        : f.color === 'green' ? 'bg-green-100 text-green-700'
+                        : f.color === 'amber' ? 'bg-amber-100 text-amber-700'
+                        : 'bg-gray-100 text-gray-600'
+                      }`}>{f.count}</span>
+                    </button>
+                  ))}
+                </div>
 
                 {/* Search + legend */}
                 {pushEnabled.size === 0 && nonAdminPlayers.length > 0 && (
