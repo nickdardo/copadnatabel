@@ -397,7 +397,7 @@ export default function PicksPage() {
                         {/* Score inputs */}
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {m.status === 'live' ? (
-                            /* LIVE: real score big + user pick below */
+                            /* LIVE: real score big + user pick + live factor preview */
                             <div className="flex flex-col items-center gap-1">
                               <div className="flex items-center gap-1">
                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold bg-red-50 border border-red-200 text-red-600">
@@ -411,11 +411,36 @@ export default function PicksPage() {
                               {m.score_home == null && (
                                 <span className="text-[9px] text-red-400 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">Aguardando placar...</span>
                               )}
-                              {pick.home !== '' ? (
-                                <span className="text-[9px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
-                                  Meu palpite: <strong className="text-gray-600">{pick.home}×{pick.away}</strong>
-                                </span>
-                              ) : (
+                              {pick.home !== '' ? (() => {
+                                const liveColors = {
+                                  F10:{ bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',   pts:'+10 pts' },
+                                  F7: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',   pts:'+7 pts'  },
+                                  F5: { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Vencedor certo',  pts:'+5 pts'  },
+                                  F2: { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Empate certo',    pts:'+2 pts'  },
+                                  F0: { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Não pontua',      pts:'0 pts'   },
+                                }
+                                const liveF = m.score_home != null && m.score_away != null
+                                  ? calcFactor(Number(pick.home), Number(pick.away), m.score_home, m.score_away)
+                                  : null
+                                const lc = liveF ? liveColors[liveF] : null
+                                const iconChar = liveF === 'F10' || liveF === 'F7' ? '✓' : liveF === 'F5' ? '↗' : liveF === 'F2' ? '=' : '✕'
+                                return lc ? (
+                                  <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                                        style={{background:lc.icon}}>{iconChar}</div>
+                                      <span className="text-[10px] font-semibold" style={{color:lc.text}}>{lc.label}</span>
+                                    </div>
+                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:lc.bg,color:lc.text}}>
+                                      {lc.pts} se ficar assim
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[9px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
+                                    Meu palpite: <strong className="text-gray-600">{pick.home}×{pick.away}</strong>
+                                  </span>
+                                )
+                              })() : (
                                 <span className="text-[9px] text-amber-500 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Sem palpite</span>
                               )}
                             </div>
