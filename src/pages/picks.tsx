@@ -167,7 +167,7 @@ export default function PicksPage() {
   const currentRound = upcomingRounds[safeRound] || []
   const tabMatches   = tab === 'live' ? liveMatches : tab === 'done' ? doneMatches : currentRound
 
-  const limitKey    = `${activePhase}:${safeRound}`
+  const limitKey    = `${activePhase}:${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' })}`
   const editLimit   = limits[limitKey]
   const editsUsed   = editLimit?.edits_used || 0
   const editsLeft   = MAX_EDITS - editsUsed
@@ -197,10 +197,11 @@ export default function PicksPage() {
     ))
     if (hasEdits) {
       const ne = editsUsed + 1
+      const todayBRT = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' })
       await supabase.from('pick_edit_limits').upsert({
-        player_id: player.id, fase: activePhase, round_index: safeRound, edits_used: ne, max_edits: MAX_EDITS,
+        player_id: player.id, fase: activePhase, round_index: todayBRT, edits_used: ne, max_edits: MAX_EDITS,
       }, { onConflict: 'player_id,fase,round_index' })
-      setLimits(l => ({ ...l, [limitKey]: { ...editLimit || { player_id: player.id, fase: activePhase, round_index: safeRound, max_edits: MAX_EDITS }, edits_used: ne } }))
+      setLimits(l => ({ ...l, [limitKey]: { ...editLimit || { player_id: player.id, fase: activePhase, round_index: todayBRT, max_edits: MAX_EDITS }, edits_used: ne } }))
     }
     setPicks(p => { const n = { ...p }; toSave.forEach(m => { n[m.id] = { ...n[m.id], saved: true } }); return n })
 
@@ -295,7 +296,7 @@ export default function PicksPage() {
         )}
         {tab==='upcoming' && !roundLocked && editsLeft<=2 && editsUsed>0 && (
           <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
-            <IcoLock/><span className="text-[12px] text-amber-700 font-medium">Apenas <strong>{editsLeft}</strong> alteração{editsLeft===1?'':'ões'} restante{editsLeft===1?'':'s'}.</span>
+            <IcoLock/><span className="text-[12px] text-amber-700 font-medium">Apenas <strong>{editsLeft}</strong> alteração{editsLeft===1?'':'ões'} restante{editsLeft===1?'':'s'} hoje.</span>
           </div>
         )}
 
@@ -576,7 +577,7 @@ export default function PicksPage() {
                     <p className="text-[12px] font-bold text-gray-700">
                       {editsLeft>0 ? `${editsLeft} alteração${editsLeft===1?'':'ões'} disponível${editsLeft===1?'':'is'}` : 'Limite atingido'}
                     </p>
-                    <p className="text-[11px] text-gray-400">Máx. {MAX_EDITS} trocas por rodada</p>
+                    <p className="text-[11px] text-gray-400">Máx. {MAX_EDITS} alterações por dia</p>
                   </div>
                 </div>
                 <div className="flex gap-1.5">
