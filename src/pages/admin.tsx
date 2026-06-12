@@ -377,8 +377,14 @@ export default function AdminPage() {
   async function recalcScores() {
     setRecalcing(true)
     const { error } = await supabase.rpc('recalc_all_scores')
-    setRecalcMsg(error ? 'Erro ao recalcular.' : 'Pontuacoes recalculadas!')
-    setTimeout(() => setRecalcMsg(''), 3000)
+    if (error) {
+      console.error('Recalc error:', error)
+      setRecalcMsg(`Erro: ${error.message}`)
+    } else {
+      setRecalcMsg('Pontuações recalculadas!')
+      fetchAll()
+    }
+    setTimeout(() => setRecalcMsg(''), 5000)
     setRecalcing(false)
   }
 
@@ -1180,7 +1186,7 @@ export default function AdminPage() {
                     <p className="text-[11px] text-gray-500 leading-relaxed">
                       Recalcula pontos de todos. Use <strong>após confirmar resultados</strong> manualmente ou depois de sincronizar.
                     </p>
-                    {recalcMsg && <p className="text-[10px] text-green-600 mt-1.5 font-medium">{recalcMsg}</p>}
+                    {recalcMsg && <p className={`text-[10px] mt-1.5 font-medium ${recalcMsg.startsWith('Erro') ? 'text-red-500' : 'text-green-600'}`}>{recalcMsg}</p>}
                   </div>
 
                   {/* Badges */}
