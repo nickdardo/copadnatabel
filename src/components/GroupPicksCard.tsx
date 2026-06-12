@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getFlagProps } from '@/lib/flags'
 import type { Match } from '@/lib/supabase'
+
+function FlagImg({ team, dbFlag, size = 32 }: { team: string; dbFlag?: string; size?: number }) {
+  const p = getFlagProps(team, dbFlag)
+  if (p.type === 'png' && p.src) {
+    return <img src={p.src} alt={p.alt} style={{ width: size, height: size * 0.67, objectFit: 'cover', borderRadius: 2 }}/>
+  }
+  return <span style={{ fontSize: size * 0.7, lineHeight: 1 }}>{p.value}</span>
+}
 
 type PickGroup = {
   home: number; away: number; count: number
@@ -115,7 +124,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
         {/* Match */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
           <div className="flex flex-col items-center gap-1 flex-1">
-            <span className="text-[22px]">{match.home_flag || '🏳️'}</span>
+            <FlagImg team={match.home_team} dbFlag={match.home_flag} size={36}/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.home_team.slice(0, 8)}</span>
           </div>
           <div className="flex flex-col items-center gap-0.5">
@@ -123,7 +132,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
             {match.match_date && <span className="text-[9px] text-gray-400">{new Date(match.match_date).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour:'2-digit', minute:'2-digit' })}</span>}
           </div>
           <div className="flex flex-col items-center gap-1 flex-1">
-            <span className="text-[22px]">{match.away_flag || '🏳️'}</span>
+            <FlagImg team={match.away_team} dbFlag={match.away_flag} size={36}/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.away_team.slice(0, 8)}</span>
           </div>
         </div>
@@ -134,7 +143,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
             <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Quem o grupo acha que vai ganhar</p>
             {[
               { label: match.home_team, count: wd.home, color: '#16A34A' },
-              { label: 'Empate', count: wd.draw, color: '#6B7280' },
+              { label: 'Empate',        count: wd.draw, color: '#6B7280' },
               { label: match.away_team, count: wd.away, color: '#DC2626' },
             ].map(row => (
               <div key={row.label} className="flex items-center gap-2 mb-1.5">
@@ -156,7 +165,12 @@ export default function GroupPicksCard({ match }: { match: Match }) {
             {dist.slice(0, 8).map((g, i) => (
               <button key={`${g.home}-${g.away}`} onClick={() => setModal(g)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-left transition-all active:scale-95 ${i === 0 ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
-                {i === 0 && <span className="text-[10px]">👑</span>}
+                {i === 0 && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+                  </svg>
+                )}
                 <span className={`text-[11px] font-bold ${i === 0 ? 'text-green-700' : 'text-gray-700'}`}>{g.home}×{g.away}</span>
                 <span className="text-[9px] text-gray-400">{g.count}</span>
               </button>
