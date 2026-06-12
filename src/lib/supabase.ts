@@ -49,6 +49,7 @@ export type Score = {
   player_id: string; total_pts: number
   f10_count: number; f7_count: number; f5_count: number; f2_count: number; f0_count: number
   champion_pts: number; picks_count: number; updated_at: string
+  rank_position?: number; prev_position?: number
 }
 export type EditLimit = {
   player_id: string; fase: string; round_index: number; edits_used: number; max_edits: number
