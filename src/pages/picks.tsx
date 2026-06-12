@@ -617,11 +617,18 @@ export default function PicksPage() {
                               <p className="text-[10px] text-gray-600">
                                 Resultado oficial: <strong className="text-gray-900">{m.home_team} {m.score_home}×{m.score_away} {m.away_team}</strong>
                               </p>
-                              {m.status === 'done' && consensus[m.id] && (
-                                <p className="text-[10px] text-gray-600">
-                                  <strong className="text-gray-900">{consensus[m.id]!.count} {consensus[m.id]!.count === 1 ? 'pessoa' : 'pessoas'}</strong> do grupo {consensus[m.id]!.count === 1 ? 'cravou' : 'cravaram'} o resultado <strong className="text-gray-900">{consensus[m.id]!.home}×{consensus[m.id]!.away}</strong>!
-                                </p>
-                              )}
+                              {m.status === 'done' && consensus[m.id] && (() => {
+                                const c = consensus[m.id]!
+                                const isExact = m.score_home === c.home && m.score_away === c.away
+                                return (
+                                  <p className="text-[10px] text-gray-600">
+                                    {isExact
+                                      ? <><strong className="text-gray-900">{c.count} {c.count === 1 ? 'pessoa' : 'pessoas'}</strong> do grupo {c.count === 1 ? 'cravou' : 'cravaram'} o placar exato <strong className="text-gray-900">{c.home}×{c.away}</strong>!</>
+                                      : <>O palpite mais popular foi <strong className="text-gray-900">{c.home}×{c.away}</strong> por <strong className="text-gray-900">{c.count} {c.count === 1 ? 'pessoa' : 'pessoas'}</strong>.</>
+                                    }
+                                  </p>
+                                )
+                              })()}
                             </div>
                           </div>
                         )
