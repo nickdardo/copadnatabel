@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getFlagProps } from '@/lib/flags'
+import FlagImg from '@/components/FlagImg'
 import type { Match } from '@/lib/supabase'
-
-function FlagImg({ team, dbFlag, size = 32 }: { team: string; dbFlag?: string; size?: number }) {
-  const p = getFlagProps(team, dbFlag)
-  if (p.type === 'png' && p.src) {
-    return <img src={p.src} alt={p.alt} style={{ width: size, height: size * 0.67, objectFit: 'cover', borderRadius: 2 }}/>
-  }
-  return <span style={{ fontSize: size * 0.7, lineHeight: 1 }}>{p.value}</span>
-}
 
 type PickGroup = {
   home: number; away: number; count: number
