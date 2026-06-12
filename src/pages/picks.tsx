@@ -285,23 +285,7 @@ export default function PicksPage() {
           ))}
         </div>
 
-        {/* Round nav */}
-        {tab==='upcoming' && isGroups && upcomingRounds.length>1 && (
-          <div className="flex items-center justify-between mb-3 px-1">
-            <button onClick={() => { if(safeRound>0){setRound(r=>r-1);setBatchSaved(false)} }} disabled={safeRound===0}
-              className="flex items-center gap-1 text-[12px] font-semibold text-gray-400 disabled:opacity-30 hover:text-gray-600">
-              <IcoArrowL/> Anterior
-            </button>
-            <span className="text-[12px] text-gray-600 font-bold">
-              Rodada {safeRound+1} / {upcomingRounds.length}
-              {editsUsed>0 && <span className={`ml-2 text-[11px] font-semibold ${editsLeft===0?'text-red-500':editsLeft<=2?'text-amber-500':'text-gray-400'}`}>{editsLeft}/{MAX_EDITS} alt.</span>}
-            </span>
-            <button onClick={() => { if(safeRound<upcomingRounds.length-1){setRound(r=>r+1);setBatchSaved(false)} }} disabled={safeRound===upcomingRounds.length-1}
-              className="flex items-center gap-1 text-[12px] font-semibold text-[#0099CC] disabled:opacity-30 hover:text-[#007aa8]">
-              Próxima <IcoArrowR/>
-            </button>
-          </div>
-        )}
+        {/* Round nav — only at bottom (floating) */}
 
         {/* Warnings */}
         {tab==='upcoming' && roundLocked && (
@@ -519,7 +503,7 @@ export default function PicksPage() {
                               <p className="text-[10px] text-gray-600">
                                 Resultado oficial: <strong className="text-gray-900">{m.home_team} {m.score_home}×{m.score_away} {m.away_team}</strong>
                               </p>
-                              {consensus[m.id] && (
+                              {m.status === 'done' && consensus[m.id] && (
                                 <p className="text-[10px] text-gray-600">
                                   <strong className="text-gray-900">{consensus[m.id]!.count} {consensus[m.id]!.count === 1 ? 'pessoa' : 'pessoas'}</strong> do grupo {consensus[m.id]!.count === 1 ? 'cravou' : 'cravaram'} o resultado <strong className="text-gray-900">{consensus[m.id]!.home}×{consensus[m.id]!.away}</strong>!
                                 </p>

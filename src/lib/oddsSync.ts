@@ -121,7 +121,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       let status: 'upcoming'|'live'|'done'
       if (score?.completed)                       status = 'done'
       else if (existing?.status === 'done')       status = 'done'  // keep manual done
-      else if (minsSince>=0 && minsSince<130)     status = 'live'
+      else if (minsSince>=0 && minsSince<150)     status = 'live'
       else if (commenceMs > now)                  status = 'upcoming'
       else                                        status = 'live'
 
