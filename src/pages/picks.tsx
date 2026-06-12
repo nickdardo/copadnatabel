@@ -142,9 +142,13 @@ export default function PicksPage() {
     const first  = phases.find(f => ms.some(m => m.fase === f && (m.status === 'upcoming' || m.status === 'live'))) || phases[0]
     setActivePhase(first || '')
     setFetching(false)
-    // Load consensus for done/locked matches
-    const doneIds = ms.filter(m => m.status === 'done').map(m => m.id)
-    if (doneIds.length) loadConsensus(doneIds)
+    // Load consensus for all locked/done matches (includes live that are locked)
+    const lockedIds = ms.filter(m => {
+      if (m.status === 'done') return true
+      if (!m.match_date) return false
+      return new Date(m.match_date).getTime() - 2 * 3600_000 <= Date.now()
+    }).map(m => m.id)
+    if (lockedIds.length) loadConsensus(lockedIds)
   }, [player])
 
   useEffect(() => { fetchData() }, [fetchData])
