@@ -64,7 +64,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl p-4">
             <p className="text-[12px] font-bold text-[#0099CC] mb-1">Limite de alterações</p>
-            <p className="text-[12px] text-gray-600 leading-relaxed">Após salvar seus palpites, você pode alterá-los até <strong>3 vezes por rodada</strong>. Use com sabedoria!</p>
+            <p className="text-[12px] text-gray-600 leading-relaxed">Após salvar seus palpites, você pode alterá-los até <strong>3 vezes por dia</strong>. Use com sabedoria!</p>
           </div>
           <button onClick={onClose} className="w-full py-3.5 rounded-xl bg-[#0099CC] text-white font-semibold text-[14px] hover:bg-[#007aa8] transition-colors">
             Entendido!

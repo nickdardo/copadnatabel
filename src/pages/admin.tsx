@@ -1228,7 +1228,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] font-semibold text-gray-800">Liberar palpites dos jogos</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">Reseta o limite de 3 alterações por rodada. Não afeta jogos já encerrados.</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">Reseta o limite de 3 alterações por dia. Não afeta jogos já encerrados.</p>
                       </div>
                     </div>
                     <button onClick={resetAllEdits} disabled={resettingAll}
