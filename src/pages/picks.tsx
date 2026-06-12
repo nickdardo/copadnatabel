@@ -156,8 +156,6 @@ export default function PicksPage() {
       })
     }
   }, [player?.id])
-
-  const effectiveLocked = (m: Match) => isLocked(m) || (isVisitante && !player?.payment_ok)
     if (m.status === 'done' || m.status === 'live') return true
     if (!m.match_date) return false
     return isBefore(subHours(parseISO(m.match_date), LOCK_HOURS), new Date())
@@ -383,7 +381,7 @@ export default function PicksPage() {
             <div className="grid grid-cols-1 gap-3">
               {dayMatches.map(m => {
                 const pick   = picks[m.id] || { home:'', away:'', saved:false, editCount:0 }
-                const locked = !player?.payment_ok || isLocked(m) || (tab==='upcoming' && roundLocked && pick.saved)
+                const locked = !player?.payment_ok || isLocked(m) || (isVisitante && !player?.payment_ok) || (tab==='upcoming' && roundLocked && pick.saved)
                 const factor = m.status==='done' && m.score_home!==undefined && pick.home!==''
                   ? calcFactor(Number(pick.home), Number(pick.away), m.score_home!, m.score_away!) : null
                 const timeBRT = m.match_date ? fmtBRT(m.match_date, 'HH:mm') : ''
