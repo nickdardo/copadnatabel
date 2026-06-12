@@ -147,7 +147,16 @@ export default function PicksPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const isLocked = (m: Match): boolean => {
+  // Check visitante mode
+  useEffect(() => {
+    if (!player?.payment_ok) {
+      supabase.from('pix_config').select('modo_visitante').limit(1).then(({ data }) => {
+        if (data?.[0]?.modo_visitante) setIsVisitante(true)
+      })
+    }
+  }, [player?.id])
+
+  const effectiveLocked = (m: Match) => isLocked(m) || (isVisitante && !player?.payment_ok)
     if (m.status === 'done' || m.status === 'live') return true
     if (!m.match_date) return false
     return isBefore(subHours(parseISO(m.match_date), LOCK_HOURS), new Date())
@@ -262,6 +271,17 @@ export default function PicksPage() {
           <h1 className="text-[18px] font-bold text-gray-900">Palpites</h1>
           <p className="text-[12px] text-gray-400 mt-0.5">Bolão Copa 2026 BEL</p>
         </div>
+
+        {/* Visitante banner */}
+        {isVisitante && !player?.payment_ok && (
+          <div className="mx-4 mt-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <div className="flex-1">
+              <p className="text-[12px] font-semibold text-blue-800">Modo visitante</p>
+              <p className="text-[11px] text-blue-600 mt-0.5">Acompanhe os jogos e o ranking. Palpites estão desativados neste momento.</p>
+            </div>
+          </div>
+        )}
 
         {/* Phase tabs */}
         {phases.length > 1 && (
@@ -606,7 +626,12 @@ export default function PicksPage() {
             )}
 
             {/* Unpaid users: lock button */}
-            {!player?.payment_ok ? (
+            {!player?.payment_ok && isVisitante ? (
+              <div className="w-full py-3.5 rounded-2xl bg-blue-100 text-blue-600 font-semibold text-[14px] flex items-center justify-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Modo visitante — só visualização
+              </div>
+            ) : !player?.payment_ok ? (
               <button onClick={() => router.push('/onboarding')}
                 className="w-full py-4 rounded-2xl font-bold text-[15px] tracking-wide shadow-lg flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white transition-all active:scale-[.98]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
