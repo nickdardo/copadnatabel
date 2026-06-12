@@ -123,9 +123,22 @@ export default function GroupPicksCard({ match }: { match: Match }) {
             <FlagImg team={match.home_team} dbFlag={match.home_flag} size={36}/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.home_team.slice(0, 8)}</span>
           </div>
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="text-[11px] text-gray-400">×</span>
-            {match.match_date && <span className="text-[9px] text-gray-400">{new Date(match.match_date).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour:'2-digit', minute:'2-digit' })}</span>}
+          <div className="flex flex-col items-center gap-1 flex-shrink-0">
+            {match.score_home != null && match.score_away != null ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg font-bold bg-gray-100 border border-gray-200 text-gray-800">{match.score_home}</div>
+                  <span className="text-gray-300 text-sm">×</span>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg font-bold bg-gray-100 border border-gray-200 text-gray-800">{match.score_away}</div>
+                </div>
+                <span className="text-[8px] text-gray-400 font-medium">Resultado oficial</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] text-gray-400">×</span>
+                {match.match_date && <span className="text-[9px] text-gray-400">{new Date(match.match_date).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour:'2-digit', minute:'2-digit' })}</span>}
+              </>
+            )}
           </div>
           <div className="flex flex-col items-center gap-1 flex-1">
             <FlagImg team={match.away_team} dbFlag={match.away_flag} size={36}/>
