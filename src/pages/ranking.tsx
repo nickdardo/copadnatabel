@@ -23,6 +23,22 @@ function getAvatarUrl(p: Player): string | null {
   } catch { return null }
 }
 
+function MovementArrow({ current, prev }: { current?: number; prev?: number }) {
+  if (!current || !prev || current === prev) return null
+  const diff = prev - current // positive = moved up (smaller number = higher rank)
+  const up = diff > 0
+  return (
+    <span className={`text-[10px] font-bold flex items-center gap-0.5 ${up ? 'text-green-500' : 'text-red-400'}`}>
+      {up ? (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      ) : (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      )}
+      {Math.abs(diff)}
+    </span>
+  )
+}
+
 function PicksBar({ count, total }: { count: number; total: number }) {
   if (!total) return null
   const pct = Math.min(Math.round((count/total)*100), 100)
@@ -139,6 +155,8 @@ export default function RankingPage() {
       }))
       .filter((e:any) => e.player && !e.player.is_admin && e.player.payment_ok)
       .sort((a:any, b:any) => {
+        // Use stable rank_position if available, otherwise sort by pts
+        if (a.rank_position && b.rank_position) return a.rank_position - b.rank_position
         if (b.total_pts !== a.total_pts) return b.total_pts - a.total_pts
         if (b.f10_count !== a.f10_count) return b.f10_count - a.f10_count
         if (b.f7_count  !== a.f7_count)  return b.f7_count  - a.f7_count
@@ -351,7 +369,9 @@ export default function RankingPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Position indicator — placeholder for future movement tracking */}
+                    {/* Movement arrow */}
+                    <MovementArrow current={entry.rank_position} prev={entry.prev_position}/>
+                    {/* Points */}
                     <div className="flex flex-col items-center">
                       <p className="font-bold text-[20px] leading-none text-gray-900">{entry.total_pts}</p>
                       <p className="text-[10px] text-gray-400">pts</p>

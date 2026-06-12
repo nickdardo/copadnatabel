@@ -250,8 +250,8 @@ export default function AdminPage() {
       setRankingTop5(top)
     }
     loadRanking()
-    const interval = setInterval(loadRanking, 30_000)
-    return () => clearInterval(interval)
+    // No polling — ranking only updates when admin recalculates
+    // This prevents position flickering when players have equal pts
   }, [player?.id])
 
   // Load copa lock state
