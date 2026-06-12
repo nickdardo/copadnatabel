@@ -85,6 +85,7 @@ export default function PicksPage() {
   const [limits,      setLimits]      = useState<LimitMap>({})
   const [saving,      setSaving]      = useState(false)
   const [fetching,    setFetching]    = useState(true)
+  const [isVisitante, setIsVisitante] = useState(false)
   const [activePhase, setActivePhase] = useState('')
   const [tab,         setTab]         = useState<'upcoming'|'live'|'done'>('upcoming')
   const [round,       setRound]       = useState(0)
