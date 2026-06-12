@@ -1795,9 +1795,9 @@ export default function AdminPage() {
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Modelos rápidos</p>
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { label: 'Jogo em breve', title: '⚽ Jogo em breve!', body: 'Último aviso para fazer seu palpite antes do fechamento!' },
-                          { label: 'Ranking atualizado', title: '📊 Ranking atualizado', body: 'Confira sua posição após os últimos resultados!' },
-                          { label: 'Jogos amanhã', title: '⚽ Jogos amanhã!', body: 'Faça seus palpites antes do fechamento de amanhã.' },
+                          { label: 'Jogo em breve',       title: 'Bolão Copa 2026 BEL',  body: 'Último aviso! Faça seu palpite antes do fechamento.' },
+                          { label: 'Ranking atualizado',  title: 'Bolão Copa 2026 BEL',  body: 'Ranking atualizado! Confira sua posição após os últimos resultados.' },
+                          { label: 'Jogos amanhã',        title: 'Bolão Copa 2026 BEL',  body: 'Jogos amanhã! Faça seus palpites antes do fechamento.' },
                         ].map(t => (
                           <button key={t.label} onClick={() => { setPushTitle(t.title); setPushBody(t.body) }}
                             className="text-[11px] text-gray-600 border border-gray-200 bg-gray-50 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors">

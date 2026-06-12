@@ -88,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const homeTime = new Date(match.match_date).toLocaleTimeString('pt-BR', {
       timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
     })
-    const title = `⚽ Jogo em 2 horas!`
+    const title = `Bolão Copa 2026 BEL`
     const body  = `${match.home_team} × ${match.away_team} começa às ${homeTime} (Brasília). Palpites fecham em 2h — faça o seu!`
 
     const sent = await sendToAll(title, body)
@@ -122,13 +122,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     else if (scoreA > scoreH)  winner = match.away_team
     else                       winner = 'Empate'
 
-    const title = winner === 'Empate'
-      ? `⚽ Empate! ${match.home_team} ${scoreH}×${scoreA} ${match.away_team}`
-      : `⚽ ${winner} venceu!`
+    const title = `Bolão Copa 2026 BEL`
 
     const body = winner === 'Empate'
-      ? `${match.home_team} ${scoreH}×${scoreA} ${match.away_team}. Confira a pontuação no ranking!`
-      : `${match.home_team} ${scoreH}×${scoreA} ${match.away_team}. Confira o placar e sua pontuação!`
+      ? `Empate! ${match.home_team} ${scoreH}×${scoreA} ${match.away_team}. Confira a pontuação no ranking!`
+      : `${winner} venceu! ${match.home_team} ${scoreH}×${scoreA} ${match.away_team}. Confira sua pontuação!`
 
     const sent = await sendToAll(title, body)
 
