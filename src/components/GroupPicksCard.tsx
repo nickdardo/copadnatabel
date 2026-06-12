@@ -36,6 +36,10 @@ function Avatar({ name, avatar, size = 32 }: { name: string; avatar?: string; si
 }
 
 function PlayerModal({ group, match, onClose }: { group: PickGroup; match: Match; onClose: () => void }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
       <div className="bg-white rounded-t-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
