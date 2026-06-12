@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER, EditLimit } from '@/lib/supabase'
+import GroupPicksCard from '@/components/GroupPicksCard'
 import Layout from '@/components/Layout'
 import FlagImg from '@/components/FlagImg'
 import { format, parseISO, subHours, isBefore } from 'date-fns'
@@ -87,7 +88,7 @@ export default function PicksPage() {
   const [fetching,    setFetching]    = useState(true)
   const [isVisitante, setIsVisitante] = useState(false)
   const [activePhase, setActivePhase] = useState('')
-  const [tab,         setTab]         = useState<'upcoming'|'live'|'done'>('upcoming')
+  const [tab,         setTab]         = useState<'upcoming'|'live'|'done'|'grupo'>('upcoming')
   const [round,       setRound]       = useState(0)
   const [batchSaved,  setBatchSaved]  = useState(false)
   const [consensus,   setConsensus]   = useState<GroupConsensus>({})
@@ -298,11 +299,11 @@ export default function PicksPage() {
 
         {/* Status tabs */}
         <div className="flex bg-white border border-gray-100 rounded-2xl p-1.5 mb-4 shadow-sm">
-          {([['live','Ao vivo',liveMatches.length],['upcoming','Próximos',upcomingMatches.length],['done','Encerrados',doneMatches.length]] as [typeof tab,string,number][]).map(([key,label,count])=>(
+          {([['live','Ao vivo',liveMatches.length],['upcoming','Próximos',upcomingMatches.length],['done','Encerrados',doneMatches.length],['grupo','Grupo',null]] as [typeof tab,string,number|null][]).map(([key,label,count])=>(
             <button key={key} onClick={() => setTab(key)}
-              className={`flex-1 relative flex items-center justify-center gap-1 py-2.5 rounded-xl text-[13px] font-bold transition-all ${tab===key?'bg-[#0099CC] text-white shadow-sm':'text-gray-400 hover:text-gray-600'}`}>
+              className={`flex-1 relative flex items-center justify-center gap-1 py-2.5 rounded-xl text-[12px] font-bold transition-all ${tab===key?'bg-[#0099CC] text-white shadow-sm':'text-gray-400 hover:text-gray-600'}`}>
               {label}
-              {count>0 && <span className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${tab===key?'bg-white/25 text-white':'bg-amber-400 text-white'}`}>{count>9?'9+':count}</span>}
+              {count!=null && count>0 && <span className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${tab===key?'bg-white/25 text-white':'bg-amber-400 text-white'}`}>{count>9?'9+':count}</span>}
             </button>
           ))}
         </div>
@@ -364,13 +365,36 @@ export default function PicksPage() {
         )}
 
         <p className="text-[11px] text-gray-400 text-center mb-2">
-          {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos ao vivo' : 'Resultados'}
+          {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos ao vivo' : tab==='grupo' ? 'O que o grupo apostou' : 'Resultados'}
         </p>
       </div>
 
       {/* ── Match list ──────────────────────────────────────────────── */}
       <div className="max-w-lg mx-auto px-4 pb-36 space-y-3">
-        {Object.entries(grouped).map(([dateLabel, dayMatches]) => (
+
+        {/* ── GRUPO TAB ── */}
+        {tab === 'grupo' && (() => {
+          const lockedMatches = matches.filter(m => isLocked(m) || m.status === 'live' || m.status === 'done')
+          return lockedMatches.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <p className="text-[13px] font-semibold text-gray-600 mb-1">Ainda não há jogos travados</p>
+              <p className="text-[11px] text-gray-400">Os palpites do grupo aparecem aqui após o fechamento, 2h antes de cada jogo.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-[11px] text-gray-400 text-center">Palpites revelados após fechamento · {lockedMatches.length} jogo{lockedMatches.length !== 1 ? 's' : ''}</p>
+              {lockedMatches.map(m => <GroupPicksCard key={m.id} match={m}/>)}
+            </div>
+          )
+        })()}
+
+        {tab !== 'grupo' && Object.entries(grouped).map(([dateLabel, dayMatches]) => (
           <div key={dateLabel}>
             {/* Date header */}
             <div className="bg-gray-100 border-y border-gray-200 px-4 py-2 -mx-4 mb-2">
@@ -575,7 +599,7 @@ export default function PicksPage() {
           </div>
         ))}
 
-        {Object.keys(grouped).length === 0 && (
+        {tab !== 'grupo' && Object.keys(grouped).length === 0 && (
           <div className="text-center py-14">
             <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3 text-gray-300"><IcoBall/></div>
             <p className="text-[13px] text-gray-400">
