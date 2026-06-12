@@ -63,6 +63,13 @@ export function calcFactor(pH:number,pA:number,rH:number,rA:number):'F10'|'F7'|'
   return 'F0'
 }
 export const FACTOR_PTS: Record<string,number> = {F10:10,F7:7,F5:5,F2:2,F0:0}
+export const FACTOR_LABEL: Record<string,string> = {
+  F10: 'Acertou tudo!',
+  F7:  'Vencedor + 1 gol',
+  F5:  'Acertou o vencedor',
+  F2:  'Acertou 1 gol',
+  F0:  'Nenhum acerto',
+}
 export const FACTOR_COLOR: Record<string,string> = {
   F10:'bg-green-100 text-green-800', F7:'bg-blue-100 text-blue-800',
   F5:'bg-amber-100 text-amber-800',  F2:'bg-pink-100 text-pink-800',

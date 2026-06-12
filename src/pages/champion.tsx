@@ -259,7 +259,7 @@ export default function ChampionPage() {
             <IcoLock/>
             <div className="flex-1">
               <p className="text-[12px] font-semibold text-red-700">Prazo encerrado — palpite bloqueado</p>
-              <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou hoje às 14h.</p>
+              <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou em 11/06/2026 às 14h.</p>
             </div>
           </div>
         ) : (

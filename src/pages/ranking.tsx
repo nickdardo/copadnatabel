@@ -391,11 +391,11 @@ export default function RankingPage() {
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Pontuação</p>
                         <div className="flex gap-2 flex-wrap">
                           {[
-                            {k:'f10_count',l:'F10',c:'bg-green-100 text-green-800',p:10},
-                            {k:'f7_count', l:'F7', c:'bg-blue-100 text-blue-800',  p:7 },
-                            {k:'f5_count', l:'F5', c:'bg-amber-100 text-amber-800',p:5 },
-                            {k:'f2_count', l:'F2', c:'bg-pink-100 text-pink-800',  p:2 },
-                            {k:'f0_count', l:'F0', c:'bg-gray-100 text-gray-600',  p:0 },
+                            {k:'f10_count',l:'Acertou tudo',      c:'bg-green-100 text-green-800',p:10},
+                            {k:'f7_count', l:'Vencedor+1 gol',    c:'bg-blue-100 text-blue-800',  p:7 },
+                            {k:'f5_count', l:'Acertou vencedor',  c:'bg-amber-100 text-amber-800',p:5 },
+                            {k:'f2_count', l:'Acertou 1 gol',     c:'bg-pink-100 text-pink-800',  p:2 },
+                            {k:'f0_count', l:'Nenhum acerto',     c:'bg-gray-100 text-gray-600',  p:0 },
                           ].map(({k,l,c,p}) => (
                             <div key={k} className={`px-2.5 py-1.5 rounded-xl text-center ${c}`}>
                               <p className="text-[10px] font-semibold">{l}</p>

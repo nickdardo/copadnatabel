@@ -413,11 +413,11 @@ export default function PicksPage() {
                               )}
                               {pick.home !== '' ? (() => {
                                 const liveColors = {
-                                  F10:{ bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',   pts:'+10 pts' },
-                                  F7: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',   pts:'+7 pts'  },
-                                  F5: { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Vencedor certo',  pts:'+5 pts'  },
-                                  F2: { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Empate certo',    pts:'+2 pts'  },
-                                  F0: { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Não pontua',      pts:'0 pts'   },
+                                  F10:{ bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Acertou tudo!',      pts:'+10 pts' },
+                                  F7: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Vencedor + 1 gol',    pts:'+7 pts'  },
+                                  F5: { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Acertou o vencedor',  pts:'+5 pts'  },
+                                  F2: { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Acertou 1 gol',       pts:'+2 pts'  },
+                                  F0: { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Nenhum acerto',       pts:'0 pts'   },
                                 }
                                 const liveF = m.score_home != null && m.score_away != null
                                   ? calcFactor(Number(pick.home), Number(pick.away), m.score_home, m.score_away)
@@ -490,11 +490,11 @@ export default function PicksPage() {
                         const f = factor
                         const hasPick = pick.home !== ''
                         const colors = {
-                          f10: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',   pts:'+10 pts' },
-                          f7:  { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Placar exato!',   pts:'+7 pts'  },
-                          f5:  { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Vencedor certo',  pts:'+5 pts'  },
-                          f2:  { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Empate certo',    pts:'+2 pts'  },
-                          f0:  { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Não pontuou',     pts:'0 pts'   },
+                          f10: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Acertou tudo!',      pts:'+10 pts' },
+                          f7:  { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Vencedor + 1 gol',    pts:'+7 pts'  },
+                          f5:  { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Acertou o vencedor',  pts:'+5 pts'  },
+                          f2:  { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Acertou 1 gol',       pts:'+2 pts'  },
+                          f0:  { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Nenhum acerto',       pts:'0 pts'   },
                         }
                         const fKey = f ? f.toLowerCase() as keyof typeof colors : 'f0'
                         const c = hasPick && f ? colors[fKey] || colors.f0 : null
