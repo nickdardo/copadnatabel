@@ -206,10 +206,16 @@ export default function RankingPage() {
                 <PicksBar count={me.picks_count||0} total={totalMatches}/>
               </div>
 
-              {/* Points */}
-              <div className="text-right flex-shrink-0">
-                <p className="text-white font-bold text-[32px] leading-none">{me.total_pts}</p>
-                <p className="text-white/50 text-[11px]">pts</p>
+              {/* Points + position */}
+              <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
+                <div className="bg-white/15 rounded-xl px-3 py-1.5 text-center">
+                  <p className="text-white font-bold text-[28px] leading-none">{me.total_pts}</p>
+                  <p className="text-white/60 text-[10px]">pts</p>
+                </div>
+                <div className="bg-white/10 rounded-lg px-2.5 py-1 flex items-center gap-1">
+                  <span className="text-white/60 text-[10px]">colocação</span>
+                  <span className="text-white font-bold text-[13px]">{myPos}º</span>
+                </div>
               </div>
             </div>
 
@@ -362,7 +368,7 @@ export default function RankingPage() {
                   <div className="bg-gray-50 border-b border-gray-100 px-5 py-4 space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Pontuacao</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Pontuação</p>
                         <div className="flex gap-2 flex-wrap">
                           {[
                             {k:'f10_count',l:'F10',c:'bg-green-100 text-green-800',p:10},
@@ -388,7 +394,7 @@ export default function RankingPage() {
 
                       {entry.champ && (
                         <div className="text-right">
-                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Campeos</p>
+                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Campeões</p>
                           <div className="space-y-1.5">
                             {[
                               {label:'1', team: entry.champ.pick_champion},
