@@ -374,7 +374,7 @@ export default function PicksPage() {
 
         {/* ── GRUPO TAB ── */}
         {tab === 'grupo' && (() => {
-          const lockedMatches = matches.filter(m => isLocked(m) || m.status === 'live' || m.status === 'done')
+          const lockedMatches = matches.filter(m => isLocked(m) || m.status === 'live' || m.status === 'done').reverse()
           return lockedMatches.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
