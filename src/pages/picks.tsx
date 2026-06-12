@@ -156,6 +156,8 @@ export default function PicksPage() {
       })
     }
   }, [player?.id])
+
+  function isLocked(m: Match): boolean {
     if (m.status === 'done' || m.status === 'live') return true
     if (!m.match_date) return false
     return isBefore(subHours(parseISO(m.match_date), LOCK_HOURS), new Date())
