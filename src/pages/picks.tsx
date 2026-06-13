@@ -661,7 +661,13 @@ export default function PicksPage() {
 
       {/* ── Fixed CTA ───────────────────────────────────────────────── */}
       {tab==='upcoming' && currentRound.length>0 && !roundLocked && (
-        <div className="fixed bottom-16 left-0 right-0 z-20 px-4 pb-2">
+        <div className="fixed left-0 right-0 z-20 px-4"
+          style={{
+            bottom: 'calc(env(safe-area-inset-bottom) + 56px)',
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
+            paddingBottom: '8px',
+          }}>
           <div className="max-w-lg mx-auto space-y-2">
             {/* Edit limit indicator */}
             {batchSaved && player?.payment_ok && (

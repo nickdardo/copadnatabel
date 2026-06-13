@@ -701,7 +701,11 @@ export default function Layout({ children, title }: Props) {
 
         {/* ── Bottom nav ──────────────────────────────────── */}
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20"
-          style={{paddingBottom: 'max(env(safe-area-inset-bottom), 8px)'}}>
+          style={{
+            paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
+          }}>
           <div className="max-w-lg mx-auto flex">
             {NAV.map(({ href, Icon, label }) => {
               const isActive = router.pathname === href
