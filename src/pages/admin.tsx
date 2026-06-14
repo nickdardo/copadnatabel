@@ -292,9 +292,14 @@ export default function AdminPage() {
     setChampBloqueado(newVal)
     setSavingLock(false)
   }
-  // Auto-sync every 1h while admin panel is open
+  // Auto-sync every 30min + auto-recalc ranking while admin panel is open
   useEffect(() => {
-    async function autoSync() {
+    let syncTimer: ReturnType<typeof setTimeout> | null = null
+    let recalcTimer: ReturnType<typeof setTimeout> | null = null
+    let cancelled = false
+
+    async function doSync(thenRecalc: boolean) {
+      if (cancelled) return
       setAutoSyncing(true)
       try {
         const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual' }) })
@@ -307,12 +312,66 @@ export default function AdminPage() {
         }
       } catch {}
       setAutoSyncing(false)
+      // Recalc 5 min after sync
+      if (thenRecalc && !cancelled) {
+        recalcTimer = setTimeout(async () => {
+          const { error } = await supabase.rpc('recalc_all_scores')
+          if (!error) { setRecalcMsg('Ranking atualizado!'); setTimeout(() => setRecalcMsg(''), 3000) }
+        }, 5 * 60 * 1000)
+      }
     }
-    // First sync on load, then every 1h
-    autoSync()
-    const interval = setInterval(autoSync, 60 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+
+    // Smart scheduler: syncs based on match schedule, not fixed intervals
+    function scheduleNext() {
+      if (cancelled) return
+      const now = Date.now()
+
+      // Find any live match → sync every 10min during the game
+      const liveMatch = matches.find(m => m.status === 'live')
+      if (liveMatch) {
+        doSync(true)
+        syncTimer = setTimeout(scheduleNext, 10 * 60 * 1000) // every 10min while live
+        return
+      }
+
+      // Find the next upcoming match
+      const upcoming = matches
+        .filter(m => m.status === 'upcoming' && m.match_date)
+        .map(m => ({ m, start: new Date(m.match_date!).getTime() }))
+        .filter(x => x.start > now - 3 * 3600_000) // include recently started
+        .sort((a, b) => a.start - b.start)[0]
+
+      if (!upcoming) {
+        // No upcoming games — check again in 30min
+        syncTimer = setTimeout(scheduleNext, 30 * 60 * 1000)
+        return
+      }
+
+      const msUntilStart = upcoming.start - now
+      const tenMinBefore = msUntilStart - 10 * 60 * 1000
+
+      if (tenMinBefore > 0) {
+        // Wait until 10min before kickoff
+        syncTimer = setTimeout(() => { doSync(true); scheduleNext() }, tenMinBefore)
+      } else {
+        // Within 10min of kickoff or already started — sync now, check again in 10min
+        doSync(true)
+        syncTimer = setTimeout(scheduleNext, 10 * 60 * 1000)
+      }
+    }
+
+    // Initial sync on load
+    doSync(true)
+    // Start the smart scheduler after a short delay (let matches load)
+    const startTimer = setTimeout(scheduleNext, 60 * 1000)
+
+    return () => {
+      cancelled = true
+      if (syncTimer) clearTimeout(syncTimer)
+      if (recalcTimer) clearTimeout(recalcTimer)
+      clearTimeout(startTimer)
+    }
+  }, [matches.length])
 
   // Auto-notify: check every 10 minutes when enabled
   useEffect(() => {
@@ -715,7 +774,7 @@ export default function AdminPage() {
             {/* Sync status */}
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 flex-shrink-0">
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${autoSyncing ? 'bg-[#0099CC] animate-pulse' : 'bg-green-400'}`}/>
-              {autoSyncing ? 'Sincronizando...' : lastSyncTime ? `Sync ${lastSyncTime}` : 'Auto-sync 1h'}
+              {autoSyncing ? 'Sincronizando...' : lastSyncTime ? `Sync ${lastSyncTime}` : 'Sync inteligente'}
               {quotaRemaining != null && (
                 <span className={`ml-1 font-semibold ${quotaRemaining < 50 ? 'text-red-500' : quotaRemaining < 200 ? 'text-amber-500' : 'text-green-600'}`}>
                   · {quotaRemaining} req
@@ -1154,7 +1213,7 @@ export default function AdminPage() {
                     </button>
                     <div className="space-y-1">
                       <p className="text-[11px] text-gray-500 leading-relaxed">
-                        Busca jogos e placares na The Odds API. Use <strong>antes e após cada rodada</strong>.
+                        Busca jogos e placares na The Odds API. <strong>Sync inteligente:</strong> sincroniza 10min antes do jogo, a cada 10min durante a partida e 10min após o fim. Recalcula o ranking 5min depois de cada sync.
                       </p>
                       {lastSyncTime && (
                         <p className="text-[10px] text-gray-400">Último: {lastSyncTime}</p>

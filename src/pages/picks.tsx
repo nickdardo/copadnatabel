@@ -89,6 +89,8 @@ export default function PicksPage() {
   const [isVisitante, setIsVisitante] = useState(false)
   const [activePhase, setActivePhase] = useState('')
   const [tab,         setTab]         = useState<'upcoming'|'live'|'done'|'grupo'>('upcoming')
+  const tabManuallySet = useRef(false)
+  const setTabManual = (t: typeof tab) => { tabManuallySet.current = true; setTab(t) }
   const [round,       setRound]       = useState(0)
   const [batchSaved,  setBatchSaved]  = useState(false)
   const [consensus,   setConsensus]   = useState<GroupConsensus>({})
@@ -141,6 +143,11 @@ export default function PicksPage() {
     const phases = FASE_ORDER.filter(f => ms.some(m => m.fase === f))
     const first  = phases.find(f => ms.some(m => m.fase === f && (m.status === 'upcoming' || m.status === 'live'))) || phases[0]
     setActivePhase(first || '')
+    // Dynamic tab: open "live" automatically if any match is live, only on first load
+    if (!tabManuallySet.current) {
+      const hasLive = ms.some(m => m.status === 'live')
+      setTab(hasLive ? 'live' : 'upcoming')
+    }
     setFetching(false)
     // Load consensus for all locked/done matches (includes live that are locked)
     const lockedIds = ms.filter(m => {
@@ -304,7 +311,7 @@ export default function PicksPage() {
         {/* Status tabs */}
         <div className="flex bg-white border border-gray-100 rounded-2xl p-1.5 mb-4 shadow-sm">
           {([['live','Ao vivo',liveMatches.length],['upcoming','Próximos',upcomingMatches.length],['done','Encerrados',doneMatches.length],['grupo','Grupo',null]] as [typeof tab,string,number|null][]).map(([key,label,count])=>(
-            <button key={key} onClick={() => setTab(key)}
+            <button key={key} onClick={() => setTabManual(key)}
               className={`flex-1 relative flex items-center justify-center gap-1 py-2.5 rounded-xl text-[12px] font-bold transition-all ${tab===key?'bg-[#0099CC] text-white shadow-sm':'text-gray-400 hover:text-gray-600'}`}>
               {label}
               {count!=null && count>0 && <span className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${tab===key?'bg-white/25 text-white':'bg-amber-400 text-white'}`}>{count>9?'9+':count}</span>}
