@@ -100,6 +100,7 @@ export default function RankingPage() {
   const { player, loading } = useAuth()
   const router = useRouter()
   const [ranking,      setRanking]      = useState<RankEntry[]>([])
+  const [lastUpdate,   setLastUpdate]   = useState<string>('')
   const [fetching,     setFetching]     = useState(true)
   const [expanded,     setExpanded]     = useState<string|null>(null)
   const [showAll,      setShowAll]      = useState(false)
@@ -165,6 +166,15 @@ export default function RankingPage() {
       })
 
     setRanking(sorted)
+    // Find most recent score update time
+    const latestUpdate = (scores || [])
+      .map((s: { updated_at?: string }) => s.updated_at)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0]
+    if (latestUpdate) {
+      setLastUpdate(new Date(latestUpdate).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }))
+    }
     setFetching(false)
   }
 
@@ -208,8 +218,8 @@ export default function RankingPage() {
                 <p className="text-white font-bold text-[17px] truncate uppercase">
                   {me.player.nickname || me.player.username}
                 </p>
-                <p className="text-white/60 text-[11px] mt-0.5">
-                  F10:{me.f10_count} · F7:{me.f7_count} · F5:{me.f5_count} · F2:{me.f2_count}
+                <p className="text-white/70 text-[11px] mt-0.5 font-medium">
+                  10pts: {me.f10_count} | 7pts: {me.f7_count} | 5pts: {me.f5_count} | 2pts: {me.f2_count}
                   {me.champion_pts > 0 && ` · Bônus:+${me.champion_pts}`}
                 </p>
                 {/* Champion picks */}
@@ -325,6 +335,12 @@ export default function RankingPage() {
         {/* List header */}
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
           <p className="text-[12px] text-gray-500 font-semibold">{ranking.length} participante{ranking.length !== 1 ? 's' : ''}</p>
+          {lastUpdate && (
+            <span className="text-[10px] text-gray-400 flex items-center gap-1">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              Atualizado {lastUpdate}
+            </span>
+          )}
         </div>
 
         {/* Ranking list */}
@@ -362,8 +378,14 @@ export default function RankingPage() {
                       <span className="font-bold text-[14px] text-gray-900 truncate">{name}</span>
                       {isMe && <span className="text-[10px] text-[#0099CC] font-semibold bg-[#0099CC]/10 px-1.5 py-0.5 rounded-full">você</span>}
                     </div>
-                    <p className="text-[11px] text-gray-700 mt-0.5 font-medium">
-                      F10:{entry.f10_count} · F7:{entry.f7_count} · F5:{entry.f5_count} · F2:{entry.f2_count}
+                    <p className="text-[10px] mt-0.5 font-bold flex items-center gap-1 flex-wrap">
+                      <span style={{color:'#15803D'}}>10pts: {entry.f10_count}</span>
+                      <span className="text-gray-300">|</span>
+                      <span style={{color:'#1D4ED8'}}>7pts: {entry.f7_count}</span>
+                      <span className="text-gray-300">|</span>
+                      <span style={{color:'#16A34A'}}>5pts: {entry.f5_count}</span>
+                      <span className="text-gray-300">|</span>
+                      <span style={{color:'#B45309'}}>2pts: {entry.f2_count}</span>
                     </p>
                     <PicksBar count={entry.picks_count||0} total={totalMatches}/>
                   </div>
