@@ -170,7 +170,8 @@ export default function Layout({ children, title }: Props) {
   const [loadingLog, setLoadingLog] = useState(false)
   const [notifyBannerHidden, setNotifyBannerHidden] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
-  const [hasUpdate, setHasUpdate] = useState(false)
+  const [hasUpdate,    setHasUpdate]    = useState(false)
+  const [isUpdating,   setIsUpdating]   = useState(false)
 
   async function fetchNotifyLog() {
     if (!player) return
@@ -399,25 +400,22 @@ export default function Layout({ children, title }: Props) {
             </div>
             <button
               onClick={async () => {
-                sessionStorage.removeItem('app_version')
                 setHasUpdate(false)
+                setIsUpdating(true)
+                document.body.style.overflow = 'hidden'
+                sessionStorage.removeItem('app_version')
                 try {
-                  // 1. Unregister all service workers
                   if ('serviceWorker' in navigator) {
                     const regs = await navigator.serviceWorker.getRegistrations()
                     await Promise.all(regs.map(r => r.unregister()))
                   }
-                  // 2. Clear all caches
                   if ('caches' in window) {
                     const keys = await caches.keys()
                     await Promise.all(keys.map(k => caches.delete(k)))
                   }
-                  // 3. Small delay to let SW finish unregistering
-                  await new Promise(r => setTimeout(r, 300))
+                  await new Promise(r => setTimeout(r, 400))
                 } catch {}
-                // 4. Hard navigation with cache-bust — avoids PWA stuck loading
-                const url = window.location.origin + window.location.pathname + '?v=' + Date.now()
-                window.location.replace(url)
+                window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now())
               }}
               className="flex-shrink-0 bg-white text-[#0099CC] text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors hover:bg-white/90 whitespace-nowrap">
               Atualizar agora
@@ -530,9 +528,9 @@ export default function Layout({ children, title }: Props) {
                 className="h-9 w-9 rounded-lg object-cover flex-shrink-0"/>
               <div className="hidden sm:flex flex-col">
                 <span className="text-[13px] text-gray-600 font-bold leading-tight">Bolão Copa 2026 BEL</span>
-                <span className="text-[9px] text-gray-400 font-medium">v1.9</span>
+                <span className="text-[9px] text-gray-400 font-medium">v1.10</span>
               </div>
-              <span className="text-[9px] text-gray-400 font-medium sm:hidden bg-gray-100 px-1.5 py-0.5 rounded-full">v1.9</span>
+              <span className="text-[9px] text-gray-400 font-medium sm:hidden bg-gray-100 px-1.5 py-0.5 rounded-full">v1.10</span>
             </div>
 
             {/* Tutorial button */}
@@ -700,6 +698,16 @@ export default function Layout({ children, title }: Props) {
         <main>{children}</main>
 
         {/* ── Bottom nav ──────────────────────────────────── */}
+        {/* Update loading overlay */}
+        {isUpdating && (
+          <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center gap-4"
+            style={{transform:'translateZ(0)'}}>
+            <span className="w-10 h-10 border-3 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin" style={{borderWidth:3}}/>
+            <p className="text-[14px] font-semibold text-gray-700">Atualizando...</p>
+            <p className="text-[11px] text-gray-400">Aguarde um momento</p>
+          </div>
+        )}
+
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20"
           style={{
             paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
