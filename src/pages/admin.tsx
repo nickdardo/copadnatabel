@@ -5,7 +5,7 @@ import { supabase, Match, Player, FASE_ORDER, getPresence } from '@/lib/supabase
 import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 
-type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications'
+type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
 
 function fmtBRT(dateStr: string) {
@@ -46,6 +46,7 @@ export default function AdminPage() {
   const { player, loading, isAdmin, logout } = useAuth()
   const router = useRouter()
   const [page,          setPage]          = useState<Page>('dashboard')
+  const [versaoCopied,  setVersaoCopied]  = useState(false)
   const [matches,       setMatches]       = useState<Match[]>([])
   const [players,       setPlayers]       = useState<Player[]>([])
   const [fetching,      setFetching]      = useState(true)
@@ -682,6 +683,7 @@ export default function AdminPage() {
     { id: 'pix'           as Page, label: 'PIX',            Icon: Ico.Pix,        badge: null },
     { id: 'logs'          as Page, label: 'Pagamentos',     Icon: Ico.Logs,       badge: null },
     { id: 'notifications' as Page, label: 'Notificações',   Icon: Ico.Bell,       badge: null },
+    { id: 'versao'        as Page, label: 'Atualizações',   Icon: Ico.Star,       badge: null },
   ]
 
   if (loading || fetching || !isAdmin) return (
@@ -768,7 +770,7 @@ export default function AdminPage() {
             </div>
 
             <h1 className="text-[13px] md:text-[14px] font-semibold text-gray-800 truncate">
-              {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'PIX' : page === 'logs' ? 'Pagamentos' : 'Notificações'}
+              {page === 'dashboard' ? 'Dashboard' : page === 'players' ? 'Participantes' : page === 'matches' ? 'Partidas' : page === 'pix' ? 'PIX' : page === 'logs' ? 'Pagamentos' : page === 'versao' ? 'Atualizações' : 'Notificações'}
             </h1>
 
             {/* Sync status */}
@@ -1888,6 +1890,70 @@ export default function AdminPage() {
                         <span className="w-4 h-4 rounded-full bg-[#0099CC]/20 text-[#0099CC] text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i+1}</span>
                         {s}
                       </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── VERSÃO / CHANGELOG ── */}
+            {page === 'versao' && (
+              <div className="max-w-2xl mx-auto space-y-4">
+                {/* Current version banner */}
+                <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
+                  <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
+                  <p className="text-[42px] font-black leading-none">v1.11</p>
+                  <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
+                </div>
+
+                {/* Copy text card */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <p className="text-[13px] font-bold text-gray-800">Texto para o grupo</p>
+                    <button
+                      onClick={() => {
+                        const txt = document.getElementById('changelog-text')?.innerText || ''
+                        navigator.clipboard.writeText(txt)
+                        setVersaoCopied(true)
+                        setTimeout(() => setVersaoCopied(false), 2000)
+                      }}
+                      className="flex items-center gap-1.5 text-[12px] font-semibold text-[#0099CC] bg-[#0099CC]/10 hover:bg-[#0099CC]/20 px-3 py-1.5 rounded-lg transition-colors">
+                      {versaoCopied ? (
+                        <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado!</>
+                      ) : (
+                        <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar texto</>
+                      )}
+                    </button>
+                  </div>
+                  <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
+{`Bolão Copa 2026 BEL — Atualização v1.11
+
+📊 Pontuação mais clara no ranking
+Trocamos os códigos F10, F7, F5 e F2 por algo mais fácil de entender. Agora aparece direto quanto cada acerto valeu: 10pts, 7pts, 5pts e 2pts, cada um com sua cor.
+
+🕐 Data da última atualização
+Adicionamos no ranking a data e hora da última atualização da pontuação.
+
+Atualizem o app para a versão mais recente! 🏆`}
+                  </div>
+                </div>
+
+                {/* History */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <p className="text-[13px] font-bold text-gray-800">Histórico de versões</p>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {[
+                      { v: 'v1.11', desc: 'Pontuação colorida (10pts/7pts/5pts/2pts) e data da última atualização no ranking.' },
+                      { v: 'v1.10', desc: 'Aba Palpites abre no "Ao Vivo" durante jogos. Sincronização inteligente baseada no cronograma.' },
+                      { v: 'v1.9',  desc: 'Correção do bug da barra inferior no iOS e tela de atualização.' },
+                      { v: 'v1.8',  desc: 'Número de versão no topo. Card de palpites do grupo. Placar ao vivo com pontuação em tempo real.' },
+                    ].map(item => (
+                      <div key={item.v} className="px-5 py-3 flex gap-3">
+                        <span className="text-[12px] font-bold text-[#0099CC] flex-shrink-0 w-12">{item.v}</span>
+                        <span className="text-[12px] text-gray-500 leading-snug">{item.desc}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
