@@ -78,6 +78,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
   const [data,    setData]    = useState<GroupData | null>(null)
   const [loading, setLoading] = useState(true)
   const [modal,   setModal]   = useState<PickGroup | null>(null)
+  const [showAllScores, setShowAllScores] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -169,9 +170,9 @@ export default function GroupPicksCard({ match }: { match: Match }) {
 
         {/* Scores */}
         <div className="px-4 pb-2">
-          <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Placares mais apostados — toque para ver quem</p>
+          <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Todos os placares apostados — toque para ver quem</p>
           <div className="flex flex-wrap gap-2">
-            {dist.slice(0, 8).map((g, i) => (
+            {(showAllScores ? dist : dist.slice(0, 10)).map((g, i) => (
               <button key={`${g.home}-${g.away}`} onClick={() => setModal(g)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-left transition-all active:scale-95 ${i === 0 ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
                 {i === 0 && (
@@ -185,6 +186,12 @@ export default function GroupPicksCard({ match }: { match: Match }) {
               </button>
             ))}
           </div>
+          {dist.length > 10 && (
+            <button onClick={() => setShowAllScores(v => !v)}
+              className="text-[10px] font-semibold text-[#0099CC] mt-2 hover:underline">
+              {showAllScores ? 'Mostrar menos' : `Ver todos os ${dist.length} placares`}
+            </button>
+          )}
           <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             Toque em um placar para ver quem apostou
