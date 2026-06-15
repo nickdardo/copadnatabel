@@ -75,6 +75,12 @@ type FeedEvent = {
   badge_key?: string; created_at: string
 }
 
+type Highlights = {
+  topDay:       { player_name: string; pts_today: number; games_today: number } | null
+  exactScorers: { match_desc: string; score_desc: string; players: { name: string; initials: string }[] } | null
+  hotStreak:    { player_name: string; streak: number } | null
+}
+
 const BADGE_META: Record<string, { label: string; icon: string; color: string }> = {
   placar_perfeito:   { label: 'Placar Perfeito',   icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',          color: 'bg-green-100 text-green-800 border-green-200' },
   atirador_de_elite: { label: 'Atirador de Elite', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z', color: 'bg-amber-100 text-amber-800 border-amber-200' },
@@ -108,10 +114,20 @@ export default function RankingPage() {
   const [totalMatches, setTotalMatches] = useState(72)
   const [badges,       setBadges]       = useState<BadgeMap>({})
   const [feed,         setFeed]         = useState<FeedEvent[]>([])
+  const [highlights,   setHighlights]   = useState<Highlights>({ topDay: null, exactScorers: null, hotStreak: null })
   const [activeTab,    setActiveTab]    = useState<'ranking'|'feed'>('ranking')
   const meRowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
+
+  // Fetch highlights when Feed tab opens
+  useEffect(() => {
+    if (activeTab !== 'feed') return
+    fetch('/api/highlights')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setHighlights(data) })
+      .catch(() => {})
+  }, [activeTab])
 
   useEffect(() => {
     if (!player) return
@@ -310,6 +326,86 @@ export default function RankingPage() {
         {/* ── FEED ── */}
         {activeTab === 'feed' && (
           <div className="px-4 pb-6 space-y-2">
+
+            {/* ── Destaques do dia ── */}
+            {(highlights.topDay || highlights.exactScorers || highlights.hotStreak) && (
+              <div className="mb-1">
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-[11px] font-semibold text-gray-500">Destaques do dia</span>
+                </div>
+                <div className="space-y-2">
+
+                  {/* Maior pontuação do dia */}
+                  {highlights.topDay && (
+                    <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center gap-3"
+                      style={{borderLeft:'3px solid #BA7517', borderRadius:'0 1rem 1rem 0'}}>
+                      <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">Maior pontuação do dia</span>
+                        <p className="text-[13px] font-semibold text-gray-800 mt-1 truncate">{highlights.topDay.player_name}</p>
+                        <p className="text-[11px] text-gray-400">marcou <span className="font-bold text-amber-700">+{highlights.topDay.pts_today} pts</span> em {highlights.topDay.games_today} jogo{highlights.topDay.games_today !== 1 ? 's' : ''} hoje</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-[24px] font-bold text-amber-600 leading-none">{highlights.topDay.pts_today}</p>
+                        <p className="text-[10px] text-gray-400">pts hoje</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Placares exatos */}
+                  {highlights.exactScorers && highlights.exactScorers.players.length > 0 && (
+                    <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-start gap-3"
+                      style={{borderLeft:'3px solid #0F6E56', borderRadius:'0 1rem 1rem 0'}}>
+                      <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Placares exatos</span>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {highlights.exactScorers.match_desc} · <span className="font-bold">{highlights.exactScorers.score_desc}</span>
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          {highlights.exactScorers.players.map((p, i) => (
+                            <div key={i} className="w-7 h-7 rounded-full bg-[#0099CC] flex items-center justify-center text-white text-[9px] font-bold" title={p.name}>
+                              {p.initials}
+                            </div>
+                          ))}
+                          {highlights.exactScorers.players.length > 8 && (
+                            <span className="text-[10px] text-gray-400">+{highlights.exactScorers.players.length - 8}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sequência em alta */}
+                  {highlights.hotStreak && (
+                    <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center gap-3"
+                      style={{borderLeft:'3px solid #185FA5', borderRadius:'0 1rem 1rem 0'}}>
+                      <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">Sequência em alta</span>
+                        <p className="text-[13px] font-semibold text-gray-800 mt-1 truncate">{highlights.hotStreak.player_name}</p>
+                        <p className="text-[11px] text-gray-400"><span className="font-bold text-blue-700">{highlights.hotStreak.streak} acertos</span> consecutivos</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {Array.from({length: Math.min(highlights.hotStreak.streak, 5)}).map((_, i) => (
+                          <div key={i} className="w-2 h-7 bg-[#378ADD] rounded-sm opacity-80"/>
+                        ))}
+                        <div className="w-2 h-7 bg-blue-100 rounded-sm"/>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-gray-100 mt-3 mb-1 pt-2">
+                  <span className="text-[11px] text-gray-400">Atividade recente</span>
+                </div>
+              </div>
+            )}
             {feed.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-3 opacity-40">
