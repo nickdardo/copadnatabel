@@ -12,10 +12,20 @@ export default function ProfileSetupPage() {
   const { player, loading, refreshPlayer } = useAuth()
   const router = useRouter()
 
-  // Tab: 'perfil' ou 'desempenho' — pode vir via query ?tab=desempenho
-  const [activeTab, setActiveTab] = useState<'perfil'|'desempenho'>('perfil')
+  // Tab: 'perfil' | 'desempenho' | 'stats'
+  const [activeTab, setActiveTab] = useState<'perfil'|'desempenho'|'stats'>('perfil')
   const [score, setScore] = useState<Score | null>(null)
   const [totalMatches, setTotalMatches] = useState(0)
+
+  type StatsData = {
+    championStats:   { team: string; count: number; pct: number }[]
+    riskyBets:       { team: string; count: number; pct: number }[]
+    mostPopularScore:{ score: string; count: number; pct: number } | null
+    accuracy:        { avg: number; best: { name: string; pct: number } | null; worst: { name: string; pct: number } | null }
+    avgF10:          number
+    totalChamp:      number
+  }
+  const [stats, setStats] = useState<StatsData | null>(null)
 
   const [firstName,  setFirstName]  = useState('')
   const [lastName,   setLastName]   = useState('')
@@ -61,8 +71,19 @@ export default function ProfileSetupPage() {
 
   // Read ?tab= from URL after router is ready
   useEffect(() => {
-    if (router.isReady && router.query.tab === 'desempenho') setActiveTab('desempenho')
+    if (!router.isReady) return
+    if (router.query.tab === 'desempenho') setActiveTab('desempenho')
+    if (router.query.tab === 'stats') setActiveTab('stats')
   }, [router.isReady, router.query.tab])
+
+  // Fetch stats when Estatísticas tab opens
+  useEffect(() => {
+    if (activeTab !== 'stats' || stats) return
+    fetch('/api/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setStats(data) })
+      .catch(() => {})
+  }, [activeTab])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -192,7 +213,7 @@ export default function ProfileSetupPage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <span className="font-semibold text-gray-800 text-[15px]">
-            {activeTab === 'desempenho' ? 'Meu desempenho' : 'Editar perfil'}
+            {activeTab === 'desempenho' ? 'Meu desempenho' : activeTab === 'stats' ? 'Estatísticas do bolão' : 'Editar perfil'}
           </span>
         </header>
 
@@ -200,10 +221,10 @@ export default function ProfileSetupPage() {
 
           {/* Tab switcher */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-5">
-            {(['perfil','desempenho'] as const).map(t => (
+            {(['perfil','desempenho','stats'] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
-                className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-all ${activeTab===t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-                {t === 'perfil' ? 'Perfil' : 'Desempenho'}
+                className={`flex-1 py-2 rounded-lg text-[12px] font-medium transition-all ${activeTab===t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                {t === 'perfil' ? 'Perfil' : t === 'desempenho' ? 'Desempenho' : 'Estatísticas'}
               </button>
             ))}
           </div>
@@ -285,6 +306,97 @@ export default function ProfileSetupPage() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── ABA ESTATÍSTICAS ── */}
+          {activeTab === 'stats' && (
+            <div className="space-y-3">
+              {!stats ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-6 h-6 border-2 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin"/>
+                </div>
+              ) : (<>
+
+                {/* Campeão mais apostado */}
+                <div className="bg-white border border-gray-100 rounded-xl p-4">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Campeão mais apostado</p>
+                  {stats.championStats.length === 0
+                    ? <p className="text-[12px] text-gray-400">Nenhum palpite de campeão ainda</p>
+                    : stats.championStats.map((c, i) => (
+                      <div key={c.team} className="flex items-center gap-2 mb-2">
+                        <span className="text-[14px]">{i===0?'🥇':i===1?'🥈':'🥉'}</span>
+                        <span className="text-[12px] text-gray-700 flex-1">{c.team}</span>
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden mx-1">
+                          <div className="h-full rounded-full" style={{width:`${c.pct}%`, background: i===0?'#16A34A':i===1?'#9CA3AF':'#CBD5E1'}}/>
+                        </div>
+                        <span className="text-[11px] font-semibold text-gray-700 w-8 text-right">{c.pct}%</span>
+                      </div>
+                    ))
+                  }
+                  <p className="text-[10px] text-gray-400 mt-2">{stats.totalChamp} palpites de campeão registrados</p>
+                </div>
+
+                {/* Placar mais apostado */}
+                {stats.mostPopularScore && (
+                  <div className="bg-white border border-gray-100 rounded-xl p-4">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Placar mais apostado</p>
+                    <div className="flex items-center gap-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-2.5 text-[22px] font-semibold text-gray-900">{stats.mostPopularScore.score}</div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-gray-800">{stats.mostPopularScore.pct}% dos palpites</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{stats.mostPopularScore.count} apostas neste placar</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Apostas de risco */}
+                {stats.riskyBets.length > 0 && (
+                  <div className="bg-white border border-gray-100 rounded-xl p-4">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Apostas de risco</p>
+                    <p className="text-[11px] text-gray-400 mb-3">Seleções apostadas como campeãs com menos de 5% dos votos</p>
+                    {stats.riskyBets.map(c => (
+                      <div key={c.team} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-none">
+                        <span className="text-[12px] text-gray-700">{c.team}</span>
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">{c.count} usuário{c.count!==1?'s':''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Média de acertos */}
+                <div className="bg-white border border-gray-100 rounded-xl p-4">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Média de acertos do grupo</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-400 mb-1">Média geral</p>
+                      <p className="text-[22px] font-semibold text-gray-900 leading-none">{stats.accuracy.avg}%</p>
+                      <p className="text-[10px] text-gray-400 mt-1">de aproveitamento</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-400 mb-1">Placares exatos / jogador</p>
+                      <p className="text-[22px] font-semibold text-gray-900 leading-none">{stats.avgF10}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">média do grupo</p>
+                    </div>
+                    {stats.accuracy.best && (
+                      <div className="bg-green-50 rounded-xl p-3">
+                        <p className="text-[10px] text-green-600 mb-1">Melhor aproveitamento</p>
+                        <p className="text-[13px] font-semibold text-green-800 truncate">{stats.accuracy.best.name}</p>
+                        <p className="text-[11px] text-green-600 mt-0.5">{stats.accuracy.best.pct}% de acerto</p>
+                      </div>
+                    )}
+                    {stats.accuracy.worst && (
+                      <div className="bg-red-50 rounded-xl p-3">
+                        <p className="text-[10px] text-red-500 mb-1">Menor aproveitamento</p>
+                        <p className="text-[13px] font-semibold text-red-800 truncate">{stats.accuracy.worst.name}</p>
+                        <p className="text-[11px] text-red-500 mt-0.5">{stats.accuracy.worst.pct}% de acerto</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </>)}
             </div>
           )}
 
