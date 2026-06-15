@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase, Score, Player } from '@/lib/supabase'
+import { supabase, Score, Player, getPresence } from '@/lib/supabase'
 import FlagImg from '@/components/FlagImg'
 import Layout from '@/components/Layout'
 
@@ -196,9 +196,10 @@ export default function RankingPage() {
     setFetching(false)
   }
 
-  const me    = ranking.find(r => r.player_id === player?.id)
-  const myPos = ranking.findIndex(r => r.player_id === player?.id) + 1
-  const list  = showAll ? ranking : ranking.slice(0, 10)
+  const me         = ranking.find(r => r.player_id === player?.id)
+  const myPos      = ranking.findIndex(r => r.player_id === player?.id) + 1
+  const list       = showAll ? ranking : ranking.slice(0, 10)
+  const onlineCount = ranking.filter(r => getPresence(r.player.last_seen_at).status === 'online').length
 
   function scrollToMe() {
     if (myPos > 10 && !showAll) {
@@ -457,7 +458,15 @@ export default function RankingPage() {
         {activeTab === 'ranking' && (<>
         {/* List header */}
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
-          <p className="text-[12px] text-gray-500 font-semibold">{ranking.length} participante{ranking.length !== 1 ? 's' : ''}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-[12px] text-gray-500 font-semibold">{ranking.length} participante{ranking.length !== 1 ? 's' : ''}</p>
+            {onlineCount > 0 && (
+              <span className="flex items-center gap-1 text-[11px] text-green-600 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"/>
+                {onlineCount} online agora
+              </span>
+            )}
+          </div>
           {lastUpdate && (
             <span className="text-[10px] text-gray-400 flex items-center gap-1">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>

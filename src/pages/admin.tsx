@@ -2048,7 +2048,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.12</p>
+                  <p className="text-[42px] font-black leading-none">v1.13</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2072,13 +2072,25 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.12
+{`Bolão Copa 2026 BEL — Atualização v1.13
 
-⏳ Jornada dos jogos mais clara
-Antes de começar, o jogo aparece na aba "Ao vivo" com o aviso "EM BREVE". Quando apitar, vira "AO VIVO". Ao entrar em Palpites com um jogo em breve ou ao vivo, o app já abre direto nessa aba.
+🏆 Dashboard admin aprimorado
+Novos KPIs: palpites registrados, usuários sem palpitar (com botão de lembrete), e campeão mais apostado (top 3).
 
-📍 Sua posição no ranking
-No card azul do Ranking, o chip "colocação" virou um botão 3D. Ao tocar, a lista scrolla automaticamente até a sua posição e destaca sua linha.
+🔔 Novas notificações push
+Além das existentes, agora você recebe: aviso 30min antes do jogo, alerta quando o jogo começa, notificação de novo líder no ranking e aviso quando você sobe 3+ posições.
+
+📊 Meu Desempenho no perfil
+Nova aba no perfil com taxa de acerto, distribuição de pontos e estatísticas pessoais.
+
+🌟 Destaques do dia no Feed
+Maior pontuação do dia, quem acertou placar exato e sequência de acertos aparecem no topo do Feed.
+
+📈 Estatísticas do bolão
+Nova aba no perfil mostrando campeão mais apostado, placar mais popular, apostas de risco e média de acertos do grupo.
+
+🟢 Online agora no Ranking
+Contador de usuários online ao lado de participantes no ranking.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2091,6 +2103,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.13', desc: 'KPIs admin, novas notificações push, Meu Desempenho, Destaques do Feed, Estatísticas do bolão, online no ranking.' },
                       { v: 'v1.12', desc: 'Jornada Em Breve → Ao Vivo → Encerrados nos palpites. Botão 3D de colocação no ranking com scroll automático.' },
                       { v: 'v1.11', desc: 'Pontuação colorida (10pts/7pts/5pts/2pts) e data da última atualização no ranking.' },
                       { v: 'v1.10', desc: 'Aba Palpites abre no "Ao Vivo" durante jogos. Sincronização inteligente baseada no cronograma.' },
