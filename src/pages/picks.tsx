@@ -143,10 +143,14 @@ export default function PicksPage() {
     const phases = FASE_ORDER.filter(f => ms.some(m => m.fase === f))
     const first  = phases.find(f => ms.some(m => m.fase === f && (m.status === 'upcoming' || m.status === 'live'))) || phases[0]
     setActivePhase(first || '')
-    // Dynamic tab: open "live" automatically if any match is live, only on first load
+    // Dynamic tab: open "live" if any match is live OR in lock window (Em Breve), only on first load
     if (!tabManuallySet.current) {
-      const hasLive = ms.some(m => m.status === 'live')
-      setTab(hasLive ? 'live' : 'upcoming')
+      const hasLiveOrEmBreve = ms.some(m =>
+        m.status === 'live' ||
+        (m.status === 'upcoming' && m.match_date &&
+          isBefore(subHours(parseISO(m.match_date), LOCK_HOURS), new Date()))
+      )
+      setTab(hasLiveOrEmBreve ? 'live' : 'upcoming')
     }
     setFetching(false)
     // Load consensus for all locked/done matches (includes live that are locked)
@@ -178,8 +182,15 @@ export default function PicksPage() {
   const phaseMatches    = matches.filter(m => m.fase === activePhase)
   const isGroups        = activePhase === 'Fase de Grupos'
   const upcomingMatches = phaseMatches.filter(m => !isLocked(m))
+  // Em Breve: palpites fechados mas jogo ainda não iniciou (dentro da janela de 2h)
+  const emBreveMatches  = phaseMatches.filter(m => isLocked(m) && m.status === 'upcoming')
+  // Ao Vivo: jogo realmente rolando
   const liveMatches     = phaseMatches.filter(m => m.status === 'live')
-  const doneMatches     = phaseMatches.filter(m => isLocked(m))
+  // Tab "Ao vivo" agrupa Em Breve + Ao Vivo (ordenados por horário)
+  const liveTabMatches  = [...emBreveMatches, ...liveMatches]
+    .sort((a, b) => (a.match_date || '').localeCompare(b.match_date || ''))
+  // Encerrados: apenas partidas finalizadas
+  const doneMatches     = phaseMatches.filter(m => m.status === 'done')
 
   const upcomingRounds  = isGroups
     ? Array.from({ length: Math.ceil(upcomingMatches.length / ROUND_SIZE) }, (_, i) =>
@@ -187,7 +198,7 @@ export default function PicksPage() {
     : [upcomingMatches]
   const safeRound    = Math.min(round, Math.max(0, upcomingRounds.length - 1))
   const currentRound = upcomingRounds[safeRound] || []
-  const tabMatches   = tab === 'live' ? liveMatches : tab === 'done' ? doneMatches : currentRound
+  const tabMatches   = tab === 'live' ? liveTabMatches : tab === 'done' ? doneMatches : currentRound
 
   const limitKey    = `${activePhase}:${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' })}`
   const editLimit   = limits[limitKey]
@@ -310,7 +321,7 @@ export default function PicksPage() {
 
         {/* Status tabs */}
         <div className="flex bg-white border border-gray-100 rounded-2xl p-1.5 mb-4 shadow-sm">
-          {([['live','Ao vivo',liveMatches.length],['upcoming','Próximos',upcomingMatches.length],['done','Encerrados',doneMatches.length],['grupo','Grupo',null]] as [typeof tab,string,number|null][]).map(([key,label,count])=>(
+          {([['live','Ao vivo',liveTabMatches.length],['upcoming','Próximos',upcomingMatches.length],['done','Encerrados',doneMatches.length],['grupo','Grupo',null]] as [typeof tab,string,number|null][]).map(([key,label,count])=>(
             <button key={key} onClick={() => setTabManual(key)}
               className={`flex-1 relative flex items-center justify-center gap-1 py-2.5 rounded-xl text-[12px] font-bold transition-all ${tab===key?'bg-[#0099CC] text-white shadow-sm':'text-gray-400 hover:text-gray-600'}`}>
               {label}
@@ -376,7 +387,7 @@ export default function PicksPage() {
         )}
 
         <p className="text-[11px] text-gray-400 text-center mb-2">
-          {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos ao vivo' : tab==='grupo' ? 'O que o grupo apostou' : 'Resultados'}
+          {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos em breve e ao vivo' : tab==='grupo' ? 'O que o grupo apostou' : 'Resultados'}
         </p>
       </div>
 
@@ -426,11 +437,17 @@ export default function PicksPage() {
                 return (
                   <div key={m.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
                     {/* Card header */}
-                    <div className={`px-3 py-1.5 flex items-center justify-between border-b ${m.status==='live'?'bg-red-50 border-red-100':m.status==='done'?'bg-gray-50 border-gray-100':'bg-blue-50/40 border-blue-100/40'}`}>
+                    <div className={`px-3 py-1.5 flex items-center justify-between border-b ${m.status==='live'?'bg-red-50 border-red-100':m.status==='done'?'bg-gray-50 border-gray-100':(m.status==='upcoming'&&isLocked(m))?'bg-amber-50/70 border-amber-100':'bg-blue-50/40 border-blue-100/40'}`}>
                       <div className="flex items-center gap-1.5 min-w-0">
                         {m.status==='live' && <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full whitespace-nowrap"><span className="relative flex h-2 w-2 flex-shrink-0"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"/></span>AO VIVO</span>}
                         {m.status==='done' && <span className="text-[10px] font-medium text-gray-500">Encerrado</span>}
-                        {m.status==='upcoming' && <span className="text-[10px] font-bold text-[#0099CC] whitespace-nowrap">{timeBRT}</span>}
+                        {m.status==='upcoming' && isLocked(m) && (
+                          <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            <span className="relative flex h-2 w-2 flex-shrink-0"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"/></span>
+                            EM BREVE · {timeBRT}
+                          </span>
+                        )}
+                        {m.status==='upcoming' && !isLocked(m) && <span className="text-[10px] font-bold text-[#0099CC] whitespace-nowrap">{timeBRT}</span>}
                         {m.group_name && <span className="text-[10px] text-gray-400 truncate">· {m.group_name}</span>}
                       </div>
                       <div className="flex-shrink-0 ml-1">
@@ -660,7 +677,7 @@ export default function PicksPage() {
           <div className="text-center py-14">
             <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3 text-gray-300"><IcoBall/></div>
             <p className="text-[13px] text-gray-400">
-              {tab==='live'?'Nenhum jogo ao vivo.':tab==='upcoming'?'Nenhum jogo disponível.':'Nenhum jogo encerrado.'}
+              {tab==='live'?'Nenhum jogo ao vivo ou em breve.':tab==='upcoming'?'Nenhum jogo disponível.':'Nenhum jogo encerrado.'}
             </p>
           </div>
         )}
