@@ -294,6 +294,9 @@ export default function ProfileSetupPage() {
           <div className="flex justify-center mb-6">
             <img src="/copa2026-logo.jpg" alt="Copa 2026" className="h-14 w-auto rounded-xl object-contain" />
           </div>
+
+          {/* Photo upload */}
+          <div className="flex flex-col items-center mb-6">
             <div className="relative mb-2">
               {previewUrl ? (
                 <img src={previewUrl} alt="Foto"
