@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth'
 import { supabase, Match, Player, FASE_ORDER, getPresence } from '@/lib/supabase'
 import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
+import FlagImg from '@/components/FlagImg'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
@@ -62,6 +63,11 @@ export default function AdminPage() {
   const [resA,          setResA]          = useState('')
   const [saving,        setSaving]        = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [championStats, setChampionStats] = useState<{ team: string; count: number; flag?: string }[]>([])
+  const [totalChampPicks, setTotalChampPicks] = useState(0)
+  const [showReminderModal, setShowReminderModal] = useState(false)
+  const [sendingReminder, setSendingReminder] = useState(false)
+  const [reminderResult, setReminderResult] = useState('')
   const [togglingId,    setTogglingId]    = useState<string | null>(null)
   const [lastAutoSync,  setLastAutoSync]  = useState<string>('')
   const [autoSyncing,   setAutoSyncing]   = useState(false)
@@ -149,6 +155,19 @@ export default function AdminPage() {
       const map: Record<string, number> = {}
       scoresData.forEach((s: { player_id: string; picks_count: number }) => { map[s.player_id] = s.picks_count || 0 })
       setPicksCount(map)
+    }
+    // Aggregate champion picks (most-bet champion)
+    const { data: champData } = await supabase.from('champion_picks').select('pick_champion')
+    if (champData) {
+      const counts: Record<string, number> = {}
+      champData.forEach((c: { pick_champion: string | null }) => {
+        if (c.pick_champion) counts[c.pick_champion] = (counts[c.pick_champion] || 0) + 1
+      })
+      const sorted = Object.entries(counts)
+        .map(([team, count]) => ({ team, count }))
+        .sort((a, b) => b.count - a.count)
+      setChampionStats(sorted)
+      setTotalChampPicks(champData.filter((c: { pick_champion: string | null }) => c.pick_champion).length)
     }
     // Load push subscriptions via API (bypasses RLS)
     const pushRes = await fetch('/api/admin/push-status')
@@ -305,6 +324,33 @@ export default function AdminPage() {
     if (rows?.[0]) await supabase.from('pix_config').update({ lock_jogos: newVal }).eq('id', rows[0].id)
     setTravamentoJogos(newVal)
     setSavingLock(false)
+  }
+
+  async function sendReminder() {
+    setSendingReminder(true)
+    const ids = nonAdminPlayers.filter(p => p.payment_ok && (picksCount[p.id] || 0) === 0).map(p => p.id)
+    if (ids.length === 0) {
+      setReminderResult('Todos os participantes pagos já palpitaram!')
+      setSendingReminder(false)
+      return
+    }
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Bolão Copa 2026 BEL',
+          body: 'Você ainda não fez seus palpites! Não perca pontos — registre agora.',
+          player_ids: ids,
+        }),
+      })
+      const data = await res.json()
+      setReminderResult(`Lembrete enviado para ${data.sent || 0} dispositivo${data.sent === 1 ? '' : 's'}.`)
+    } catch {
+      setReminderResult('Erro ao enviar. Tente novamente.')
+    }
+    setSendingReminder(false)
+    setTimeout(() => { setShowReminderModal(false); setReminderResult('') }, 2500)
   }
   // Auto-sync every 30min + auto-recalc ranking while admin panel is open
   useEffect(() => {
@@ -689,6 +735,11 @@ export default function AdminPage() {
   const liveMatches     = matches.filter(m => m.status === 'live')
   const doneCount       = matches.filter(m => m.status === 'done').length
   const upcomingCount   = matches.filter(m => m.status === 'upcoming').length
+  // KPIs novos
+  const totalPicksMade  = Object.values(picksCount).reduce((a, b) => a + b, 0)
+  const totalPicksPoss  = paidCount * matches.length
+  const noPicksCount    = nonAdminPlayers.filter(p => p.payment_ok && (picksCount[p.id] || 0) === 0).length
+  const topChampions    = championStats.slice(0, 3)
 
   // Nav items
   const NAV = [
@@ -892,6 +943,63 @@ export default function AdminPage() {
                       </p>
                     </div>
                   ))}
+                </div>
+
+                {/* ── KPI CARDS — segunda linha ── */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Palpites registrados */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-4">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Palpites registrados</p>
+                    <p className="text-[22px] md:text-[28px] font-semibold text-gray-900 leading-none mb-1.5">{totalPicksMade.toLocaleString('pt-BR')}</p>
+                    <p className="text-[10px] flex items-center gap-1.5 text-gray-400">
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#0099CC]"/>
+                      de {totalPicksPoss.toLocaleString('pt-BR')} possíveis
+                    </p>
+                  </div>
+
+                  {/* Sem palpitar + botão lembrete */}
+                  <div className={`bg-white rounded-xl border p-3 md:p-4 ${noPicksCount > 0 ? 'border-amber-200' : 'border-gray-200'}`}>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Sem palpitar</p>
+                    <p className={`text-[22px] md:text-[28px] font-semibold leading-none mb-2 ${noPicksCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{noPicksCount}</p>
+                    {noPicksCount > 0 ? (
+                      <button onClick={() => setShowReminderModal(true)}
+                        className="inline-flex items-center gap-1.5 bg-[#0099CC] hover:bg-[#007aa3] text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        Enviar lembrete
+                      </button>
+                    ) : (
+                      <p className="text-[10px] flex items-center gap-1.5 text-green-600">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-400"/>
+                        Todos palpitaram
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Campeão mais apostado — top 3 */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-4">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Campeão mais apostado</p>
+                    {topChampions.length === 0 ? (
+                      <p className="text-[12px] text-gray-400 mt-1">Nenhum palpite de campeão ainda</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {topChampions.map((c, i) => {
+                          const pct = totalChampPicks > 0 ? Math.round((c.count / totalChampPicks) * 100) : 0
+                          return (
+                            <div key={c.team}>
+                              <div className="flex items-center gap-2">
+                                <FlagImg team={c.team} size={16}/>
+                                <span className="text-[11px] text-gray-700 flex-1 truncate">{c.team}</span>
+                                <span className="text-[11px] font-semibold text-gray-900">{pct}%</span>
+                              </div>
+                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-0.5">
+                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: i === 0 ? '#16A34A' : i === 1 ? '#9CA3AF' : '#CBD5E1' }}/>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* ── LIVE MATCHES (full width when active) ── */}
@@ -2070,6 +2178,33 @@ Atualizem o app para a versão mais recente! 🏆`}
           </div>
         )
       })()}
+
+      {/* Confirm reminder modal */}
+      {showReminderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <h3 className="text-[16px] font-bold text-gray-900 text-center mb-1">Enviar lembrete?</h3>
+            <p className="text-[13px] text-gray-500 text-center mb-5">
+              Notificar <strong>{noPicksCount} participante{noPicksCount !== 1 ? 's' : ''}</strong> que ainda não palpitaram.
+            </p>
+            {reminderResult ? (
+              <p className="text-[13px] text-center text-green-600 font-semibold py-3">{reminderResult}</p>
+            ) : (
+              <div className="flex gap-3">
+                <button onClick={() => setShowReminderModal(false)} disabled={sendingReminder}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-[14px] font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">Cancelar</button>
+                <button onClick={sendReminder} disabled={sendingReminder}
+                  className="flex-1 py-3 rounded-xl bg-[#0099CC] text-white text-[14px] font-semibold hover:bg-[#007aa3] transition-colors disabled:opacity-50">
+                  {sendingReminder ? 'Enviando...' : 'Enviar'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirm delete modal */}
       {confirmDelete && (() => {

@@ -16,11 +16,12 @@ webpush.setVapidDetails(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { title, body, player_id } = req.body
+  const { title, body, player_id, player_ids } = req.body
   if (!title || !body) return res.status(400).json({ error: 'title and body required' })
 
   const query = admin.from('push_subscriptions').select('player_id, subscription')
   if (player_id) query.eq('player_id', player_id)
+  else if (Array.isArray(player_ids) && player_ids.length > 0) query.in('player_id', player_ids)
   const { data: subs } = await query
 
   if (!subs || subs.length === 0) return res.json({ ok: true, sent: 0 })
