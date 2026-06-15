@@ -170,7 +170,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (newLeaderRows && newLeaderRows.length > 0) {
     const leader = newLeaderRows[0]
-    const p = leader.players as { nickname?: string; username: string } | null
+    const raw = leader.players
+    const p = (Array.isArray(raw) ? raw[0] : raw) as { nickname?: string; username?: string } | null
     const name = p?.nickname || p?.username || 'Alguém'
     const body = `Temos um novo líder! ${name} assumiu a 1ª posição com ${leader.total_pts} pts. Confira o ranking!`
     const sent = await sendToAll(TITLE, body)
