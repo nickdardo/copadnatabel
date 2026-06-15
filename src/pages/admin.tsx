@@ -313,12 +313,12 @@ export default function AdminPage() {
         }
       } catch {}
       setAutoSyncing(false)
-      // Recalc 5 min after sync
+      // Recalc 3 min after sync
       if (thenRecalc && !cancelled) {
         recalcTimer = setTimeout(async () => {
           const { error } = await supabase.rpc('recalc_all_scores')
           if (!error) { setRecalcMsg('Ranking atualizado!'); setTimeout(() => setRecalcMsg(''), 3000) }
-        }, 5 * 60 * 1000)
+        }, 3 * 60 * 1000)
       }
     }
 
@@ -331,7 +331,7 @@ export default function AdminPage() {
       const liveMatch = matches.find(m => m.status === 'live')
       if (liveMatch) {
         doSync(true)
-        syncTimer = setTimeout(scheduleNext, 10 * 60 * 1000) // every 10min while live
+        syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000) // every 5min while live
         return
       }
 
@@ -355,9 +355,9 @@ export default function AdminPage() {
         // Wait until 10min before kickoff
         syncTimer = setTimeout(() => { doSync(true); scheduleNext() }, tenMinBefore)
       } else {
-        // Within 10min of kickoff or already started — sync now, check again in 10min
+        // Within 10min of kickoff or already started — sync now, check again in 5min
         doSync(true)
-        syncTimer = setTimeout(scheduleNext, 10 * 60 * 1000)
+        syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000)
       }
     }
 
@@ -1902,7 +1902,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.11</p>
+                  <p className="text-[42px] font-black leading-none">v1.12</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -1926,13 +1926,13 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.11
+{`Bolão Copa 2026 BEL — Atualização v1.12
 
-📊 Pontuação mais clara no ranking
-Trocamos os códigos F10, F7, F5 e F2 por algo mais fácil de entender. Agora aparece direto quanto cada acerto valeu: 10pts, 7pts, 5pts e 2pts, cada um com sua cor.
+⏳ Jornada dos jogos mais clara
+Antes de começar, o jogo aparece na aba "Ao vivo" com o aviso "EM BREVE". Quando apitar, vira "AO VIVO". Ao entrar em Palpites com um jogo em breve ou ao vivo, o app já abre direto nessa aba.
 
-🕐 Data da última atualização
-Adicionamos no ranking a data e hora da última atualização da pontuação.
+📍 Sua posição no ranking
+No card azul do Ranking, o chip "colocação" virou um botão 3D. Ao tocar, a lista scrolla automaticamente até a sua posição e destaca sua linha.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -1945,6 +1945,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.12', desc: 'Jornada Em Breve → Ao Vivo → Encerrados nos palpites. Botão 3D de colocação no ranking com scroll automático.' },
                       { v: 'v1.11', desc: 'Pontuação colorida (10pts/7pts/5pts/2pts) e data da última atualização no ranking.' },
                       { v: 'v1.10', desc: 'Aba Palpites abre no "Ao Vivo" durante jogos. Sincronização inteligente baseada no cronograma.' },
                       { v: 'v1.9',  desc: 'Correção do bug da barra inferior no iOS e tela de atualização.' },

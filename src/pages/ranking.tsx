@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Score, Player } from '@/lib/supabase'
@@ -108,6 +108,7 @@ export default function RankingPage() {
   const [badges,       setBadges]       = useState<BadgeMap>({})
   const [feed,         setFeed]         = useState<FeedEvent[]>([])
   const [activeTab,    setActiveTab]    = useState<'ranking'|'feed'>('ranking')
+  const meRowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
 
@@ -182,6 +183,17 @@ export default function RankingPage() {
   const myPos = ranking.findIndex(r => r.player_id === player?.id) + 1
   const list  = showAll ? ranking : ranking.slice(0, 10)
 
+  function scrollToMe() {
+    if (myPos > 10 && !showAll) {
+      setShowAll(true)
+      setTimeout(() => {
+        meRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 150)
+    } else {
+      meRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
   if (loading || fetching) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-7 h-7 border-2 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin"/>
@@ -240,10 +252,13 @@ export default function RankingPage() {
                   <p className="text-white font-bold text-[28px] leading-none">{me.total_pts}</p>
                   <p className="text-white/60 text-[10px]">pts</p>
                 </div>
-                <div className="bg-white/10 rounded-lg px-2.5 py-1 flex items-center gap-1">
-                  <span className="text-white/60 text-[10px]">colocação</span>
-                  <span className="text-white font-bold text-[13px]">{myPos}º</span>
-                </div>
+                <button
+                  onClick={scrollToMe}
+                  className="rounded-lg px-2.5 py-1.5 flex items-center gap-1 bg-white transition-transform active:translate-y-0.5"
+                  style={{ boxShadow: '0 3px 0 rgba(0,0,0,0.28)' }}>
+                  <span className="text-gray-400 text-[10px]">colocação</span>
+                  <span className="text-[#0099CC] font-bold text-[13px]">{myPos}º</span>
+                </button>
               </div>
             </div>
 
@@ -353,12 +368,12 @@ export default function RankingPage() {
             const color  = COLORS[i % COLORS.length]
 
             return (
-              <div key={entry.player_id}>
+              <div key={entry.player_id} ref={isMe ? meRowRef : undefined}>
                 {/* Row */}
                 <button
                   onClick={() => setExpanded(isOpen ? null : entry.player_id)}
                   className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50
-                    ${i===0?'bg-amber-50/60':i===1?'bg-gray-50/80':i===2?'bg-orange-50/40':''}
+                    ${isMe ? 'bg-[#e6f4fa]' : i===0?'bg-amber-50/60':i===1?'bg-gray-50/80':i===2?'bg-orange-50/40':''}
                     ${isMe?'ring-inset ring-1 ring-[#0099CC]/20':''}`}>
 
                   <div className="w-7 flex-shrink-0 flex justify-center">

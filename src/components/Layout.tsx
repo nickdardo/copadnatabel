@@ -528,9 +528,9 @@ export default function Layout({ children, title }: Props) {
                 className="h-9 w-9 rounded-lg object-cover flex-shrink-0"/>
               <div className="hidden sm:flex flex-col">
                 <span className="text-[13px] text-gray-600 font-bold leading-tight">Bolão Copa 2026 BEL</span>
-                <span className="text-[9px] text-gray-400 font-medium">v1.11</span>
+                <span className="text-[9px] text-gray-400 font-medium">v1.12</span>
               </div>
-              <span className="text-[9px] text-gray-400 font-medium sm:hidden bg-gray-100 px-1.5 py-0.5 rounded-full">v1.11</span>
+              <span className="text-[9px] text-gray-400 font-medium sm:hidden bg-gray-100 px-1.5 py-0.5 rounded-full">v1.12</span>
             </div>
 
             {/* Tutorial button */}
