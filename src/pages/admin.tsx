@@ -48,6 +48,8 @@ export default function AdminPage() {
   const [page,          setPage]          = useState<Page>('dashboard')
   const [versaoCopied,  setVersaoCopied]  = useState(false)
   const [matches,       setMatches]       = useState<Match[]>([])
+  const matchesRef = useRef<Match[]>([])
+  useEffect(() => { matchesRef.current = matches }, [matches])
   const [players,       setPlayers]       = useState<Player[]>([])
   const [fetching,      setFetching]      = useState(true)
   const [activePhase,   setActivePhase]   = useState('Fase de Grupos')
@@ -322,28 +324,30 @@ export default function AdminPage() {
       }
     }
 
-    // Smart scheduler: syncs based on match schedule, not fixed intervals
+    // Smart scheduler: syncs only within the active window per match
+    // Active window = 10min before kickoff → until match ends (≈100min total)
     function scheduleNext() {
       if (cancelled) return
       const now = Date.now()
+      const current = matchesRef.current // always up-to-date, avoids stale closure
 
-      // Find any live match → sync every 10min during the game
-      const liveMatch = matches.find(m => m.status === 'live')
+      // 1. Live match → sync every 5min until it ends
+      const liveMatch = current.find(m => m.status === 'live')
       if (liveMatch) {
         doSync(true)
-        syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000) // every 5min while live
+        syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000)
         return
       }
 
-      // Find the next upcoming match
-      const upcoming = matches
+      // 2. Find the next upcoming match (only future matches, or started < 10min ago)
+      const upcoming = current
         .filter(m => m.status === 'upcoming' && m.match_date)
         .map(m => ({ m, start: new Date(m.match_date!).getTime() }))
-        .filter(x => x.start > now - 3 * 3600_000) // include recently started
+        .filter(x => x.start > now - 10 * 60 * 1000) // future OR started < 10min ago
         .sort((a, b) => a.start - b.start)[0]
 
       if (!upcoming) {
-        // No upcoming games — check again in 30min
+        // No active or upcoming match — check again in 30min
         syncTimer = setTimeout(scheduleNext, 30 * 60 * 1000)
         return
       }
@@ -352,10 +356,10 @@ export default function AdminPage() {
       const tenMinBefore = msUntilStart - 10 * 60 * 1000
 
       if (tenMinBefore > 0) {
-        // Wait until 10min before kickoff
+        // More than 10min until kickoff — wait silently, no API calls
         syncTimer = setTimeout(() => { doSync(true); scheduleNext() }, tenMinBefore)
       } else {
-        // Within 10min of kickoff or already started — sync now, check again in 5min
+        // Within the active window (T-10min to kickoff) — sync now, check in 5min
         doSync(true)
         syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000)
       }
@@ -372,7 +376,7 @@ export default function AdminPage() {
       if (recalcTimer) clearTimeout(recalcTimer)
       clearTimeout(startTimer)
     }
-  }, [matches.length])
+  }, [])
 
   // Auto-notify: check every 10 minutes when enabled
   useEffect(() => {

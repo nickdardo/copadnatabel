@@ -45,13 +45,13 @@ function PicksBar({ count, total }: { count: number; total: number }) {
   return (
     <div className="mt-1.5">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] text-white/50 flex items-center gap-1">
+        <span className="text-[10px] text-white/90 flex items-center gap-1">
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
           </svg>
           Palpites feitos
         </span>
-        <span className="text-[10px] text-white/60 font-semibold">{count} de {total} jogos</span>
+        <span className="text-[10px] text-white/90 font-semibold">{count} de {total} jogos</span>
       </div>
       <div className="flex-1 h-1.5 bg-white/15 rounded-full overflow-hidden">
         <div className="h-full rounded-full bg-[#0099CC]" style={{ width:`${pct}%` }}/>
@@ -237,7 +237,7 @@ export default function RankingPage() {
                 {/* Champion picks */}
                 {me.champ && (
                   <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-white/50 text-[10px]">Palpites:</span>
+                    <span className="text-white/90 text-[10px]">Palpites:</span>
                     {[me.champ.pick_champion, me.champ.pick_runner, me.champ.pick_third].map((t,i) => (
                       <span key={i}><FlagImg team={t} size={20}/></span>
                     ))}
