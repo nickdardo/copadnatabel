@@ -268,7 +268,6 @@ export default function AdminPage() {
         setModoVisitante(data[0].modo_visitante || false)
         setTravamentoJogos(data[0].lock_jogos ?? true)
       }
-      }
     })
   }, [])
 
