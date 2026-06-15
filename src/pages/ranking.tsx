@@ -210,17 +210,28 @@ export default function RankingPage() {
           <div className="relative overflow-hidden mb-1"
             style={{ background:'linear-gradient(135deg,#003a6e 0%,#0064a8 55%,#0099CC 100%)' }}>
             <div className="relative flex items-center gap-4 px-5 py-5">
-              {/* Avatar */}
+              {/* Avatar — clicável → Desempenho */}
               <div className="relative flex-shrink-0">
-                {getAvatarUrl(me.player)
-                  ? <img src={getAvatarUrl(me.player)!} alt=""
-                      className="w-16 h-16 rounded-full object-cover"
-                      style={{ border:'3px solid rgba(255,255,255,0.9)' }}/>
-                  : <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-xl font-bold text-[#0099CC]"
-                      style={{ border:'3px solid rgba(255,255,255,0.9)' }}>
-                      {initials(me.player.nickname || me.player.username)}
-                    </div>
-                }
+                <button onClick={() => router.push('/profile-setup?tab=desempenho')}
+                  className="block active:scale-95 transition-transform"
+                  title="Ver meu desempenho">
+                  {getAvatarUrl(me.player)
+                    ? <img src={getAvatarUrl(me.player)!} alt=""
+                        className="w-16 h-16 rounded-full object-cover"
+                        style={{ border:'3px solid rgba(255,255,255,0.9)' }}/>
+                    : <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-xl font-bold text-[#0099CC]"
+                        style={{ border:'3px solid rgba(255,255,255,0.9)' }}>
+                        {initials(me.player.nickname || me.player.username)}
+                      </div>
+                  }
+                  {/* Badge indicador — ícone de gráfico */}
+                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#0099CC] border-2 border-white flex items-center justify-center shadow-sm">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                      <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                  </span>
+                </button>
                 <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-[#FFD700] border-2 border-white flex items-center justify-center text-[10px] font-bold text-[#7a5800]">
                   {myPos}
                 </div>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { supabase, Score, FACTOR_PTS } from '@/lib/supabase'
 import Head from 'next/head'
 
 const IcoCheck  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -11,6 +11,11 @@ const IcoCamera = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="no
 export default function ProfileSetupPage() {
   const { player, loading, refreshPlayer } = useAuth()
   const router = useRouter()
+
+  // Tab: 'perfil' ou 'desempenho' — pode vir via query ?tab=desempenho
+  const [activeTab, setActiveTab] = useState<'perfil'|'desempenho'>('perfil')
+  const [score, setScore] = useState<Score | null>(null)
+  const [totalMatches, setTotalMatches] = useState(0)
 
   const [firstName,  setFirstName]  = useState('')
   const [lastName,   setLastName]   = useState('')
@@ -34,20 +39,30 @@ export default function ProfileSetupPage() {
 
   useEffect(() => {
     if (!loading && !player) { router.push('/'); return }
-    // Pre-fill if already has a real name (not just username)
     if (player?.nickname && player.nickname !== player.username) {
       const parts = player.nickname.split(' ')
       setFirstName(parts[0] || '')
       setLastName(parts.slice(1).join(' ') || '')
     }
-    // Load existing avatar
     if (player?.avatar_url) {
       const url = player.avatar_url.startsWith('http')
         ? player.avatar_url
         : supabase.storage.from('avatars').getPublicUrl(player.avatar_url).data.publicUrl
       if (url) setPreviewUrl(url + '?v=' + Date.now())
     }
+    // Load score for Desempenho tab
+    if (player?.id) {
+      supabase.from('scores').select('*').eq('player_id', player.id).maybeSingle()
+        .then(({ data }) => { if (data) setScore(data as Score) })
+      supabase.from('matches').select('id', { count: 'exact', head: true })
+        .then(({ count }) => { if (count) setTotalMatches(count) })
+    }
   }, [loading, player])
+
+  // Read ?tab= from URL after router is ready
+  useEffect(() => {
+    if (router.isReady && router.query.tab === 'desempenho') setActiveTab('desempenho')
+  }, [router.isReady, router.query.tab])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -144,6 +159,24 @@ export default function ProfileSetupPage() {
   const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase()
     || player?.username?.slice(0, 2).toUpperCase() || '?'
 
+  // Desempenho calculations
+  const totalPicks = score?.picks_count || 0
+  const ptsGames   = (score?.f10_count||0)*10 + (score?.f7_count||0)*7 + (score?.f5_count||0)*5 + (score?.f2_count||0)*2
+  const hitCount   = (score?.f10_count||0) + (score?.f7_count||0) + (score?.f5_count||0)
+  const accuracy   = totalPicks > 0 ? Math.round((hitCount / totalPicks) * 100) : 0
+  const avgPts     = totalPicks > 0 ? (ptsGames / totalPicks).toFixed(1) : '0'
+  const posDiff    = score?.prev_position && score?.rank_position
+    ? score.prev_position - score.rank_position : 0
+
+  const factorRows = [
+    { key:'f10', label:'10pts', count: score?.f10_count||0, color:'#16A34A' },
+    { key:'f7',  label:'7pts',  count: score?.f7_count||0,  color:'#1D4ED8' },
+    { key:'f5',  label:'5pts',  count: score?.f5_count||0,  color:'#16A34A' },
+    { key:'f2',  label:'2pts',  count: score?.f2_count||0,  color:'#B45309' },
+    { key:'f0',  label:'0pts',  count: score?.f0_count||0,  color:'#9CA3AF' },
+  ]
+  const maxFactor = Math.max(...factorRows.map(r => r.count), 1)
+
   return (
     <>
       <Head>
@@ -158,17 +191,109 @@ export default function ProfileSetupPage() {
             className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <span className="font-semibold text-gray-800 text-[15px]">Editar perfil</span>
+          <span className="font-semibold text-gray-800 text-[15px]">
+            {activeTab === 'desempenho' ? 'Meu desempenho' : 'Editar perfil'}
+          </span>
         </header>
 
-        <div className="max-w-sm mx-auto px-4 py-6">
+        <div className="max-w-sm mx-auto px-4 py-4">
+
+          {/* Tab switcher */}
+          <div className="flex bg-gray-100 rounded-xl p-1 mb-5">
+            {(['perfil','desempenho'] as const).map(t => (
+              <button key={t} onClick={() => setActiveTab(t)}
+                className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-all ${activeTab===t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                {t === 'perfil' ? 'Perfil' : 'Desempenho'}
+              </button>
+            ))}
+          </div>
+
+          {/* ── ABA DESEMPENHO ── */}
+          {activeTab === 'desempenho' && (
+            <div className="space-y-3">
+              {/* Hero */}
+              <div className="rounded-2xl overflow-hidden" style={{background:'linear-gradient(135deg,#003a6e 0%,#0064a8 55%,#0099CC 100%)'}}>
+                <div className="flex items-center gap-4 px-5 py-5">
+                  <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-[16px] truncate uppercase">{player?.nickname || player?.username}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-white/70 text-[12px]">{score?.rank_position ? `${score.rank_position}ª posição` : 'Sem ranking ainda'}</span>
+                      {posDiff > 0 && <span className="text-green-300 text-[11px] font-semibold">▲ {posDiff}</span>}
+                      {posDiff < 0 && <span className="text-red-300 text-[11px] font-semibold">▼ {Math.abs(posDiff)}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-white font-bold text-[28px] leading-none">{score?.total_pts || 0}</p>
+                    <p className="text-white/60 text-[10px]">pts totais</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 métricas */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Taxa de acerto', value: `${accuracy}%`, sub: 'dos palpites pontuaram' },
+                  { label: 'Palpites feitos', value: `${totalPicks}/${totalMatches}`, sub: 'jogos palpitados' },
+                  { label: 'Pts campeão', value: `+${score?.champion_pts || 0}`, sub: 'bônus de campeão/vice/3º' },
+                  { label: 'Média por jogo', value: avgPts, sub: 'pts por palpite' },
+                ].map(m => (
+                  <div key={m.label} className="bg-white border border-gray-100 rounded-xl p-3">
+                    <p className="text-[10px] text-gray-400 mb-1">{m.label}</p>
+                    <p className="text-[22px] font-semibold text-gray-900 leading-none mb-1">{m.value}</p>
+                    <p className="text-[10px] text-gray-400">{m.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Distribuição de acertos */}
+              <div className="bg-white border border-gray-100 rounded-xl p-4">
+                <p className="text-[12px] font-semibold text-gray-800 mb-3">Distribuição de acertos</p>
+                <div className="space-y-2">
+                  {factorRows.map(f => (
+                    <div key={f.key} className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold w-8" style={{color: f.color}}>{f.label}</span>
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{width:`${Math.round((f.count/maxFactor)*100)}%`, background: f.color}}/>
+                      </div>
+                      <span className="text-[11px] text-gray-400 w-5 text-right">{f.count}x</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Badges */}
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+                  {(score?.f10_count||0) > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-green-50 text-green-700">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      {score?.f10_count}x placar exato
+                    </span>
+                  )}
+                  {(score?.f7_count||0) + (score?.f5_count||0) > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                      {(score?.f7_count||0)+(score?.f5_count||0)}x acertou vencedor
+                    </span>
+                  )}
+                  {accuracy >= 50 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      +{accuracy}% de aproveitamento
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── ABA PERFIL ── */}
+          {activeTab === 'perfil' && (<>
           {/* Logo */}
           <div className="flex justify-center mb-6">
             <img src="/copa2026-logo.jpg" alt="Copa 2026" className="h-14 w-auto rounded-xl object-contain" />
           </div>
-
-          {/* Photo upload */}
-          <div className="flex flex-col items-center mb-6">
             <div className="relative mb-2">
               {previewUrl ? (
                 <img src={previewUrl} alt="Foto"
@@ -325,6 +450,8 @@ export default function ProfileSetupPage() {
               </div>
             </div>
           </div>
+          </>)}
+
         </div>
       </div>
     </>
