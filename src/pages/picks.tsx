@@ -87,6 +87,8 @@ export default function PicksPage() {
   const [saving,      setSaving]      = useState(false)
   const [fetching,    setFetching]    = useState(true)
   const [isVisitante, setIsVisitante] = useState(false)
+  const [travamentoAtivo, setTravamentoAtivo] = useState(true)
+  const travAtivoRef = useRef(true)
   const [activePhase, setActivePhase] = useState('')
   const [tab,         setTab]         = useState<'upcoming'|'live'|'done'|'grupo'>('upcoming')
   const tabManuallySet = useRef(false)
@@ -147,7 +149,7 @@ export default function PicksPage() {
     if (!tabManuallySet.current) {
       const hasLiveOrEmBreve = ms.some(m =>
         m.status === 'live' ||
-        (m.status === 'upcoming' && m.match_date &&
+        (travAtivoRef.current && m.status === 'upcoming' && m.match_date &&
           isBefore(subHours(parseISO(m.match_date), LOCK_HOURS), new Date()))
       )
       setTab(hasLiveOrEmBreve ? 'live' : 'upcoming')
@@ -164,18 +166,20 @@ export default function PicksPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Check visitante mode
+  // Check visitante mode + travamento de jogos
   useEffect(() => {
-    if (!player?.payment_ok) {
-      supabase.from('pix_config').select('modo_visitante').limit(1).then(({ data }) => {
-        if (data?.[0]?.modo_visitante) setIsVisitante(true)
-      })
-    }
+    supabase.from('pix_config').select('modo_visitante, lock_jogos').limit(1).then(({ data }) => {
+      if (data?.[0]?.modo_visitante && !player?.payment_ok) setIsVisitante(true)
+      const trav = data?.[0]?.lock_jogos ?? true
+      setTravamentoAtivo(trav)
+      travAtivoRef.current = trav
+    })
   }, [player?.id])
 
   function isLocked(m: Match): boolean {
-    if (m.status === 'done' || m.status === 'live') return true
+    if (m.status === 'done' || m.status === 'live') return true  // sempre travado após início
     if (!m.match_date) return false
+    if (!travamentoAtivo) return false                            // admin desbloqueou temporariamente
     return isBefore(subHours(parseISO(m.match_date), LOCK_HOURS), new Date())
   }
 
@@ -303,6 +307,16 @@ export default function PicksPage() {
             <div className="flex-1">
               <p className="text-[12px] font-semibold text-blue-800">Modo visitante</p>
               <p className="text-[11px] text-blue-600 mt-0.5">Acompanhe os jogos e o ranking. Palpites estão desativados neste momento.</p>
+            </div>
+          </div>
+        )}
+
+        {!travamentoAtivo && player?.payment_ok && (
+          <div className="mx-4 mt-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+            <div className="flex-1">
+              <p className="text-[12px] font-semibold text-amber-800">Palpites liberados</p>
+              <p className="text-[11px] text-amber-700 mt-0.5">O administrador liberou a edição. Jogos não iniciados ainda podem ser alterados.</p>
             </div>
           </div>
         )}

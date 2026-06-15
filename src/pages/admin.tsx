@@ -115,6 +115,7 @@ export default function AdminPage() {
   const [copaBloqueada,  setCopaBloqueada]  = useState(false)
   const [champBloqueado, setChampBloqueado] = useState(false)
   const [modoVisitante,  setModoVisitante]  = useState(false)
+  const [travamentoJogos,setTravamentoJogos]= useState(true)   // true = lock ativo (padrão)
   const [savingLock,     setSavingLock]     = useState(false)
 
   useEffect(() => {
@@ -260,11 +261,13 @@ export default function AdminPage() {
 
   // Load copa lock state
   useEffect(() => {
-    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante').limit(1).then(({ data }) => {
+    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos').limit(1).then(({ data }) => {
       if (data?.[0]) {
         setCopaBloqueada(data[0].copa_bloqueada || false)
         setChampBloqueado(data[0].champ_bloqueado || false)
         setModoVisitante(data[0].modo_visitante || false)
+        setTravamentoJogos(data[0].lock_jogos ?? true)
+      }
       }
     })
   }, [])
@@ -293,6 +296,15 @@ export default function AdminPage() {
     const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
     if (rows?.[0]) await supabase.from('pix_config').update({ champ_bloqueado: newVal }).eq('id', rows[0].id)
     setChampBloqueado(newVal)
+    setSavingLock(false)
+  }
+
+  async function toggleTravamentoJogos() {
+    setSavingLock(true)
+    const newVal = !travamentoJogos
+    const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
+    if (rows?.[0]) await supabase.from('pix_config').update({ lock_jogos: newVal }).eq('id', rows[0].id)
+    setTravamentoJogos(newVal)
     setSavingLock(false)
   }
   // Auto-sync every 30min + auto-recalc ranking while admin panel is open
@@ -1027,6 +1039,29 @@ export default function AdminPage() {
                     </div>
 
                     {/* Champion lock toggle */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h2 className="text-[13px] font-semibold text-gray-800 mb-0.5">Travamento dos jogos</h2>
+                          <p className="text-[11px] text-gray-400 leading-relaxed">
+                            {travamentoJogos
+                              ? 'Palpites travados 2h antes de cada jogo. Comportamento padrão.'
+                              : 'Travamento desligado. Jogadores podem editar jogos ainda não iniciados.'}
+                          </p>
+                        </div>
+                        <button onClick={toggleTravamentoJogos} disabled={savingLock}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5 disabled:opacity-50 ${travamentoJogos ? 'bg-[#0099CC]' : 'bg-gray-200'}`}>
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${travamentoJogos ? 'translate-x-5' : 'translate-x-0.5'}`}/>
+                        </button>
+                      </div>
+                      {!travamentoJogos && (
+                        <div className="mt-3 flex items-center gap-1.5 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                          <span className="text-[11px] text-amber-700 font-medium">Palpites desbloqueados para alteração</span>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
