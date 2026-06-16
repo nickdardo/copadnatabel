@@ -541,68 +541,53 @@ export default function RankingPage() {
                 {isOpen && (
                   <div className="bg-gray-50 border-b border-gray-100 px-4 py-4">
 
-                    {/* ── Modelo A: barras + campeões lateral ── */}
-                    <div className="flex gap-3">
-                      {/* Barras de pontuação */}
-                      <div className="flex-1 space-y-2">
-                        {(() => {
-                          const rows = [
-                            { k:'f10_count', l:'Acertou tudo',  color:'#15803D', pts: 10 },
-                            { k:'f7_count',  l:'Venc.+1 gol',  color:'#1D4ED8', pts: 7  },
-                            { k:'f5_count',  l:'Vencedor',      color:'#15803D', pts: 5  },
-                            { k:'f2_count',  l:'1 gol certo',   color:'#B45309', pts: 2  },
-                            { k:'f0_count',  l:'Nenhum',        color:'#9CA3AF', pts: 0  },
-                          ]
-                          const maxVal = Math.max(...rows.map(r => (entry as any)[r.k] || 0), 1)
-                          return rows.map(({ k, l, color, pts }) => {
-                            const count = (entry as any)[k] || 0
-                            const pct   = Math.round((count / maxVal) * 100)
-                            const total = count * pts
-                            return (
-                              <div key={k} className="flex items-center gap-2">
-                                <span className="text-[10px] font-semibold w-[74px] flex-shrink-0"
-                                  style={{ color }}>{l}</span>
-                                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full transition-all"
-                                    style={{ width: `${pct}%`, background: color }}/>
-                                </div>
-                                <span className="text-[12px] font-bold text-gray-800 w-3.5 text-right flex-shrink-0">{count}</span>
-                                <span className="text-[10px] text-gray-400 w-8 text-right flex-shrink-0">
-                                  {total > 0 ? `${total}pts` : '—'}
-                                </span>
-                              </div>
-                            )
-                          })
-                        })()}
+                    {/* ── Modelo B: pills em linha + campeões abaixo ── */}
+                    <div className="flex gap-2 flex-wrap mb-3">
+                      {(() => {
+                        const rows = [
+                          { k:'f10_count', l:'Exato',   color:'#15803D', bg:'#DCFCE7', pts:10 },
+                          { k:'f7_count',  l:'+1 gol',  color:'#1D4ED8', bg:'#DBEAFE', pts:7  },
+                          { k:'f5_count',  l:'Vencedor',color:'#15803D', bg:'#DCFCE7', pts:5  },
+                          { k:'f2_count',  l:'1 gol',   color:'#B45309', bg:'#FEF9C3', pts:2  },
+                          { k:'f0_count',  l:'Nenhum',  color:'#9CA3AF', bg:'#F3F4F6', pts:0  },
+                        ]
+                        return rows.map(({ k, l, color, bg, pts }) => {
+                          const count = (entry as any)[k] || 0
+                          return (
+                            <div key={k} className="flex flex-col items-center rounded-xl px-3 py-2 min-w-[52px]"
+                              style={{ background: bg }}>
+                              <span className="text-[17px] font-bold leading-none" style={{ color }}>{count}</span>
+                              <span className="text-[9px] font-semibold mt-1" style={{ color }}>{l}</span>
+                              <span className="text-[9px] mt-0.5" style={{ color, opacity: .7 }}>
+                                {count * pts > 0 ? `${count * pts}pts` : '—'}
+                              </span>
+                            </div>
+                          )
+                        })
+                      })()}
+                    </div>
+
+                    {/* Campeões + bônus */}
+                    {(entry.champ || entry.champion_pts > 0) && (
+                      <div className="flex items-center gap-2 pt-2.5 border-t border-gray-200 flex-wrap">
+                        <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide flex-shrink-0">Campeões</span>
+                        {entry.champ && [
+                          { pos: '1°', team: entry.champ.pick_champion },
+                          { pos: '2°', team: entry.champ.pick_runner   },
+                          { pos: '3°', team: entry.champ.pick_third    },
+                        ].map(({ pos, team }) => (
+                          <div key={pos} className="flex items-center gap-1">
+                            <FlagImg team={team} size={16}/>
+                            <span className="text-[11px] text-gray-700">{team}</span>
+                            <span className="text-[9px] text-gray-400">{pos}</span>
+                            <span className="text-gray-200 text-[10px] mx-0.5">·</span>
+                          </div>
+                        ))}
                         {entry.champion_pts > 0 && (
-                          <p className="text-[10px] text-amber-600 font-medium pt-0.5">
-                            + {entry.champion_pts} pts bônus campeão
-                          </p>
+                          <span className="text-[10px] text-amber-600 font-medium">+{entry.champion_pts} pts bônus</span>
                         )}
                       </div>
-
-                      {/* Divisor */}
-                      {entry.champ && (
-                        <>
-                          <div className="w-px bg-gray-200 flex-shrink-0"/>
-                          {/* Campeões */}
-                          <div className="flex flex-col justify-center gap-2 min-w-[80px]">
-                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Campeões</p>
-                            {[
-                              { pos: '1°', team: entry.champ.pick_champion },
-                              { pos: '2°', team: entry.champ.pick_runner   },
-                              { pos: '3°', team: entry.champ.pick_third    },
-                            ].map(({ pos, team }) => (
-                              <div key={pos} className="flex items-center gap-1.5">
-                                <FlagImg team={team} size={18}/>
-                                <span className="text-[11px] text-gray-700 truncate">{team}</span>
-                                <span className="text-[9px] text-gray-400 flex-shrink-0">{pos}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    )}
 
                     {/* Badges */}
                     {(badges[entry.player_id] || []).length > 0 && (
