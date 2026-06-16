@@ -539,56 +539,74 @@ export default function RankingPage() {
 
                 {/* Expanded detail */}
                 {isOpen && (
-                  <div className="bg-gray-50 border-b border-gray-100 px-5 py-4 space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Pontuação</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {[
-                            {k:'f10_count',l:'Acertou tudo',      c:'bg-green-100 text-green-800',p:10},
-                            {k:'f7_count', l:'Vencedor+1 gol',    c:'bg-blue-100 text-blue-800',  p:7 },
-                            {k:'f5_count', l:'Acertou vencedor',  c:'bg-amber-100 text-amber-800',p:5 },
-                            {k:'f2_count', l:'Acertou 1 gol',     c:'bg-pink-100 text-pink-800',  p:2 },
-                            {k:'f0_count', l:'Nenhum acerto',     c:'bg-gray-100 text-gray-600',  p:0 },
-                          ].map(({k,l,c,p}) => (
-                            <div key={k} className={`px-2.5 py-1.5 rounded-xl text-center ${c}`}>
-                              <p className="text-[10px] font-semibold">{l}</p>
-                              <p className="text-[14px] font-bold">{(entry as any)[k]}</p>
-                              <p className="text-[9px] opacity-70">{(entry as any)[k]*p}pts</p>
-                            </div>
-                          ))}
-                          {entry.champion_pts > 0 && (
-                            <div className="px-2.5 py-1.5 rounded-xl text-center bg-amber-100 text-amber-800">
-                              <p className="text-[10px] font-semibold">Bonus</p>
-                              <p className="text-[14px] font-bold">+{entry.champion_pts}</p>
-                            </div>
-                          )}
-                        </div>
+                  <div className="bg-gray-50 border-b border-gray-100 px-4 py-4">
+
+                    {/* ── Modelo A: barras + campeões lateral ── */}
+                    <div className="flex gap-3">
+                      {/* Barras de pontuação */}
+                      <div className="flex-1 space-y-2">
+                        {(() => {
+                          const rows = [
+                            { k:'f10_count', l:'Acertou tudo',  color:'#15803D', pts: 10 },
+                            { k:'f7_count',  l:'Venc.+1 gol',  color:'#1D4ED8', pts: 7  },
+                            { k:'f5_count',  l:'Vencedor',      color:'#15803D', pts: 5  },
+                            { k:'f2_count',  l:'1 gol certo',   color:'#B45309', pts: 2  },
+                            { k:'f0_count',  l:'Nenhum',        color:'#9CA3AF', pts: 0  },
+                          ]
+                          const maxVal = Math.max(...rows.map(r => (entry as any)[r.k] || 0), 1)
+                          return rows.map(({ k, l, color, pts }) => {
+                            const count = (entry as any)[k] || 0
+                            const pct   = Math.round((count / maxVal) * 100)
+                            const total = count * pts
+                            return (
+                              <div key={k} className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold w-[74px] flex-shrink-0"
+                                  style={{ color }}>{l}</span>
+                                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full transition-all"
+                                    style={{ width: `${pct}%`, background: color }}/>
+                                </div>
+                                <span className="text-[12px] font-bold text-gray-800 w-3.5 text-right flex-shrink-0">{count}</span>
+                                <span className="text-[10px] text-gray-400 w-8 text-right flex-shrink-0">
+                                  {total > 0 ? `${total}pts` : '—'}
+                                </span>
+                              </div>
+                            )
+                          })
+                        })()}
+                        {entry.champion_pts > 0 && (
+                          <p className="text-[10px] text-amber-600 font-medium pt-0.5">
+                            + {entry.champion_pts} pts bônus campeão
+                          </p>
+                        )}
                       </div>
 
+                      {/* Divisor */}
                       {entry.champ && (
-                        <div className="text-right">
-                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Campeões</p>
-                          <div className="space-y-1.5">
+                        <>
+                          <div className="w-px bg-gray-200 flex-shrink-0"/>
+                          {/* Campeões */}
+                          <div className="flex flex-col justify-center gap-2 min-w-[80px]">
+                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Campeões</p>
                             {[
-                              {label:'1', team: entry.champ.pick_champion},
-                              {label:'2', team: entry.champ.pick_runner},
-                              {label:'3', team: entry.champ.pick_third},
-                            ].map(({label, team}) => (
-                              <div key={label} className="flex items-center gap-2 justify-end">
-                                <span className="text-[12px] text-gray-500">{team}</span>
-                                <FlagImg team={team} size={22}/>
-                                <span className="text-[11px] font-bold text-gray-500">{label}o</span>
+                              { pos: '1°', team: entry.champ.pick_champion },
+                              { pos: '2°', team: entry.champ.pick_runner   },
+                              { pos: '3°', team: entry.champ.pick_third    },
+                            ].map(({ pos, team }) => (
+                              <div key={pos} className="flex items-center gap-1.5">
+                                <FlagImg team={team} size={18}/>
+                                <span className="text-[11px] text-gray-700 truncate">{team}</span>
+                                <span className="text-[9px] text-gray-400 flex-shrink-0">{pos}</span>
                               </div>
                             ))}
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
 
                     {/* Badges */}
                     {(badges[entry.player_id] || []).length > 0 && (
-                      <div>
+                      <div className="mt-3 pt-3 border-t border-gray-200">
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Conquistas</p>
                         <div className="flex flex-wrap gap-1.5">
                           {(badges[entry.player_id] || []).map(key => (
