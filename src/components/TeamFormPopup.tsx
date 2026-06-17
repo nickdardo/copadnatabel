@@ -91,9 +91,13 @@ function TeamFormModal({ team, recent, loading, onClose }: {
             </div>
             <div className="space-y-1.5">
               {recent.map((r, i) => (
-                <div key={i} className="flex items-center justify-between text-[12px] border-t border-gray-100 pt-1.5 first:border-0 first:pt-0">
-                  <span className="text-gray-500 truncate flex-1">vs {r.opponent}</span>
-                  <span className="text-gray-800 font-semibold ml-2">{r.goalsFor}-{r.goalsAgainst}</span>
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-[12px] rounded-lg px-2.5 py-1.5"
+                  style={{ background: RESULT_STYLE[r.result].bg }}
+                >
+                  <span className="truncate flex-1" style={{ color: RESULT_STYLE[r.result].text }}>vs {r.opponent}</span>
+                  <span className="font-bold ml-2" style={{ color: RESULT_STYLE[r.result].text }}>{r.goalsFor}-{r.goalsAgainst}</span>
                 </div>
               ))}
             </div>
