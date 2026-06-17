@@ -2000,7 +2000,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.13</p>
+                  <p className="text-[42px] font-black leading-none">v1.14</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2024,25 +2024,16 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.13
+{`Bolão Copa 2026 BEL — Atualização v1.14
 
-🏆 Dashboard admin aprimorado
-Novos KPIs: palpites registrados, usuários sem palpitar (com botão de lembrete), e campeão mais apostado (top 3).
+♾️ Palpites de jogos sem limite
+Agora você pode alterar o palpite de cada jogo quantas vezes quiser, até 2h antes do início. O palpite de campeão, vice e 3º lugar continua com limite de 3 alterações.
 
-🔔 Novas notificações push
-Além das existentes, agora você recebe: aviso 30min antes do jogo, alerta quando o jogo começa, notificação de novo líder no ranking e aviso quando você sobe 3+ posições.
+📊 Estatísticas das seleções
+Toque (ou passe o mouse) em qualquer bandeira do app para ver os últimos resultados daquela seleção na Copa — vitórias, empates e derrotas, com o placar de cada jogo.
 
-📊 Meu Desempenho no perfil
-Nova aba no perfil com taxa de acerto, distribuição de pontos e estatísticas pessoais.
-
-🌟 Destaques do dia no Feed
-Maior pontuação do dia, quem acertou placar exato e sequência de acertos aparecem no topo do Feed.
-
-📈 Estatísticas do bolão
-Nova aba no perfil mostrando campeão mais apostado, placar mais popular, apostas de risco e média de acertos do grupo.
-
-🟢 Online agora no Ranking
-Contador de usuários online ao lado de participantes no ranking.
+🏅 Pódio em destaque
+Na lista de quem apostou em cada placar, os 3 primeiros colocados do ranking agora aparecem com medalha de ouro, prata e bronze, e sua própria linha fica destacada para você se achar mais rápido.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2055,6 +2046,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.14', desc: 'Palpites de jogos ilimitados (só campeão/vice/3º mantém limite de 3). Popup de estatísticas em todas as bandeiras. Pódio destacado na lista de apostadores.' },
                       { v: 'v1.13', desc: 'KPIs admin, novas notificações push, Meu Desempenho, Destaques do Feed, Estatísticas do bolão, online no ranking.' },
                       { v: 'v1.12', desc: 'Jornada Em Breve → Ao Vivo → Encerrados nos palpites. Botão 3D de colocação no ranking com scroll automático.' },
                       { v: 'v1.11', desc: 'Pontuação colorida (10pts/7pts/5pts/2pts) e data da última atualização no ranking.' },
