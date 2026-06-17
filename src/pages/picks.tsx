@@ -86,6 +86,8 @@ export default function PicksPage() {
   const [limits,      setLimits]      = useState<LimitMap>({})
   const [saving,      setSaving]      = useState(false)
   const [fetching,    setFetching]    = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastSync,    setLastSync]    = useState<Date | null>(null)
   const [isVisitante, setIsVisitante] = useState(false)
   const [travamentoAtivo, setTravamentoAtivo] = useState(true)
   const travAtivoRef = useRef(true)
@@ -165,6 +167,47 @@ export default function PicksPage() {
   }, [player])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // Lightweight refresh — só re-busca matches (placar/status/tempo), não refaz picks/limits.
+  // Usado pelo polling automático e pelo botão "Atualizar" manual.
+  const refreshMatchesOnly = useCallback(async (manual = false) => {
+    if (manual) setIsRefreshing(true)
+    const { data: mData } = await supabase.from('matches').select('*').order('sort_order')
+    if (mData) {
+      const ms = mData as Match[]
+      setMatches(ms)
+      // Re-load consensus for newly locked matches too
+      const lockedIds = ms.filter(m => {
+        if (m.status === 'done') return true
+        if (!m.match_date) return false
+        return new Date(m.match_date).getTime() - 2 * 3600_000 <= Date.now()
+      }).map(m => m.id)
+      if (lockedIds.length) loadConsensus(lockedIds)
+    }
+    setLastSync(new Date())
+    if (manual) setTimeout(() => setIsRefreshing(false), 400)
+  }, [])
+
+  // Auto-poll every 20s while there's a live match in view
+  useEffect(() => {
+    const hasLive = matches.some(m => m.status === 'live')
+    if (!hasLive) return
+    const interval = setInterval(() => refreshMatchesOnly(false), 20000)
+    return () => clearInterval(interval)
+  }, [matches, refreshMatchesOnly])
+
+  // Refresh immediately when the tab/page regains focus or becomes visible
+  useEffect(() => {
+    function handleVisible() {
+      if (document.visibilityState === 'visible') refreshMatchesOnly(false)
+    }
+    document.addEventListener('visibilitychange', handleVisible)
+    window.addEventListener('focus', handleVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.removeEventListener('focus', handleVisible)
+    }
+  }, [refreshMatchesOnly])
 
   // Check visitante mode + travamento de jogos
   useEffect(() => {
@@ -400,9 +443,22 @@ export default function PicksPage() {
           </div>
         )}
 
-        <p className="text-[11px] text-gray-400 text-center mb-2">
-          {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos em breve e ao vivo' : tab==='grupo' ? 'O que o grupo apostou' : 'Resultados'}
-        </p>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <p className="text-[11px] text-gray-400 text-center">
+            {tab==='upcoming' ? `Palpites fecham ${LOCK_HOURS}h antes de cada jogo · horário de Brasília` : tab==='live' ? 'Jogos em breve e ao vivo' : tab==='grupo' ? 'O que o grupo apostou' : 'Resultados'}
+          </p>
+          {tab==='live' && (
+            <button onClick={() => refreshMatchesOnly(true)} disabled={isRefreshing}
+              className="flex items-center gap-1 text-[10px] font-semibold text-[#0099CC] disabled:opacity-50">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                className={isRefreshing ? 'animate-spin' : ''}>
+                <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+              </svg>
+              Atualizar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Match list ──────────────────────────────────────────────── */}
