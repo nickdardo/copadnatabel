@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import FlagImg from '@/components/FlagImg'
-import type { RecentResult } from '@/lib/footballApi'
+
+type RecentResult = {
+  date: string
+  opponent: string
+  goalsFor: number
+  goalsAgainst: number
+  result: 'V' | 'E' | 'D'
+  competition: string
+}
 
 type Props = {
   team: string
