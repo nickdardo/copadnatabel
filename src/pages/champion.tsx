@@ -301,7 +301,7 @@ export default function ChampionPage() {
 
               {state ? (
                 <div className="mx-4 mb-2 flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
-                  <TeamFormPopup team={state} size={36} align="left" className="rounded"/>
+                  <TeamFormPopup team={state} size={36} className="rounded"/>
                   <div className="flex-1">
                     <p className="text-[14px] font-bold text-gray-900">{state}</p>
                     <p className="text-[11px] text-gray-400">Selecionado</p>

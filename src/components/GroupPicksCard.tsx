@@ -132,7 +132,7 @@ export default function GroupPicksCard({ match, currentPlayerId }: { match: Matc
         {/* Match */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
           <div className="flex flex-col items-center gap-1 flex-1">
-            <TeamFormPopup team={match.home_team} size={36} align="left"/>
+            <TeamFormPopup team={match.home_team} size={36}/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.home_team.slice(0, 8)}</span>
           </div>
           <div className="flex flex-col items-center gap-1 flex-shrink-0">
@@ -153,7 +153,7 @@ export default function GroupPicksCard({ match, currentPlayerId }: { match: Matc
             )}
           </div>
           <div className="flex flex-col items-center gap-1 flex-1">
-            <TeamFormPopup team={match.away_team} size={36} align="right"/>
+            <TeamFormPopup team={match.away_team} size={36}/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.away_team.slice(0, 8)}</span>
           </div>
         </div>

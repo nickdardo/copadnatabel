@@ -509,7 +509,7 @@ export default function PicksPage() {
                       <div className="flex items-center justify-between gap-1 mb-2">
                         {/* Home */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <TeamFormPopup team={m.home_team} size={44} align="left"/>
+                          <TeamFormPopup team={m.home_team} size={44}/>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.home_team.length > 8 ? m.home_team.slice(0,8)+'.' : m.home_team}
                           </span>
@@ -581,7 +581,7 @@ export default function PicksPage() {
 
                         {/* Away */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <TeamFormPopup team={m.away_team} size={44} align="right"/>
+                          <TeamFormPopup team={m.away_team} size={44}/>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.away_team.length > 8 ? m.away_team.slice(0,8)+'.' : m.away_team}
                           </span>
