@@ -82,6 +82,7 @@ export default function PicksPage() {
   const [matches,     setMatches]     = useState<Match[]>([])
   const [picks,       setPicks]       = useState<PickMap>({})
   const [saving,      setSaving]      = useState(false)
+  const [saveError,   setSaveError]   = useState(false)
   const [fetching,    setFetching]    = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastSync,    setLastSync]    = useState<Date | null>(null)
@@ -253,36 +254,50 @@ export default function PicksPage() {
     })
     if (!toSave.length) return
     setSaving(true)
-    await Promise.all(toSave.map(m =>
-      supabase.from('picks').upsert({
-        player_id: player.id, match_id: m.id,
-        pick_home: Number(picks[m.id].home), pick_away: Number(picks[m.id].away),
-        submitted_at: new Date().toISOString(), edit_count: picks[m.id].editCount || 0,
-      }, { onConflict: 'player_id,match_id' })
-    ))
-    setPicks(p => { const n = { ...p }; toSave.forEach(m => { n[m.id] = { ...n[m.id], saved: true } }); return n })
+    setSaveError(false)
+    try {
+      const results = await Promise.all(toSave.map(m =>
+        supabase.from('picks').upsert({
+          player_id: player.id, match_id: m.id,
+          pick_home: Number(picks[m.id].home), pick_away: Number(picks[m.id].away),
+          submitted_at: new Date().toISOString(),
+        }, { onConflict: 'player_id,match_id' })
+      ))
+      const firstError = results.find(r => r.error)?.error
+      if (firstError) throw firstError
 
-    // Update picks_count in scores table so ranking bar reflects immediately
-    // Use update only (not upsert with zeros) to avoid overwriting points
-    const { count: totalPicks } = await supabase
-      .from('picks').select('*', { count: 'exact', head: true }).eq('player_id', player.id)
-    if (totalPicks !== null) {
-      // Try update first — only touches picks_count, never overwrites points
-      const { error: upErr } = await supabase
-        .from('scores')
-        .update({ picks_count: totalPicks, updated_at: new Date().toISOString() })
-        .eq('player_id', player.id)
-      // If row doesn't exist yet, insert with zeros (first time saving picks)
-      if (upErr) {
-        await supabase.from('scores').insert({
-          player_id: player.id, picks_count: totalPicks,
-          total_pts: 0, f10_count: 0, f7_count: 0, f5_count: 0, f2_count: 0, f0_count: 0,
-          champion_pts: 0, updated_at: new Date().toISOString(),
-        })
+      setPicks(p => { const n = { ...p }; toSave.forEach(m => { n[m.id] = { ...n[m.id], saved: true } }); return n })
+
+      // Update picks_count in scores table so ranking bar reflects immediately.
+      // Não bloqueia a confirmação ao usuário se isso falhar — picks_count é só
+      // um indicador secundário, o palpite em si já foi salvo com sucesso acima.
+      try {
+        const { count: totalPicks } = await supabase
+          .from('picks').select('*', { count: 'exact', head: true }).eq('player_id', player.id)
+        if (totalPicks !== null) {
+          const { error: upErr } = await supabase
+            .from('scores')
+            .update({ picks_count: totalPicks, updated_at: new Date().toISOString() })
+            .eq('player_id', player.id)
+          if (upErr) {
+            await supabase.from('scores').insert({
+              player_id: player.id, picks_count: totalPicks,
+              total_pts: 0, f10_count: 0, f7_count: 0, f5_count: 0, f2_count: 0, f0_count: 0,
+              champion_pts: 0, updated_at: new Date().toISOString(),
+            })
+          }
+        }
+      } catch {
+        // picks_count é só cosmético no ranking — falha aqui não deve impedir
+        // o usuário de saber que o palpite (a parte que importa) foi salvo.
       }
-    }
 
-    setSaving(false); setBatchSaved(true)
+      setBatchSaved(true)
+    } catch {
+      setSaveError(true)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Group by date (BRT)
@@ -345,7 +360,7 @@ export default function PicksPage() {
         {phases.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4" style={{scrollbarWidth:'none'}}>
             {phases.map(f => (
-              <button key={f} onClick={() => { setActivePhase(f); setRound(0); setTab('upcoming'); setBatchSaved(false) }}
+              <button key={f} onClick={() => { setActivePhase(f); setRound(0); setTab('upcoming'); setBatchSaved(false); setSaveError(false) }}
                 className={`px-3 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${activePhase===f?'bg-[#0099CC] text-white':'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'}`}>
                 {f === 'Fase de Grupos' ? 'Grupos' : f}
               </button>
@@ -739,14 +754,14 @@ export default function PicksPage() {
             {/* Bottom round nav — mirrors top nav */}
             {isGroups && upcomingRounds.length>1 && (
               <div className="bg-white/95 backdrop-blur border border-gray-100 rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-sm">
-                <button onClick={() => { if(safeRound>0){setRound(r=>r-1);setBatchSaved(false)} }} disabled={safeRound===0}
+                <button onClick={() => { if(safeRound>0){setRound(r=>r-1);setBatchSaved(false);setSaveError(false)} }} disabled={safeRound===0}
                   className="flex items-center gap-1 text-[12px] font-semibold text-gray-400 disabled:opacity-30 hover:text-gray-600">
                   <IcoArrowL/> Anterior
                 </button>
                 <span className="text-[12px] text-gray-600 font-bold">
                   Rodada {safeRound+1} / {upcomingRounds.length}
                 </span>
-                <button onClick={() => { if(safeRound<upcomingRounds.length-1){setRound(r=>r+1);setBatchSaved(false)} }} disabled={safeRound===upcomingRounds.length-1}
+                <button onClick={() => { if(safeRound<upcomingRounds.length-1){setRound(r=>r+1);setBatchSaved(false);setSaveError(false)} }} disabled={safeRound===upcomingRounds.length-1}
                   className="flex items-center gap-1 text-[12px] font-semibold text-[#0099CC] disabled:opacity-30 hover:text-[#007aa8]">
                   Próxima <IcoArrowR/>
                 </button>
@@ -772,12 +787,19 @@ export default function PicksPage() {
                 className={`w-full py-4 rounded-2xl font-bold text-[15px] tracking-wide transition-all shadow-lg flex items-center justify-center gap-2
                   ${batchSaved?'bg-gray-200 text-gray-500 cursor-default'
                     :saving?'bg-[#0099CC] text-white'
+                    :saveError?'bg-red-500 text-white hover:bg-red-600 active:scale-[.98]'
                     :filled>0?'bg-[#0099CC] text-white hover:bg-[#007aa8] active:scale-[.98]'
                     :'bg-[#0099CC]/40 text-white/60 cursor-not-allowed'}`}>
                 {saving ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
                  : batchSaved ? <><IcoCheck/> PALPITES CONFIRMADOS</>
+                 : saveError ? 'ERRO AO SALVAR — TOQUE PARA TENTAR DE NOVO'
                  : filled>0 ? `CONFIRMAR PALPITES (${filled})` : 'PREENCHA OS PLACARES'}
               </button>
+            )}
+            {saveError && !saving && (
+              <p className="text-[11px] text-red-500 text-center mt-2">
+                Não foi possível salvar. Verifique sua conexão e tente novamente.
+              </p>
             )}
           </div>
         </div>
