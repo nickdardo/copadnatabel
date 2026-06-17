@@ -89,9 +89,9 @@ export default function TeamFormPopup({ team, size = 44, align = 'center', class
         onClick={() => { if (isTouch.current) (open ? setOpen(false) : handleOpen()) }}
         onMouseEnter={() => { if (!isTouch.current) handleOpen() }}
         onMouseLeave={() => { if (!isTouch.current) setOpen(false) }}
-        className={`flex flex-col items-center gap-1 bg-transparent border-none p-0 cursor-pointer ${className}`}
+        className="flex flex-col items-center gap-1 bg-transparent border-none p-0 cursor-pointer"
       >
-        <FlagImg team={team} size={size} />
+        <FlagImg team={team} size={size} className={className} />
       </button>
 
       {open && (
@@ -111,7 +111,7 @@ export default function TeamFormPopup({ team, size = 44, align = 'center', class
           )}
 
           {!loading && recent && recent.length === 0 && (
-            <p className="text-[11px] text-gray-400 py-2">Estatísticas não disponíveis para esta seleção.</p>
+            <p className="text-[11px] text-gray-400 py-2">Esta seleção ainda não tem jogos registrados.</p>
           )}
 
           {!loading && recent && recent.length > 0 && (

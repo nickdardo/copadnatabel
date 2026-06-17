@@ -4,7 +4,6 @@ import { useAuth } from '@/lib/auth'
 import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER } from '@/lib/supabase'
 import GroupPicksCard from '@/components/GroupPicksCard'
 import Layout from '@/components/Layout'
-import FlagImg from '@/components/FlagImg'
 import TeamFormPopup from '@/components/TeamFormPopup'
 import { format, parseISO, subHours, isBefore } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -447,7 +446,7 @@ export default function PicksPage() {
           ) : (
             <div className="space-y-4">
               <p className="text-[11px] text-gray-400 text-center">Palpites revelados após fechamento · {lockedMatches.length} jogo{lockedMatches.length !== 1 ? 's' : ''}</p>
-              {lockedMatches.map(m => <GroupPicksCard key={m.id} match={m}/>)}
+              {lockedMatches.map(m => <GroupPicksCard key={m.id} match={m} currentPlayerId={player?.id}/>)}
             </div>
           )
         })()}
@@ -510,9 +509,7 @@ export default function PicksPage() {
                       <div className="flex items-center justify-between gap-1 mb-2">
                         {/* Home */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          {tab === 'done'
-                            ? <TeamFormPopup team={m.home_team} size={44} align="left"/>
-                            : <FlagImg team={m.home_team} dbFlag={m.home_flag} size={44}/>}
+                          <TeamFormPopup team={m.home_team} size={44} align="left"/>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.home_team.length > 8 ? m.home_team.slice(0,8)+'.' : m.home_team}
                           </span>
@@ -584,9 +581,7 @@ export default function PicksPage() {
 
                         {/* Away */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          {tab === 'done'
-                            ? <TeamFormPopup team={m.away_team} size={44} align="right"/>
-                            : <FlagImg team={m.away_team} dbFlag={m.away_flag} size={44}/>}
+                          <TeamFormPopup team={m.away_team} size={44} align="right"/>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.away_team.length > 8 ? m.away_team.slice(0,8)+'.' : m.away_team}
                           </span>

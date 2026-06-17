@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import FlagImg from '@/components/FlagImg'
+import TeamFormPopup from '@/components/TeamFormPopup'
+import { IconMedal } from '@/components/Icons'
 import type { Match } from '@/lib/supabase'
 
 type PickGroup = {
@@ -27,7 +28,7 @@ function Avatar({ name, avatar, size = 32 }: { name: string; avatar?: string; si
   )
 }
 
-function PlayerModal({ group, match, onClose }: { group: PickGroup; match: Match; onClose: () => void }) {
+function PlayerModal({ group, match, currentPlayerId, onClose }: { group: PickGroup; match: Match; currentPlayerId?: string; onClose: () => void }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
@@ -55,26 +56,36 @@ function PlayerModal({ group, match, onClose }: { group: PickGroup; match: Match
         </div>
         {/* List */}
         <div className="overflow-y-auto">
-          {group.players.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50">
-              <span className="text-[11px] font-bold text-gray-400 w-6 text-right flex-shrink-0">{i + 1}</span>
-              <Avatar name={p.name} avatar={p.avatar} size={34}/>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-gray-900 truncate">{p.name}</p>
-                <p className="text-[10px] text-gray-400">{p.pts} pts{p.rank ? ` · ${p.rank}º no ranking` : ''}</p>
+          {group.players.map((p, i) => {
+            const isMe = currentPlayerId && p.id === currentPlayerId
+            const isTop3 = p.rank != null && p.rank <= 3
+            return (
+              <div key={p.id}
+                className={`flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 ${isMe ? 'bg-[#0099CC]/10' : ''}`}>
+                <span className="text-[11px] font-bold text-gray-400 w-6 text-right flex-shrink-0">{i + 1}</span>
+                <Avatar name={p.name} avatar={p.avatar} size={34}/>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className={`text-[13px] font-semibold truncate ${isMe ? 'text-[#0099CC]' : 'text-gray-900'}`}>
+                      {p.name}{isMe ? ' (você)' : ''}
+                    </p>
+                    {isTop3 && <IconMedal size={16} rank={p.rank as number}/>}
+                  </div>
+                  <p className="text-[10px] text-gray-400">{p.pts} pts{p.rank ? ` · ${p.rank}º no ranking` : ''}</p>
+                </div>
+                <div className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: '#DBEAFE', color: '#1D4ED8' }}>
+                  {group.home}×{group.away}
+                </div>
               </div>
-              <div className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: '#DBEAFE', color: '#1D4ED8' }}>
-                {group.home}×{group.away}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
 
-export default function GroupPicksCard({ match }: { match: Match }) {
+export default function GroupPicksCard({ match, currentPlayerId }: { match: Match; currentPlayerId?: string }) {
   const [data,    setData]    = useState<GroupData | null>(null)
   const [loading, setLoading] = useState(true)
   const [modal,   setModal]   = useState<PickGroup | null>(null)
@@ -121,7 +132,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
         {/* Match */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
           <div className="flex flex-col items-center gap-1 flex-1">
-            <FlagImg team={match.home_team} dbFlag={match.home_flag} size={36}/>
+            <TeamFormPopup team={match.home_team} size={36} align="left"/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.home_team.slice(0, 8)}</span>
           </div>
           <div className="flex flex-col items-center gap-1 flex-shrink-0">
@@ -142,7 +153,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
             )}
           </div>
           <div className="flex flex-col items-center gap-1 flex-1">
-            <FlagImg team={match.away_team} dbFlag={match.away_flag} size={36}/>
+            <TeamFormPopup team={match.away_team} size={36} align="right"/>
             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">{match.away_team.slice(0, 8)}</span>
           </div>
         </div>
@@ -205,7 +216,7 @@ export default function GroupPicksCard({ match }: { match: Match }) {
         </div>
       </div>
 
-      {modal && <PlayerModal group={modal} match={match} onClose={() => setModal(null)}/>}
+      {modal && <PlayerModal group={modal} match={match} currentPlayerId={currentPlayerId} onClose={() => setModal(null)}/>}
     </>
   )
 }

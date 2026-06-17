@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Score, Player, getPresence } from '@/lib/supabase'
-import FlagImg from '@/components/FlagImg'
+import TeamFormPopup from '@/components/TeamFormPopup'
 import Layout from '@/components/Layout'
 
 type ChampPick = { pick_champion: string; pick_runner: string; pick_third: string }
@@ -268,7 +268,7 @@ export default function RankingPage() {
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-white/90 text-[10px]">Palpites:</span>
                     {[me.champ.pick_champion, me.champ.pick_runner, me.champ.pick_third].map((t,i) => (
-                      <span key={i}><FlagImg team={t} size={20}/></span>
+                      <span key={i}><TeamFormPopup team={t} size={20} align={i===0?'left':i===2?'right':'center'}/></span>
                     ))}
                   </div>
                 )}
@@ -594,7 +594,7 @@ export default function RankingPage() {
                               { pos: '3°', team: entry.champ.pick_third    },
                             ].map(({ pos, team }) => (
                               <div key={pos} className="flex items-center gap-1.5">
-                                <FlagImg team={team} size={18}/>
+                                <TeamFormPopup team={team} size={18} align="left"/>
                                 <span className="text-[11px] text-gray-700 truncate">{team}</span>
                                 <span className="text-[9px] text-gray-400 flex-shrink-0">{pos}</span>
                               </div>
