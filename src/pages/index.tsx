@@ -63,8 +63,8 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <p className="text-[12px] text-amber-700 leading-relaxed">Pague ao gerente <strong>Aristone Figueredo</strong>. O prêmio final só é liberado após a confirmação do pagamento.</p>
           </div>
           <div className="bg-[#E6F4FA] border border-[#0099CC]/20 rounded-xl p-4">
-            <p className="text-[12px] font-bold text-[#0099CC] mb-1">Limite de alterações</p>
-            <p className="text-[12px] text-gray-600 leading-relaxed">Após salvar seus palpites, você pode alterá-los até <strong>3 vezes por dia</strong>. Use com sabedoria!</p>
+            <p className="text-[12px] font-bold text-[#0099CC] mb-1">Alterações de palpite</p>
+            <p className="text-[12px] text-gray-600 leading-relaxed">Você pode alterar o palpite de cada jogo <strong>quantas vezes quiser</strong>, até 2h antes do início. Já o palpite de campeão, vice e 3º lugar pode ser alterado até <strong>3 vezes</strong>.</p>
           </div>
           <button onClick={onClose} className="w-full py-3.5 rounded-xl bg-[#0099CC] text-white font-semibold text-[14px] hover:bg-[#007aa8] transition-colors">
             Entendido!

@@ -1,19 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER, EditLimit } from '@/lib/supabase'
+import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER } from '@/lib/supabase'
 import GroupPicksCard from '@/components/GroupPicksCard'
 import Layout from '@/components/Layout'
 import FlagImg from '@/components/FlagImg'
+import TeamFormPopup from '@/components/TeamFormPopup'
 import { format, parseISO, subHours, isBefore } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 type PickMap  = Record<string, { home: string; away: string; saved: boolean; editCount: number }>
-type LimitMap = Record<string, EditLimit>
 type GroupConsensus = Record<string, { home: number; away: number; count: number } | null>
 
 const ROUND_SIZE = 8
-const MAX_EDITS  = 3
 const LOCK_HOURS = 2
 
 const IcoCheck  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -83,7 +82,6 @@ export default function PicksPage() {
   const router = useRouter()
   const [matches,     setMatches]     = useState<Match[]>([])
   const [picks,       setPicks]       = useState<PickMap>({})
-  const [limits,      setLimits]      = useState<LimitMap>({})
   const [saving,      setSaving]      = useState(false)
   const [fetching,    setFetching]    = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -128,10 +126,9 @@ export default function PicksPage() {
 
   const fetchData = useCallback(async () => {
     if (!player) return
-    const [{ data: mData }, { data: pData }, { data: lData }] = await Promise.all([
+    const [{ data: mData }, { data: pData }] = await Promise.all([
       supabase.from('matches').select('*').order('sort_order'),
       supabase.from('picks').select('*').eq('player_id', player.id),
-      supabase.from('pick_edit_limits').select('*').eq('player_id', player.id),
     ])
     const ms = (mData || []) as Match[]
     setMatches(ms)
@@ -141,9 +138,6 @@ export default function PicksPage() {
       pm[p.match_id] = { home: String(p.pick_home), away: String(p.pick_away), saved: true, editCount: p.edit_count || 0 }
     })
     setPicks(pm)
-    const lm: LimitMap = {}
-    ;(lData || []).forEach((l: EditLimit) => { lm[`${l.fase}:${l.round_index}`] = l })
-    setLimits(lm)
     const phases = FASE_ORDER.filter(f => ms.some(m => m.fase === f))
     const first  = phases.find(f => ms.some(m => m.fase === f && (m.status === 'upcoming' || m.status === 'live'))) || phases[0]
     setActivePhase(first || '')
@@ -168,7 +162,7 @@ export default function PicksPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Lightweight refresh — só re-busca matches (placar/status/tempo), não refaz picks/limits.
+  // Lightweight refresh — só re-busca matches (placar/status/tempo), não refaz picks.
   // Usado pelo polling automático e pelo botão "Atualizar" manual.
   const refreshMatchesOnly = useCallback(async (manual = false) => {
     if (manual) setIsRefreshing(true)
@@ -247,14 +241,7 @@ export default function PicksPage() {
   const currentRound = upcomingRounds[safeRound] || []
   const tabMatches   = tab === 'live' ? liveTabMatches : tab === 'done' ? doneMatches : currentRound
 
-  const limitKey    = `${activePhase}:${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' })}`
-  const editLimit   = limits[limitKey]
-  const editsUsed   = editLimit?.edits_used || 0
-  const editsLeft   = MAX_EDITS - editsUsed
-  const roundLocked = editsLeft <= 0
-
   function updatePick(id: string, side: 'home'|'away', val: string) {
-    if (roundLocked) return
     setPicks(p => ({ ...p, [id]: { ...p[id], [side]: val.replace(/\D/g,'').slice(0,2), saved: false } }))
   }
 
@@ -267,7 +254,6 @@ export default function PicksPage() {
     })
     if (!toSave.length) return
     setSaving(true)
-    const hasEdits = toSave.some(m => picks[m.id].saved)
     await Promise.all(toSave.map(m =>
       supabase.from('picks').upsert({
         player_id: player.id, match_id: m.id,
@@ -275,14 +261,6 @@ export default function PicksPage() {
         submitted_at: new Date().toISOString(), edit_count: picks[m.id].editCount || 0,
       }, { onConflict: 'player_id,match_id' })
     ))
-    if (hasEdits) {
-      const ne = editsUsed + 1
-      const todayBRT = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' })
-      await supabase.from('pick_edit_limits').upsert({
-        player_id: player.id, fase: activePhase, round_index: todayBRT, edits_used: ne, max_edits: MAX_EDITS,
-      }, { onConflict: 'player_id,fase,round_index' })
-      setLimits(l => ({ ...l, [limitKey]: { ...editLimit || { player_id: player.id, fase: activePhase, round_index: todayBRT, max_edits: MAX_EDITS }, edits_used: ne } }))
-    }
     setPicks(p => { const n = { ...p }; toSave.forEach(m => { n[m.id] = { ...n[m.id], saved: true } }); return n })
 
     // Update picks_count in scores table so ranking bar reflects immediately
@@ -389,18 +367,6 @@ export default function PicksPage() {
 
         {/* Round nav — only at bottom (floating) */}
 
-        {/* Warnings */}
-        {tab==='upcoming' && roundLocked && (
-          <div className="mb-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
-            <IcoLock/><span className="text-[12px] text-red-700 font-medium">Limite de alterações atingido para esta rodada.</span>
-          </div>
-        )}
-        {tab==='upcoming' && !roundLocked && editsLeft<=2 && editsUsed>0 && (
-          <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
-            <IcoLock/><span className="text-[12px] text-amber-700 font-medium">Apenas <strong>{editsLeft}</strong> alteração{editsLeft===1?'':'ões'} restante{editsLeft===1?'':'s'} hoje.</span>
-          </div>
-        )}
-
         {/* Payment gate — unpaid users can SEE but not SAVE picks */}
         {!player?.payment_ok && (
           <div className="mb-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
@@ -499,7 +465,7 @@ export default function PicksPage() {
             <div className="grid grid-cols-1 gap-3">
               {dayMatches.map(m => {
                 const pick   = picks[m.id] || { home:'', away:'', saved:false, editCount:0 }
-                const locked = !player?.payment_ok || isLocked(m) || (isVisitante && !player?.payment_ok) || (tab==='upcoming' && roundLocked && pick.saved)
+                const locked = !player?.payment_ok || isLocked(m) || (isVisitante && !player?.payment_ok)
                 const factor = m.status==='done' && m.score_home!==undefined && pick.home!==''
                   ? calcFactor(Number(pick.home), Number(pick.away), m.score_home!, m.score_away!) : null
                 const timeBRT = m.match_date ? fmtBRT(m.match_date, 'HH:mm') : ''
@@ -544,7 +510,9 @@ export default function PicksPage() {
                       <div className="flex items-center justify-between gap-1 mb-2">
                         {/* Home */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <FlagImg team={m.home_team} dbFlag={m.home_flag} size={44}/>
+                          {tab === 'done'
+                            ? <TeamFormPopup team={m.home_team} size={44} align="left"/>
+                            : <FlagImg team={m.home_team} dbFlag={m.home_flag} size={44}/>}
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.home_team.length > 8 ? m.home_team.slice(0,8)+'.' : m.home_team}
                           </span>
@@ -616,7 +584,9 @@ export default function PicksPage() {
 
                         {/* Away */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <FlagImg team={m.away_team} dbFlag={m.away_flag} size={44}/>
+                          {tab === 'done'
+                            ? <TeamFormPopup team={m.away_team} size={44} align="right"/>
+                            : <FlagImg team={m.away_team} dbFlag={m.away_flag} size={44}/>}
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.away_team.length > 8 ? m.away_team.slice(0,8)+'.' : m.away_team}
                           </span>
@@ -754,7 +724,7 @@ export default function PicksPage() {
       </div>
 
       {/* ── Fixed CTA ───────────────────────────────────────────────── */}
-      {tab==='upcoming' && currentRound.length>0 && !roundLocked && (
+      {tab==='upcoming' && currentRound.length>0 && (
         <div className="fixed left-0 right-0 z-20 px-4"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 56px)',
@@ -763,23 +733,11 @@ export default function PicksPage() {
             paddingBottom: '8px',
           }}>
           <div className="max-w-lg mx-auto space-y-2">
-            {/* Edit limit indicator */}
+            {/* Confirmação de salvamento */}
             {batchSaved && player?.payment_ok && (
-              <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-2">
-                  <IcoLock/>
-                  <div>
-                    <p className="text-[12px] font-bold text-gray-700">
-                      {editsLeft>0 ? `${editsLeft} alteração${editsLeft===1?'':'ões'} disponível${editsLeft===1?'':'is'}` : 'Limite atingido'}
-                    </p>
-                    <p className="text-[11px] text-gray-400">Máx. {MAX_EDITS} alterações por dia</p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  {Array.from({length:MAX_EDITS}).map((_,i)=>(
-                    <div key={i} className={`w-2.5 h-2.5 rounded-full ${i<editsUsed?'bg-amber-400':'bg-gray-200'}`}/>
-                  ))}
-                </div>
+              <div className="bg-white border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-2 shadow-sm">
+                <IcoCheck/>
+                <p className="text-[12px] font-bold text-green-700">Palpites salvos! Você pode ajustar quando quiser, até o jogo travar.</p>
               </div>
             )}
 
@@ -822,7 +780,7 @@ export default function PicksPage() {
                     :filled>0?'bg-[#0099CC] text-white hover:bg-[#007aa8] active:scale-[.98]'
                     :'bg-[#0099CC]/40 text-white/60 cursor-not-allowed'}`}>
                 {saving ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                 : batchSaved ? <><IcoCheck/> PALPITES CONFIRMADOS · <span className="bg-gray-400 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">{editsLeft}/{MAX_EDITS}</span></>
+                 : batchSaved ? <><IcoCheck/> PALPITES CONFIRMADOS</>
                  : filled>0 ? `CONFIRMAR PALPITES (${filled})` : 'PREENCHA OS PLACARES'}
               </button>
             )}
