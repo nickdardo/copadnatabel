@@ -1,11 +1,12 @@
 // POST /api/push/auto-notify
 // Notification types (in order per match):
-//   1. T-2h   "Palpites fecham"   (notified_6h)   — already exists
-//   2. T-30m  "Jogo em breve"     (notified_30m)   — new
-//   3. T+0    "Jogo começou"      (notified_live)  — new
-//   4. T+90m  "Resultado final"   (notified_result) — already exists
-//   5. Post-recalc "Novo líder"                    — new
-//   6. Post-recalc "Subiu ≥3 posições" (individual) — new
+//   1. T-2h   "Palpites fecham"    (notified_6h)   — already exists
+//   2. T-30m  "Jogo em breve"      (notified_30m)  — new
+//   2.5 T-10m "Seu palpite"        (notified_10m)  — new, individual per player
+//   3. T+0    "Jogo começou"       (notified_live) — new
+//   4. T+90m  "Resultado final"    (notified_result) — already exists
+//   5. Post-recalc "Novo líder"                      — new
+//   6. Post-recalc "Subiu ≥3 posições" (individual)   — new
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
@@ -86,6 +87,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const in2h15    = new Date(now.getTime() + 2.25  * 3600  * 1000)
   const in25min   = new Date(now.getTime() + 25    * 60    * 1000)
   const in35min   = new Date(now.getTime() + 35    * 60    * 1000)
+  const in5min    = new Date(now.getTime() + 5     * 60    * 1000)
+  const in15min   = new Date(now.getTime() + 15    * 60    * 1000)
   const ago5min   = new Date(now.getTime() - 5     * 60    * 1000)
   const ago35min  = new Date(now.getTime() - 35    * 60    * 1000)
 
@@ -122,6 +125,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sent = await sendToAll(TITLE, body)
     await supabaseAdmin.from('matches').update({ notified_30m: true }).eq('id', m.id)
     notifications.push({ type: '30m_warning', title: TITLE, body, sent })
+  }
+
+  // ── 2.5 T-10min  Seu palpite (notificação individual por jogador) ──
+  const { data: upcoming10m } = await supabaseAdmin
+    .from('matches')
+    .select('id, home_team, away_team, match_date')
+    .eq('status', 'upcoming')
+    .gte('match_date', in5min.toISOString())
+    .lte('match_date', in15min.toISOString())
+    .neq('notified_10m', true)
+
+  for (const m of (upcoming10m || [])) {
+    const { data: picksForMatch } = await supabaseAdmin
+      .from('picks')
+      .select('player_id, pick_home, pick_away')
+      .eq('match_id', m.id)
+
+    let sentCount = 0
+    for (const pick of (picksForMatch || [])) {
+      const body = `Seu palpite no jogo ${m.home_team} ${pick.pick_home} × ${pick.pick_away} ${m.away_team}. Começa em 10 minutos!`
+      sentCount += await sendToPlayer(pick.player_id, TITLE, body)
+    }
+    await supabaseAdmin.from('matches').update({ notified_10m: true }).eq('id', m.id)
+    notifications.push({
+      type: '10m_my_pick', title: TITLE,
+      body: `${m.home_team} × ${m.away_team} — ${picksForMatch?.length || 0} palpites notificados`,
+      sent: sentCount,
+    })
   }
 
   // ── 3. T+0  Jogo começou ────────────────────────────────────
