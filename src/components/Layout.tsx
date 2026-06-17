@@ -170,7 +170,9 @@ export default function Layout({ children, title }: Props) {
   const [loadingLog, setLoadingLog] = useState(false)
   const [notifyBannerHidden, setNotifyBannerHidden] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
-  const [hasUpdate,    setHasUpdate]    = useState(false)
+  const [hasUpdate,    setHasUpdate]    = useState(() =>
+    typeof window !== 'undefined' && sessionStorage.getItem('app_update_pending') === '1'
+  )
   const [isUpdating,   setIsUpdating]   = useState(false)
 
   async function fetchNotifyLog() {
@@ -238,6 +240,7 @@ export default function Layout({ children, title }: Props) {
   }, [])
 
   // Version checker — polls every 3 minutes
+  const latestVersionRef = useRef<string>('')
   useEffect(() => {
     // Store current version on first load
     const checkVersion = async () => {
@@ -245,6 +248,7 @@ export default function Layout({ children, title }: Props) {
         const res = await fetch('/api/version?t=' + Date.now())
         if (!res.ok) return
         const { version } = await res.json()
+        latestVersionRef.current = version
         const stored = sessionStorage.getItem('app_version')
         if (!stored) {
           // First check — just save, don't show banner
@@ -252,6 +256,7 @@ export default function Layout({ children, title }: Props) {
           return
         }
         if (stored !== version) {
+          sessionStorage.setItem('app_update_pending', '1')
           setHasUpdate(true)
         }
       } catch {}
@@ -404,6 +409,7 @@ export default function Layout({ children, title }: Props) {
                 setIsUpdating(true)
                 document.body.style.overflow = 'hidden'
                 sessionStorage.removeItem('app_version')
+                sessionStorage.removeItem('app_update_pending')
                 try {
                   if ('serviceWorker' in navigator) {
                     const regs = await navigator.serviceWorker.getRegistrations()
@@ -421,7 +427,11 @@ export default function Layout({ children, title }: Props) {
               Atualizar agora
             </button>
             <button
-              onClick={() => setHasUpdate(false)}
+              onClick={() => {
+                if (latestVersionRef.current) sessionStorage.setItem('app_version', latestVersionRef.current)
+                sessionStorage.removeItem('app_update_pending')
+                setHasUpdate(false)
+              }}
               className="flex-shrink-0 text-white/50 hover:text-white/80 transition-colors p-1">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
