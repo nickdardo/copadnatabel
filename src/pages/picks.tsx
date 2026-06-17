@@ -94,7 +94,6 @@ export default function PicksPage() {
   const tabManuallySet = useRef(false)
   const setTabManual = (t: typeof tab) => { tabManuallySet.current = true; setTab(t) }
   const [round,       setRound]       = useState(0)
-  const [batchSaved,  setBatchSaved]  = useState(false)
   const [consensus,   setConsensus]   = useState<GroupConsensus>({})
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
@@ -291,8 +290,6 @@ export default function PicksPage() {
         // picks_count é só cosmético no ranking — falha aqui não deve impedir
         // o usuário de saber que o palpite (a parte que importa) foi salvo.
       }
-
-      setBatchSaved(true)
     } catch {
       setSaveError(true)
     } finally {
@@ -313,6 +310,13 @@ export default function PicksPage() {
 
   const phases  = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
   const filled  = tabMatches.filter(m => { const p = picks[m.id]; return p && p.home !== '' && p.away !== '' }).length
+  // Pendentes: preenchidos na tela mas ainda não salvos no banco (ou alterados após salvar).
+  // O botão só deve travar (cinza) quando NÃO houver nada pendente — assim quem confirma
+  // jogo por jogo continua podendo salvar o restante sem precisar trocar de rodada.
+  const pendingToSave = currentRound.filter(m => {
+    const p = picks[m.id]; return !isLocked(m) && p && p.home !== '' && p.away !== '' && !p.saved
+  }).length
+  const allSavedInRound = tab === 'upcoming' && currentRound.length > 0 && pendingToSave === 0 && filled > 0
   // For done tab, reverse order so newest results appear first
   const sortedTabMatches = tab === 'done' ? [...tabMatches].reverse() : tabMatches
   const grouped = byDate(sortedTabMatches)
@@ -360,7 +364,7 @@ export default function PicksPage() {
         {phases.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4" style={{scrollbarWidth:'none'}}>
             {phases.map(f => (
-              <button key={f} onClick={() => { setActivePhase(f); setRound(0); setTab('upcoming'); setBatchSaved(false); setSaveError(false) }}
+              <button key={f} onClick={() => { setActivePhase(f); setRound(0); setTab('upcoming'); setSaveError(false) }}
                 className={`px-3 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${activePhase===f?'bg-[#0099CC] text-white':'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'}`}>
                 {f === 'Fase de Grupos' ? 'Grupos' : f}
               </button>
@@ -743,25 +747,17 @@ export default function PicksPage() {
             paddingBottom: '8px',
           }}>
           <div className="max-w-lg mx-auto space-y-2">
-            {/* Confirmação de salvamento */}
-            {batchSaved && player?.payment_ok && (
-              <div className="bg-white border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-2 shadow-sm">
-                <IcoCheck/>
-                <p className="text-[12px] font-bold text-green-700">Palpites salvos! Você pode ajustar quando quiser, até o jogo travar.</p>
-              </div>
-            )}
-
             {/* Bottom round nav — mirrors top nav */}
             {isGroups && upcomingRounds.length>1 && (
               <div className="bg-white/95 backdrop-blur border border-gray-100 rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-sm">
-                <button onClick={() => { if(safeRound>0){setRound(r=>r-1);setBatchSaved(false);setSaveError(false)} }} disabled={safeRound===0}
+                <button onClick={() => { if(safeRound>0){setRound(r=>r-1);setSaveError(false)} }} disabled={safeRound===0}
                   className="flex items-center gap-1 text-[12px] font-semibold text-gray-400 disabled:opacity-30 hover:text-gray-600">
                   <IcoArrowL/> Anterior
                 </button>
                 <span className="text-[12px] text-gray-600 font-bold">
                   Rodada {safeRound+1} / {upcomingRounds.length}
                 </span>
-                <button onClick={() => { if(safeRound<upcomingRounds.length-1){setRound(r=>r+1);setBatchSaved(false);setSaveError(false)} }} disabled={safeRound===upcomingRounds.length-1}
+                <button onClick={() => { if(safeRound<upcomingRounds.length-1){setRound(r=>r+1);setSaveError(false)} }} disabled={safeRound===upcomingRounds.length-1}
                   className="flex items-center gap-1 text-[12px] font-semibold text-[#0099CC] disabled:opacity-30 hover:text-[#007aa8]">
                   Próxima <IcoArrowR/>
                 </button>
@@ -783,15 +779,15 @@ export default function PicksPage() {
                 PAGAR INSCRIÇÃO PARA PALPITAR
               </button>
             ) : (
-              <button onClick={batchSaved?()=>{}:confirmAll} disabled={saving||(!batchSaved&&filled===0)}
+              <button onClick={allSavedInRound?()=>{}:confirmAll} disabled={saving||(!allSavedInRound&&filled===0)}
                 className={`w-full py-4 rounded-2xl font-bold text-[15px] tracking-wide transition-all shadow-lg flex items-center justify-center gap-2
-                  ${batchSaved?'bg-gray-200 text-gray-500 cursor-default'
+                  ${allSavedInRound?'bg-gray-200 text-gray-500 cursor-default'
                     :saving?'bg-[#0099CC] text-white'
                     :saveError?'bg-red-500 text-white hover:bg-red-600 active:scale-[.98]'
                     :filled>0?'bg-[#0099CC] text-white hover:bg-[#007aa8] active:scale-[.98]'
                     :'bg-[#0099CC]/40 text-white/60 cursor-not-allowed'}`}>
                 {saving ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                 : batchSaved ? <><IcoCheck/> PALPITES CONFIRMADOS</>
+                 : allSavedInRound ? <><IcoCheck/> PALPITES CONFIRMADOS</>
                  : saveError ? 'ERRO AO SALVAR — TOQUE PARA TENTAR DE NOVO'
                  : filled>0 ? `CONFIRMAR PALPITES (${filled})` : 'PREENCHA OS PLACARES'}
               </button>
