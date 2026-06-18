@@ -62,6 +62,9 @@ export default function AdminPage() {
   const [resH,          setResH]          = useState('')
   const [resA,          setResA]          = useState('')
   const [saving,        setSaving]        = useState(false)
+  const [streamEditId,  setStreamEditId]  = useState<string | null>(null)
+  const [streamUrl,     setStreamUrl]     = useState('')
+  const [savingStream,  setSavingStream]  = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [championStats, setChampionStats] = useState<{ team: string; count: number; flag?: string }[]>([])
   const [totalChampPicks, setTotalChampPicks] = useState(0)
@@ -558,9 +561,23 @@ export default function AdminPage() {
   async function saveResult(match: Match) {
     if (resH === '' || resA === '') return
     setSaving(true)
-    await supabase.from('matches').update({ score_home: Number(resH), score_away: Number(resA), status: 'done' }).eq('id', match.id)
+    const updatePayload: Record<string, unknown> = {
+      score_home: Number(resH), score_away: Number(resA), status: 'done'
+    }
+    if (streamUrl.trim()) updatePayload.stream_url = streamUrl.trim()
+    await supabase.from('matches').update(updatePayload).eq('id', match.id)
     setSaving(false); setEditId(null)
     fetchAll(); recalcScores()
+  }
+
+  async function saveStreamUrl(matchId: string, url: string) {
+    const clean = url.trim()
+    await supabase.from('matches')
+      .update({ stream_url: clean || null })
+      .eq('id', matchId)
+    setStreamUrl('')
+    setEditId(null)
+    fetchAll()
   }
 
   async function togglePayment(p: Player) {
@@ -1725,26 +1742,52 @@ export default function AdminPage() {
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">{m.home_flag} {m.home_team}</span>
                         {editId === m.id ? (
-                          <div className="flex items-center gap-2">
-                            <input type="number" min="0" max="20" value={resH} onChange={e => setResH(e.target.value)}
-                              className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
-                            <span className="text-gray-400">×</span>
-                            <input type="number" min="0" max="20" value={resA} onChange={e => setResA(e.target.value)}
-                              className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
-                            <button onClick={() => saveResult(m)} disabled={saving} className="text-[12px] bg-[#0099CC] text-white px-3 py-2 rounded-lg hover:bg-[#007aa8] disabled:opacity-50">{saving ? '...' : 'OK'}</button>
-                            <button onClick={() => setEditId(null)} className="text-[12px] border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50">X</button>
+                          <div className="flex flex-col gap-2 w-full">
+                            <div className="flex items-center gap-2">
+                              <input type="number" min="0" max="20" value={resH} onChange={e => setResH(e.target.value)}
+                                className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
+                              <span className="text-gray-400">×</span>
+                              <input type="number" min="0" max="20" value={resA} onChange={e => setResA(e.target.value)}
+                                className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
+                              <button onClick={() => saveResult(m)} disabled={saving} className="text-[12px] bg-[#0099CC] text-white px-3 py-2 rounded-lg hover:bg-[#007aa8] disabled:opacity-50">{saving ? '...' : 'OK'}</button>
+                              <button onClick={() => setEditId(null)} className="text-[12px] border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50">X</button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                              <input
+                                type="url"
+                                placeholder="Link YouTube da transmissão (opcional)"
+                                value={streamUrl}
+                                onChange={e => setStreamUrl(e.target.value)}
+                                className="flex-1 h-8 text-[11px] border border-gray-200 rounded-lg bg-gray-50 text-gray-900 px-2 placeholder-gray-400"/>
+                              {streamUrl.trim() && (
+                                <button onClick={() => saveStreamUrl(m.id, streamUrl)}
+                                  className="text-[11px] bg-red-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-red-600 flex-shrink-0">
+                                  Salvar link
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             {(m.status === 'done' || m.status === 'live') && m.score_home != null
                               ? <span className={`text-[18px] font-bold ${m.status === 'live' ? 'text-red-600' : 'text-gray-800'}`}>{m.score_home} × {m.score_away}</span>
                               : <span className="text-gray-300 font-medium text-[15px]">vs</span>}
-                            <button onClick={() => { setEditId(m.id); setResH(m.score_home != null ? String(m.score_home) : ''); setResA(m.score_away != null ? String(m.score_away) : '') }}
+                            <button onClick={() => { setEditId(m.id); setResH(m.score_home != null ? String(m.score_home) : ''); setResA(m.score_away != null ? String(m.score_away) : ''); setStreamUrl(m.stream_url || '') }}
                               className="text-[11px] border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">Editar</button>
                           </div>
                         )}
                         <span className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">{m.away_team} {m.away_flag}</span>
                       </div>
+                      {/* Indicador de transmissão configurada */}
+                      {m.stream_url && editId !== m.id && (
+                        <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                          <span className="text-[11px] text-red-500 font-medium">Transmissão configurada</span>
+                          <button onClick={() => saveStreamUrl(m.id, '')}
+                            className="text-[10px] text-gray-400 hover:text-red-500 underline ml-1">remover</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -6,12 +6,14 @@ import { useEffect, useState, useRef } from 'react'
 import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconInfo } from '@/components/Icons'
 import TutorialModal from '@/components/TutorialModal'
 
-// Bottom nav
-const NAV = [
-  { href: '/champion',   Icon: IconTrophy,    label: 'Campeão'  },
-  { href: '/picks',      Icon: IconBall,      label: 'Palpites' },
-  { href: '/ranking',    Icon: IconBarChart,  label: 'Ranking'  },
-  { href: '/onboarding', Icon: IconInfo,      label: 'Regras'   },
+// Bottom nav items (sem o botão central Assistir que é renderizado separado)
+const NAV_LEFT  = [
+  { href: '/champion', Icon: IconTrophy,   label: 'Campeão'  },
+  { href: '/picks',    Icon: IconBall,     label: 'Palpites' },
+]
+const NAV_RIGHT = [
+  { href: '/ranking',    Icon: IconBarChart, label: 'Ranking' },
+  { href: '/onboarding', Icon: IconInfo,     label: 'Regras'  },
 ]
 
 // iOS install instructions modal
@@ -174,6 +176,7 @@ export default function Layout({ children, title }: Props) {
     typeof window !== 'undefined' && sessionStorage.getItem('app_update_pending') === '1'
   )
   const [isUpdating,   setIsUpdating]   = useState(false)
+  const [hasLive,      setHasLive]      = useState(false)
 
   async function fetchNotifyLog() {
     if (!player) return
@@ -230,7 +233,12 @@ export default function Layout({ children, title }: Props) {
 
 
   // Refresh player on route change
-  useEffect(() => { refreshPlayer() }, [router.pathname])
+  useEffect(() => {
+    refreshPlayer()
+    supabase.from('matches').select('id', { count: 'exact', head: true })
+      .eq('status', 'live')
+      .then(({ count }) => setHasLive((count ?? 0) > 0))
+  }, [router.pathname])
 
   // Load group link once
   useEffect(() => {
@@ -724,8 +732,49 @@ export default function Layout({ children, title }: Props) {
             transform: 'translateZ(0)',
             WebkitTransform: 'translateZ(0)',
           }}>
-          <div className="max-w-lg mx-auto flex">
-            {NAV.map(({ href, Icon, label }) => {
+          <div className="max-w-lg mx-auto flex items-center">
+            {/* Left items */}
+            {NAV_LEFT.map(({ href, Icon, label }) => {
+              const isActive = router.pathname === href
+              return (
+                <button key={href} onClick={() => router.push(href)}
+                  className={`flex-1 flex flex-col items-center justify-center pt-3 pb-1 gap-1 transition-colors relative
+                    ${isActive ? 'text-[#0099CC]' : 'text-gray-400 hover:text-gray-500'}`}>
+                  {isActive && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#0099CC] rounded-full"/>
+                  )}
+                  <Icon size={22}/>
+                  <span className="text-[11px] font-semibold tracking-wide">{label}</span>
+                </button>
+              )
+            })}
+
+            {/* Center floating button — Assistir */}
+            <div className="flex-1 flex flex-col items-center" style={{ marginTop: -22 }}>
+              <div className="relative">
+                {hasLive && (
+                  <span className="absolute -top-1 -right-1 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none border-2 border-white">
+                    ao vivo
+                  </span>
+                )}
+                <button
+                  onClick={() => router.push('/watch')}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center border-4 border-white shadow transition-transform active:scale-95
+                    ${router.pathname === '/watch' ? 'bg-[#007aa8]' : 'bg-[#0099CC]'}`}
+                  style={{ boxShadow: '0 0 0 1px #e5e7eb' }}
+                  aria-label="Assistir ao vivo">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                  </svg>
+                </button>
+              </div>
+              <span className={`text-[11px] font-semibold tracking-wide mt-1.5 ${router.pathname === '/watch' ? 'text-[#0099CC]' : 'text-gray-400'}`}>
+                Assistir
+              </span>
+            </div>
+
+            {/* Right items */}
+            {NAV_RIGHT.map(({ href, Icon, label }) => {
               const isActive = router.pathname === href
               return (
                 <button key={href} onClick={() => router.push(href)}
