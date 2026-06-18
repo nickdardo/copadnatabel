@@ -111,6 +111,7 @@ export default function RankingPage() {
   const [fetching,     setFetching]     = useState(true)
   const [expanded,     setExpanded]     = useState<string|null>(null)
   const [showAll,      setShowAll]      = useState(false)
+  const [filterOnline, setFilterOnline] = useState(false)
   const [totalMatches, setTotalMatches] = useState(72)
   const [badges,       setBadges]       = useState<BadgeMap>({})
   const [feed,         setFeed]         = useState<FeedEvent[]>([])
@@ -198,8 +199,9 @@ export default function RankingPage() {
 
   const me         = ranking.find(r => r.player_id === player?.id)
   const myPos      = ranking.findIndex(r => r.player_id === player?.id) + 1
-  const list       = showAll ? ranking : ranking.slice(0, 10)
   const onlineCount = ranking.filter(r => getPresence(r.player.last_seen_at).status === 'online').length
+  const baseList    = filterOnline ? ranking.filter(r => getPresence(r.player.last_seen_at).status === 'online') : ranking
+  const list        = showAll ? baseList : baseList.slice(0, 10)
 
   function scrollToMe() {
     if (myPos > 10 && !showAll) {
@@ -459,11 +461,23 @@ export default function RankingPage() {
         {/* List header */}
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <p className="text-[12px] text-gray-500 font-semibold">{ranking.length} participante{ranking.length !== 1 ? 's' : ''}</p>
+            <p className="text-[12px] text-gray-500 font-semibold">
+              {filterOnline ? `${onlineCount} online` : `${ranking.length} participante${ranking.length !== 1 ? 's' : ''}`}
+            </p>
             {onlineCount > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-green-600 font-medium">
+              <button
+                onClick={() => { setFilterOnline(f => !f); setShowAll(false) }}
+                className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors
+                  ${filterOnline
+                    ? 'bg-green-50 border-green-200 text-green-700'
+                    : 'border-transparent text-green-600 hover:bg-green-50'}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"/>
-                {onlineCount} online agora
+                {filterOnline ? 'ver todos' : `${onlineCount} online agora`}
+              </button>
+            )}
+            {filterOnline && (
+              <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                filtrado
               </span>
             )}
           </div>
@@ -509,6 +523,12 @@ export default function RankingPage() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-[14px] text-gray-900 truncate">{name}</span>
                       {isMe && <span className="text-[10px] text-[#0099CC] font-semibold bg-[#0099CC]/10 px-1.5 py-0.5 rounded-full">você</span>}
+                      {getPresence(entry.player.last_seen_at).status === 'online' && (
+                        <span className="flex items-center gap-1 text-[10px] text-green-600 font-medium">
+                          <span className="w-2 h-2 rounded-full bg-green-500 inline-block flex-shrink-0"/>
+                          online
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] mt-0.5 font-bold flex items-center gap-1 flex-wrap">
                       <span style={{color:'#15803D'}}>10pts: {entry.f10_count}</span>
@@ -623,11 +643,15 @@ export default function RankingPage() {
         </div>
 
         {/* Show more / less */}
-        {ranking.length > 10 && (
+        {baseList.length > 10 && (
           <div className="px-4 py-3">
             <button onClick={() => setShowAll(s => !s)}
               className="w-full py-3 rounded-2xl border border-gray-200 bg-white text-[13px] font-semibold text-[#0099CC] hover:bg-gray-50 transition-colors">
-              {showAll ? 'Mostrar menos' : `Ver todos os ${ranking.length} participantes`}
+              {showAll
+                ? 'Mostrar menos'
+                : filterOnline
+                  ? `Ver todos os ${onlineCount} online`
+                  : `Ver todos os ${ranking.length} participantes`}
             </button>
           </div>
         )}
