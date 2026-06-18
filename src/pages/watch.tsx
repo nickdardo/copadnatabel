@@ -117,8 +117,16 @@ export default function WatchPage() {
   const [rankMap,     setRankMap]     = useState<RankMap>({})
   const [input,       setInput]       = useState('')
   const [sending,     setSending]     = useState(false)
+  const [sendError,   setSendError]   = useState<string|null>(null)
   const [fetching,    setFetching]    = useState(true)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  async function reloadMessages() {
+    const { data } = await supabase.from('chat_messages')
+      .select('id, player_id, player_name, player_avatar, message, created_at')
+      .order('created_at', { ascending: true }).limit(100)
+    if (data) setMessages(data as ChatMsg[])
+  }
 
   useEffect(() => {
     if (!loading && !player) router.push('/')
@@ -175,15 +183,25 @@ export default function WatchPage() {
     const msg = input.trim()
     setInput('')
     setSending(true)
-    try {
-      await supabase.from('chat_messages').insert({
+    setSendError(null)
+    const res = await fetch('/api/chat/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         player_id: player.id,
         player_name: player.nickname || player.username,
         player_avatar: player.avatar_url || null,
         message: msg,
-        created_at: new Date().toISOString(),
-      })
-    } catch { /* realtime entrega mesmo se insert falhar silenciosamente */ }
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setSendError(`Erro: ${json.error || 'falha ao enviar'}`)
+      setInput(msg)
+    } else {
+      // Fallback: recarrega caso Realtime não dispare
+      setTimeout(reloadMessages, 800)
+    }
     setSending(false)
   }
 
@@ -349,7 +367,7 @@ export default function WatchPage() {
           <div className="flex gap-2 px-4 py-3 border-t border-gray-100">
             <input
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={e => { setInput(e.target.value); setSendError(null) }}
               onKeyDown={handleKey}
               placeholder="mensagem..."
               maxLength={280}
@@ -359,12 +377,18 @@ export default function WatchPage() {
               onClick={sendMessage}
               disabled={!input.trim() || sending}
               className="w-10 h-10 rounded-xl bg-[#0099CC] flex items-center justify-center disabled:opacity-40 transition-opacity active:scale-95 flex-shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
+              {sending
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+              }
             </button>
           </div>
+          {sendError && (
+            <p className="text-[11px] text-red-500 px-4 pb-3">{sendError}</p>
+          )}
         </div>
 
       </div>
