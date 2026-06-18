@@ -467,18 +467,22 @@ export default function RankingPage() {
             {onlineCount > 0 && (
               <button
                 onClick={() => { setFilterOnline(f => !f); setShowAll(false) }}
-                className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors
+                className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors
                   ${filterOnline
-                    ? 'bg-green-50 border-green-200 text-green-700'
-                    : 'border-transparent text-green-600 hover:bg-green-50'}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"/>
-                {filterOnline ? 'ver todos' : `${onlineCount} online agora`}
+                    ? 'bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200'
+                    : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'}`}>
+                {filterOnline ? (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                    ver todos
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 animate-pulse"/>
+                    {onlineCount} online agora
+                  </>
+                )}
               </button>
-            )}
-            {filterOnline && (
-              <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                filtrado
-              </span>
             )}
           </div>
           {lastUpdate && (
@@ -497,6 +501,11 @@ export default function RankingPage() {
             const name   = entry.player.nickname || entry.player.username
             const photo  = getAvatarUrl(entry.player)
             const color  = COLORS[i % COLORS.length]
+            // Posição REAL no ranking (não o índice da lista filtrada)
+            const realRank = entry.rank_position ?? (i + 1)
+            const isPodium1 = realRank === 1
+            const isPodium2 = realRank === 2
+            const isPodium3 = realRank === 3
 
             return (
               <div key={entry.player_id} ref={isMe ? meRowRef : undefined}>
@@ -504,11 +513,11 @@ export default function RankingPage() {
                 <button
                   onClick={() => setExpanded(isOpen ? null : entry.player_id)}
                   className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50
-                    ${isMe ? 'bg-[#e6f4fa]' : i===0?'bg-amber-50/60':i===1?'bg-gray-50/80':i===2?'bg-orange-50/40':''}
+                    ${isMe ? 'bg-[#e6f4fa]' : isPodium1?'bg-amber-50/60':isPodium2?'bg-gray-50/80':isPodium3?'bg-orange-50/40':''}
                     ${isMe?'ring-inset ring-1 ring-[#0099CC]/20':''}`}>
 
                   <div className="w-7 flex-shrink-0 flex justify-center">
-                    <Medal pos={i+1}/>
+                    <Medal pos={realRank}/>
                   </div>
 
                   {photo
