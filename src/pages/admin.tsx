@@ -122,7 +122,8 @@ export default function AdminPage() {
   const [copaBloqueada,  setCopaBloqueada]  = useState(false)
   const [champBloqueado, setChampBloqueado] = useState(false)
   const [modoVisitante,  setModoVisitante]  = useState(false)
-  const [travamentoJogos,setTravamentoJogos]= useState(true)   // true = lock ativo (padrão)
+  const [travamentoJogos,setTravamentoJogos]= useState(true)
+  const [watchAtivo,     setWatchAtivo]     = useState(false)
   const [savingLock,     setSavingLock]     = useState(false)
 
   useEffect(() => {
@@ -281,12 +282,13 @@ export default function AdminPage() {
 
   // Load copa lock state
   useEffect(() => {
-    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos').limit(1).then(({ data }) => {
+    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos, watch_ativo').limit(1).then(({ data }) => {
       if (data?.[0]) {
         setCopaBloqueada(data[0].copa_bloqueada || false)
         setChampBloqueado(data[0].champ_bloqueado || false)
         setModoVisitante(data[0].modo_visitante || false)
         setTravamentoJogos(data[0].lock_jogos ?? true)
+        setWatchAtivo(data[0].watch_ativo || false)
       }
     })
   }, [])
@@ -324,6 +326,15 @@ export default function AdminPage() {
     const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
     if (rows?.[0]) await supabase.from('pix_config').update({ lock_jogos: newVal }).eq('id', rows[0].id)
     setTravamentoJogos(newVal)
+    setSavingLock(false)
+  }
+
+  async function toggleWatchAtivo() {
+    setSavingLock(true)
+    const newVal = !watchAtivo
+    const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
+    if (rows?.[0]) await supabase.from('pix_config').update({ watch_ativo: newVal }).eq('id', rows[0].id)
+    setWatchAtivo(newVal)
     setSavingLock(false)
   }
 
@@ -1140,6 +1151,30 @@ export default function AdminPage() {
                         <div className="mt-3 flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                           <span className="text-[11px] text-blue-600 font-medium">Novos usuários só podem visualizar</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Watch toggle */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h2 className="text-[13px] font-semibold text-gray-800 mb-0.5">Aba "Assistir" no menu</h2>
+                          <p className="text-[11px] text-gray-400 leading-relaxed">
+                            {watchAtivo
+                              ? 'Botão "Assistir" visível no menu inferior para todos os jogadores.'
+                              : 'Botão "Assistir" oculto. Ative quando houver jogo ao vivo para transmitir.'}
+                          </p>
+                        </div>
+                        <button onClick={toggleWatchAtivo} disabled={savingLock}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5 disabled:opacity-50 ${watchAtivo ? 'bg-[#0099CC]' : 'bg-gray-200'}`}>
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${watchAtivo ? 'translate-x-5' : 'translate-x-0.5'}`}/>
+                        </button>
+                      </div>
+                      {watchAtivo && (
+                        <div className="mt-3 flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          <span className="text-[11px] text-[#0099CC] font-medium">Menu com botão Assistir ativo para os jogadores</span>
                         </div>
                       )}
                     </div>

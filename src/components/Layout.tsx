@@ -177,6 +177,7 @@ export default function Layout({ children, title }: Props) {
   )
   const [isUpdating,   setIsUpdating]   = useState(false)
   const [hasLive,      setHasLive]      = useState(false)
+  const [watchAtivo,   setWatchAtivo]   = useState(false)
 
   async function fetchNotifyLog() {
     if (!player) return
@@ -238,6 +239,8 @@ export default function Layout({ children, title }: Props) {
     supabase.from('matches').select('id', { count: 'exact', head: true })
       .eq('status', 'live')
       .then(({ count }) => setHasLive((count ?? 0) > 0))
+    supabase.from('pix_config').select('watch_ativo').limit(1)
+      .then(({ data }) => setWatchAtivo(data?.[0]?.watch_ativo || false))
   }, [router.pathname])
 
   // Load group link once
@@ -749,29 +752,34 @@ export default function Layout({ children, title }: Props) {
               )
             })}
 
-            {/* Center floating button — Assistir */}
-            <div className="flex-1 flex flex-col items-center" style={{ marginTop: -22 }}>
-              <div className="relative">
-                {hasLive && (
-                  <span className="absolute -top-1 -right-1 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none border-2 border-white">
-                    ao vivo
-                  </span>
-                )}
-                <button
-                  onClick={() => router.push('/watch')}
-                  className={`w-14 h-14 rounded-full flex items-center justify-center border-4 border-white shadow transition-transform active:scale-95
-                    ${router.pathname === '/watch' ? 'bg-[#007aa8]' : 'bg-[#0099CC]'}`}
-                  style={{ boxShadow: '0 0 0 1px #e5e7eb' }}
-                  aria-label="Assistir ao vivo">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
-                </button>
+            {/* Center floating button — Assistir (só aparece quando admin ativa) */}
+            {watchAtivo ? (
+              <div className="flex-1 flex flex-col items-center" style={{ marginTop: -22 }}>
+                <div className="relative">
+                  {hasLive && (
+                    <span className="absolute -top-1 -right-1 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none border-2 border-white">
+                      ao vivo
+                    </span>
+                  )}
+                  <button
+                    onClick={() => router.push('/watch')}
+                    className={`w-14 h-14 rounded-full flex items-center justify-center border-4 border-white shadow transition-transform active:scale-95
+                      ${router.pathname === '/watch' ? 'bg-[#007aa8]' : 'bg-[#0099CC]'}`}
+                    style={{ boxShadow: '0 0 0 1px #e5e7eb' }}
+                    aria-label="Assistir ao vivo">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                  </button>
+                </div>
+                <span className={`text-[11px] font-semibold tracking-wide mt-1.5 ${router.pathname === '/watch' ? 'text-[#0099CC]' : 'text-gray-400'}`}>
+                  Assistir
+                </span>
               </div>
-              <span className={`text-[11px] font-semibold tracking-wide mt-1.5 ${router.pathname === '/watch' ? 'text-[#0099CC]' : 'text-gray-400'}`}>
-                Assistir
-              </span>
-            </div>
+            ) : (
+              // Espaço reservado para manter os 4 ícones simétricos quando o botão está oculto
+              <div className="flex-1"/>
+            )}
 
             {/* Right items */}
             {NAV_RIGHT.map(({ href, Icon, label }) => {
