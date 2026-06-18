@@ -63,42 +63,49 @@ function fmtTime(iso: string) {
   catch { return '' }
 }
 
-// Player embutido do YouTube com proporção 16:9
-function YouTubePlayer({ videoId }: { videoId: string }) {
+// Thumbnail clicável que abre o YouTube — funciona sempre,
+// ao contrário do iframe que a CazéTV bloqueia por política do canal.
+function YouTubePlayer({ videoId, streamUrl }: { videoId: string; streamUrl: string }) {
+  const thumb = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
   return (
-    <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%' }}>
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        style={{
-          position: 'absolute', top: 0, left: 0,
-          width: '100%', height: '100%',
-          border: 'none', borderRadius: '16px',
-        }}
-        title="Transmissão ao vivo"
+    <a href={streamUrl} target="_blank" rel="noopener noreferrer"
+      className="block relative rounded-2xl overflow-hidden"
+      style={{ paddingTop: '56.25%' }}>
+      <img
+        src={thumb}
+        alt="Transmissão ao vivo"
+        onError={e => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` }}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
       />
-    </div>
-  )
-}
-
-// Aviso de fallback quando o embed do YouTube bloqueia (tela preta)
-function EmbedFallback({ match, streamUrl }: { match: Match; streamUrl: string }) {
-  return (
-    <div className="bg-gray-900 rounded-2xl flex flex-col items-center justify-center py-8 px-5 text-center gap-3">
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-        <span className="text-[13px] text-white font-semibold">ao vivo · {match.home_team} × {match.away_team}</span>
+      {/* Overlay escuro + botão play */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 8,
+      }}>
+        <div style={{
+          width: 60, height: 60, borderRadius: '50%',
+          background: 'rgba(255,0,0,0.9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <span style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>Assistir na CazéTV</span>
       </div>
-      <p className="text-[12px] text-gray-400">Se o vídeo não carregar aqui, abra diretamente na CazéTV.</p>
-      <a href={streamUrl} target="_blank" rel="noopener noreferrer"
-        className="flex items-center gap-2 bg-red-600 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl hover:bg-red-700 transition-colors">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-          <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-        </svg>
-        Abrir na CazéTV
-      </a>
-    </div>
+      {/* Badge ao vivo */}
+      <div style={{
+        position: 'absolute', top: 12, left: 12,
+        display: 'flex', alignItems: 'center', gap: 5,
+        background: 'rgba(0,0,0,0.65)', borderRadius: 999,
+        padding: '4px 10px',
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }}/>
+        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>AO VIVO</span>
+      </div>
+    </a>
   )
 }
 
@@ -200,7 +207,7 @@ export default function WatchPage() {
           <div className="mx-4 mt-4">
             {videoId ? (
               <div>
-                <YouTubePlayer videoId={videoId}/>
+                <YouTubePlayer videoId={videoId} streamUrl={primaryMatch!.stream_url!}/>
                 {/* Placar compacto abaixo do player */}
                 <div className="mt-2 bg-[#0099CC] rounded-2xl px-4 py-3 flex items-center justify-between">
                   <div className="text-center flex-1">
