@@ -2043,7 +2043,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.14</p>
+                  <p className="text-[42px] font-black leading-none">v1.15</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2067,16 +2067,22 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.14
+{`Bolão Copa 2026 BEL — Atualização v1.15
 
 ♾️ Palpites de jogos sem limite
-Agora você pode alterar o palpite de cada jogo quantas vezes quiser, até 2h antes do início. O palpite de campeão, vice e 3º lugar continua com limite de 3 alterações.
+Altere o palpite de cada jogo quantas vezes quiser até 2h antes do início. Campeão, vice e 3º lugar continuam com limite de 3 alterações.
 
 📊 Estatísticas das seleções
-Toque (ou passe o mouse) em qualquer bandeira do app para ver os últimos resultados daquela seleção na Copa — vitórias, empates e derrotas, com o placar de cada jogo.
+Toque em qualquer bandeira do app para ver os últimos resultados daquela seleção na Copa — com cores por resultado (verde vitória, cinza empate, vermelho derrota).
 
 🏅 Pódio em destaque
-Na lista de quem apostou em cada placar, os 3 primeiros colocados do ranking agora aparecem com medalha de ouro, prata e bronze, e sua própria linha fica destacada para você se achar mais rápido.
+Na lista de quem apostou em cada placar, 1º, 2º e 3º do ranking aparecem com medalha. Sua linha fica destacada para achar seu nome rapidamente.
+
+🟢 Online no ranking
+Pontinho verde ao lado do nome de quem está com o app aberto. Clique em "X online agora" para filtrar só os participantes ativos.
+
+📺 Aba Assistir
+Nova aba no menu com player da CazéTV embutido diretamente no app quando o admin configurar o link da transmissão. Inclui chat em tempo real com todos os participantes, mostrando o rank de cada um ao lado do nome.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2089,7 +2095,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
-                      { v: 'v1.14', desc: 'Palpites de jogos ilimitados (só campeão/vice/3º mantém limite de 3). Popup de estatísticas em todas as bandeiras. Pódio destacado na lista de apostadores.' },
+                      { v: 'v1.15', desc: 'Palpites ilimitados. Popup de estatísticas em todas as bandeiras. Pódio na lista de apostadores. Filtro de online no ranking. Aba Assistir com player CazéTV, chat ao vivo e rank dos participantes.' },
                       { v: 'v1.13', desc: 'KPIs admin, novas notificações push, Meu Desempenho, Destaques do Feed, Estatísticas do bolão, online no ranking.' },
                       { v: 'v1.12', desc: 'Jornada Em Breve → Ao Vivo → Encerrados nos palpites. Botão 3D de colocação no ranking com scroll automático.' },
                       { v: 'v1.11', desc: 'Pontuação colorida (10pts/7pts/5pts/2pts) e data da última atualização no ranking.' },
