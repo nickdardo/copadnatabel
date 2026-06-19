@@ -745,11 +745,102 @@ export default function AdminPage() {
   const liveMatches     = matches.filter(m => m.status === 'live')
   const doneCount       = matches.filter(m => m.status === 'done').length
   const upcomingCount   = matches.filter(m => m.status === 'upcoming').length
+
+  // Agrupa as partidas da fase ativa em seções, na ordem: Em breve → Ao vivo → Encerrados.
+  // Dentro de cada seção, agrupa por data (rodada) para evitar poluição visual.
+  function groupByDate(list: typeof filteredMatches) {
+    const groups: { date: string; matches: typeof filteredMatches }[] = []
+    const sorted = [...list].sort((a, b) => (a.match_date || '').localeCompare(b.match_date || ''))
+    sorted.forEach(m => {
+      const dateKey = m.match_date
+        ? new Date(m.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' })
+        : 'Sem data'
+      const existing = groups.find(g => g.date === dateKey)
+      if (existing) existing.matches.push(m)
+      else groups.push({ date: dateKey, matches: [m] })
+    })
+    return groups
+  }
+
+  const upcomingInPhase = groupByDate(filteredMatches.filter(m => m.status === 'upcoming'))
+  const liveInPhase     = filteredMatches.filter(m => m.status === 'live')
+  const doneInPhase     = groupByDate(filteredMatches.filter(m => m.status === 'done')).reverse() // encerrados: mais recentes primeiro
+
   // KPIs novos
   const totalPicksMade  = Object.values(picksCount).reduce((a, b) => a + b, 0)
   const totalPicksPoss  = paidCount * matches.length
   const noPicksCount    = nonAdminPlayers.filter(p => p.payment_ok && (picksCount[p.id] || 0) === 0).length
   const topChampions    = championStats.slice(0, 3)
+
+  // Renderiza um card de partida (reutilizado nas seções Em breve / Ao vivo / Encerrados)
+  function renderMatchCard(m: typeof matches[number]) {
+    return (
+      <div key={m.id} className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {m.status === 'live'     && <span className="flex items-center gap-1 text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-lg"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>Ao vivo</span>}
+            {m.status === 'done'     && <span className="text-[11px] font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">Encerrado</span>}
+            {m.status === 'upcoming' && <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Em breve</span>}
+            {m.match_date && <span className="text-[11px] text-gray-400">{fmtBRT(m.match_date)}</span>}
+            {m.group_name && <span className="text-[11px] text-gray-400">· {m.group_name}</span>}
+          </div>
+          <div className="flex gap-1.5">
+            {m.status !== 'live'     && <button onClick={() => setMatchStatus(m, 'live')}     className="text-[11px] text-red-600 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">Ao vivo</button>}
+            {m.status !== 'upcoming' && <button onClick={() => setMatchStatus(m, 'upcoming')} className="text-[11px] border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>}
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">{m.home_flag} {m.home_team}</span>
+          {editId === m.id ? (
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" max="20" value={resH} onChange={e => setResH(e.target.value)}
+                  className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
+                <span className="text-gray-400">×</span>
+                <input type="number" min="0" max="20" value={resA} onChange={e => setResA(e.target.value)}
+                  className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
+                <button onClick={() => saveResult(m)} disabled={saving} className="text-[12px] bg-[#0099CC] text-white px-3 py-2 rounded-lg hover:bg-[#007aa8] disabled:opacity-50">{saving ? '...' : 'OK'}</button>
+                <button onClick={() => setEditId(null)} className="text-[12px] border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50">X</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                <input
+                  type="url"
+                  placeholder="Link YouTube da transmissão (opcional)"
+                  value={streamUrl}
+                  onChange={e => setStreamUrl(e.target.value)}
+                  className="flex-1 h-8 text-[11px] border border-gray-200 rounded-lg bg-gray-50 text-gray-900 px-2 placeholder-gray-400"/>
+                {streamUrl.trim() && (
+                  <button onClick={() => saveStreamUrl(m.id, streamUrl)}
+                    className="text-[11px] bg-red-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-red-600 flex-shrink-0">
+                    Salvar link
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {(m.status === 'done' || m.status === 'live') && m.score_home != null
+                ? <span className={`text-[18px] font-bold ${m.status === 'live' ? 'text-red-600' : 'text-gray-800'}`}>{m.score_home} × {m.score_away}</span>
+                : <span className="text-gray-300 font-medium text-[15px]">vs</span>}
+              <button onClick={() => { setEditId(m.id); setResH(m.score_home != null ? String(m.score_home) : ''); setResA(m.score_away != null ? String(m.score_away) : ''); setStreamUrl(m.stream_url || '') }}
+                className="text-[11px] border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">Editar</button>
+            </div>
+          )}
+          <span className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">{m.away_team} {m.away_flag}</span>
+        </div>
+        {m.stream_url && editId !== m.id && (
+          <div className="flex items-center gap-1.5 mt-1.5 px-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            <span className="text-[11px] text-red-500 font-medium">Transmissão configurada</span>
+            <button onClick={() => saveStreamUrl(m.id, '')}
+              className="text-[10px] text-gray-400 hover:text-red-500 underline ml-1">remover</button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
 
   // Nav items
   const NAV = [
@@ -1757,74 +1848,66 @@ export default function AdminPage() {
                   ))}
                 </div>
 
-                {/* Match list */}
-                <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                  {filteredMatches.map(m => (
-                    <div key={m.id} className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          {m.status === 'live'     && <span className="flex items-center gap-1 text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-lg"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>Ao vivo</span>}
-                          {m.status === 'done'     && <span className="text-[11px] font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">Encerrado</span>}
-                          {m.status === 'upcoming' && <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Em breve</span>}
-                          {m.match_date && <span className="text-[11px] text-gray-400">{fmtBRT(m.match_date)}</span>}
-                          {m.group_name && <span className="text-[11px] text-gray-400">· {m.group_name}</span>}
-                        </div>
-                        <div className="flex gap-1.5">
-                          {m.status !== 'live'     && <button onClick={() => setMatchStatus(m, 'live')}     className="text-[11px] text-red-600 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">Ao vivo</button>}
-                          {m.status !== 'upcoming' && <button onClick={() => setMatchStatus(m, 'upcoming')} className="text-[11px] border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>}
-                        </div>
+                {/* Match list — agrupado: Em breve → Ao vivo → Encerrados */}
+                <div className="space-y-4">
+
+                  {/* EM BREVE (no topo, agrupado por rodada/data) */}
+                  {upcomingInPhase.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"/>
+                        <h3 className="text-[12px] font-bold text-blue-600 uppercase tracking-wide">Em breve</h3>
+                        <span className="text-[11px] text-gray-400">({filteredMatches.filter(m => m.status === 'upcoming').length})</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">{m.home_flag} {m.home_team}</span>
-                        {editId === m.id ? (
-                          <div className="flex flex-col gap-2 w-full">
-                            <div className="flex items-center gap-2">
-                              <input type="number" min="0" max="20" value={resH} onChange={e => setResH(e.target.value)}
-                                className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
-                              <span className="text-gray-400">×</span>
-                              <input type="number" min="0" max="20" value={resA} onChange={e => setResA(e.target.value)}
-                                className="w-12 h-10 text-center text-[16px] font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-900"/>
-                              <button onClick={() => saveResult(m)} disabled={saving} className="text-[12px] bg-[#0099CC] text-white px-3 py-2 rounded-lg hover:bg-[#007aa8] disabled:opacity-50">{saving ? '...' : 'OK'}</button>
-                              <button onClick={() => setEditId(null)} className="text-[12px] border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50">X</button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-                              <input
-                                type="url"
-                                placeholder="Link YouTube da transmissão (opcional)"
-                                value={streamUrl}
-                                onChange={e => setStreamUrl(e.target.value)}
-                                className="flex-1 h-8 text-[11px] border border-gray-200 rounded-lg bg-gray-50 text-gray-900 px-2 placeholder-gray-400"/>
-                              {streamUrl.trim() && (
-                                <button onClick={() => saveStreamUrl(m.id, streamUrl)}
-                                  className="text-[11px] bg-red-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-red-600 flex-shrink-0">
-                                  Salvar link
-                                </button>
-                              )}
-                            </div>
+                      {upcomingInPhase.map(group => (
+                        <div key={group.date} className="mb-3">
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 px-1">{group.date}</p>
+                          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                            {group.matches.map(renderMatchCard)}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            {(m.status === 'done' || m.status === 'live') && m.score_home != null
-                              ? <span className={`text-[18px] font-bold ${m.status === 'live' ? 'text-red-600' : 'text-gray-800'}`}>{m.score_home} × {m.score_away}</span>
-                              : <span className="text-gray-300 font-medium text-[15px]">vs</span>}
-                            <button onClick={() => { setEditId(m.id); setResH(m.score_home != null ? String(m.score_home) : ''); setResA(m.score_away != null ? String(m.score_away) : ''); setStreamUrl(m.stream_url || '') }}
-                              className="text-[11px] border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">Editar</button>
-                          </div>
-                        )}
-                        <span className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">{m.away_team} {m.away_flag}</span>
-                      </div>
-                      {/* Indicador de transmissão configurada */}
-                      {m.stream_url && editId !== m.id && (
-                        <div className="flex items-center gap-1.5 mt-1.5 px-1">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-                          <span className="text-[11px] text-red-500 font-medium">Transmissão configurada</span>
-                          <button onClick={() => saveStreamUrl(m.id, '')}
-                            className="text-[10px] text-gray-400 hover:text-red-500 underline ml-1">remover</button>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {/* AO VIVO */}
+                  {liveInPhase.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                        <h3 className="text-[12px] font-bold text-red-600 uppercase tracking-wide">Ao vivo agora</h3>
+                        <span className="text-[11px] text-gray-400">({liveInPhase.length})</span>
+                      </div>
+                      <div className="bg-white rounded-xl border border-red-100 divide-y divide-gray-100">
+                        {liveInPhase.map(renderMatchCard)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ENCERRADOS (agrupado por data, mais recentes primeiro) */}
+                  {doneInPhase.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400"/>
+                        <h3 className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Encerrados</h3>
+                        <span className="text-[11px] text-gray-400">({filteredMatches.filter(m => m.status === 'done').length})</span>
+                      </div>
+                      {doneInPhase.map(group => (
+                        <div key={group.date} className="mb-3">
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 px-1">{group.date}</p>
+                          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                            {group.matches.map(renderMatchCard)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {filteredMatches.length === 0 && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                      <p className="text-[13px] text-gray-400">Nenhuma partida nesta fase.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

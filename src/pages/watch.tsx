@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import Layout from '@/components/Layout'
+import FlagImg from '@/components/FlagImg'
 import type { Match } from '@/lib/supabase'
 
 const CAZETV_URL = 'https://www.youtube.com/@CazeTV/streams'
@@ -63,6 +64,59 @@ function fmtTime(iso: string) {
   catch { return '' }
 }
 
+// Cor representativa de cada seleção (usada no fundo translúcido do placar).
+// Fallback para azul neutro se a seleção não estiver mapeada.
+const TEAM_COLORS: Record<string, string> = {
+  'Brasil': '#FFDF00', 'Argentina': '#75AADB', 'França': '#002395', 'Inglaterra': '#CF081F',
+  'Espanha': '#AA151B', 'Portugal': '#006600', 'Alemanha': '#000000', 'Países Baixos': '#FF6200',
+  'Croácia': '#FF0000', 'Bélgica': '#FDDA24', 'Uruguai': '#5CBFEB', 'Colômbia': '#FCD116',
+  'México': '#006847', 'Canadá': '#FF0000', 'Qatar': '#8A1538', 'Marrocos': '#C1272D',
+  'Japão': '#BC002D', 'Coreia do Sul': '#003478', 'Estados Unidos': '#3C3B6E', 'Suíça': '#FF0000',
+  'Senegal': '#00853F', 'Equador': '#FFD100', 'Gana': '#006B3F', 'Nigéria': '#008751',
+  'Camarões': '#007A5E', 'Austrália': '#00843D', 'Dinamarca': '#C60C30', 'Sérvia': '#C6363C',
+  'Polônia': '#DC143C', 'Áustria': '#ED2939', 'Tchéquia': '#11457E', 'África do Sul': '#007A4D',
+}
+
+function teamColor(team: string): string {
+  return TEAM_COLORS[team] || '#185FA5'
+}
+
+// Card de placar com tema escuro e cores das duas seleções translúcidas ao fundo.
+function LiveScoreCard({ match, big }: { match: Match; big?: boolean }) {
+  const homeColor = teamColor(match.home_team)
+  const awayColor = teamColor(match.away_team)
+  const scoreSize = big ? 'text-[44px]' : 'text-[34px]'
+  return (
+    <div className="relative rounded-2xl overflow-hidden" style={{ background: '#0a2540' }}>
+      {/* Cores das seleções translúcidas */}
+      <div className="absolute top-0 left-0 h-full" style={{ width: '50%', background: homeColor, opacity: 0.16 }}/>
+      <div className="absolute top-0 right-0 h-full" style={{ width: '50%', background: awayColor, opacity: 0.16 }}/>
+      <div className="relative px-5 py-4">
+        <div className="flex justify-center mb-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: 'rgba(239,68,68,0.9)' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"/>
+            <span className="text-[10px] text-white font-bold tracking-wide">AO VIVO</span>
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-center flex-1">
+            <FlagImg team={match.home_team} size={big ? 40 : 30}/>
+            <p className="text-[11px] text-white/80 mt-1.5 mb-1">{match.home_team}</p>
+            <p className={`${scoreSize} font-bold text-white leading-none`}>{match.score_home ?? '—'}</p>
+          </div>
+          <p className="text-[18px] text-white/40 font-light flex-shrink-0">×</p>
+          <div className="text-center flex-1">
+            <FlagImg team={match.away_team} size={big ? 40 : 30}/>
+            <p className="text-[11px] text-white/80 mt-1.5 mb-1">{match.away_team}</p>
+            <p className={`${scoreSize} font-bold text-white leading-none`}>{match.score_away ?? '—'}</p>
+          </div>
+        </div>
+        {big && <p className="text-[11px] text-white/40 mt-2 text-center">{match.fase}</p>}
+      </div>
+    </div>
+  )
+}
+
 // Thumbnail clicável que abre o YouTube — funciona sempre,
 // ao contrário do iframe que a CazéTV bloqueia por política do canal.
 function YouTubePlayer({ videoId, streamUrl }: { videoId: string; streamUrl: string }) {
@@ -118,6 +172,7 @@ export default function WatchPage() {
   const [input,       setInput]       = useState('')
   const [sending,     setSending]     = useState(false)
   const [sendError,   setSendError]   = useState<string|null>(null)
+  const [onlineCount, setOnlineCount] = useState(1)
   const [fetching,    setFetching]    = useState(true)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -147,7 +202,6 @@ export default function WatchPage() {
       ])
       setLiveMatches((matches || []) as Match[])
       setMessages((msgs || []) as ChatMsg[])
-      // Monta mapa player_id → { rank, pts }
       const rm: RankMap = {}
       ;(scores || []).forEach((s: { player_id: string; rank_position: number; total_pts: number }) => {
         if (s.rank_position) rm[s.player_id] = { rank: s.rank_position, pts: s.total_pts || 0 }
@@ -159,7 +213,11 @@ export default function WatchPage() {
 
     const chatSub = supabase.channel('watch-chat')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        payload => setMessages(prev => [...prev, payload.new as ChatMsg]))
+        payload => setMessages(prev => {
+          const m = payload.new as ChatMsg
+          if (prev.some(x => x.id === m.id)) return prev // evita duplicar
+          return [...prev, m]
+        }))
       .subscribe()
 
     const matchSub = supabase.channel('watch-matches')
@@ -168,9 +226,33 @@ export default function WatchPage() {
           .then(({ data }) => setLiveMatches((data || []) as Match[])))
       .subscribe()
 
+    // Presença: marca este jogador como ativo na tela Assistir e conta quantos estão
+    async function pingPresence() {
+      try {
+        await supabase.from('watch_presence').upsert({
+          player_id: player!.id,
+          last_seen: new Date().toISOString(),
+        }, { onConflict: 'player_id' })
+        const since = new Date(Date.now() - 30_000).toISOString()
+        const { count } = await supabase.from('watch_presence')
+          .select('player_id', { count: 'exact', head: true })
+          .gte('last_seen', since)
+        setOnlineCount(count ?? 1)
+      } catch { /* presença é secundária, não trava o chat */ }
+    }
+    pingPresence()
+
+    // Polling de fallback: recarrega mensagens + presença a cada 4s
+    // (garante atualização mesmo se o Realtime do Supabase não disparar)
+    const poll = setInterval(() => {
+      reloadMessages()
+      pingPresence()
+    }, 4000)
+
     return () => {
       supabase.removeChannel(chatSub)
       supabase.removeChannel(matchSub)
+      clearInterval(poll)
     }
   }, [player])
 
@@ -226,23 +308,9 @@ export default function WatchPage() {
             {videoId ? (
               <div>
                 <YouTubePlayer videoId={videoId} streamUrl={primaryMatch!.stream_url!}/>
-                {/* Placar compacto abaixo do player */}
-                <div className="mt-2 bg-[#0099CC] rounded-2xl px-4 py-3 flex items-center justify-between">
-                  <div className="text-center flex-1">
-                    <p className="text-[10px] text-white/70">{primaryMatch!.home_team}</p>
-                    <p className="text-[24px] font-bold text-white leading-none">{primaryMatch!.score_home ?? '—'}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-col">
-                    <div className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"/>
-                      <span className="text-[10px] text-white/60 font-medium">ao vivo</span>
-                    </div>
-                    <span className="text-[16px] text-white/40">×</span>
-                  </div>
-                  <div className="text-center flex-1">
-                    <p className="text-[10px] text-white/70">{primaryMatch!.away_team}</p>
-                    <p className="text-[24px] font-bold text-white leading-none">{primaryMatch!.score_away ?? '—'}</p>
-                  </div>
+                {/* Placar abaixo do player */}
+                <div className="mt-2">
+                  <LiveScoreCard match={primaryMatch!}/>
                 </div>
                 {/* Se há mais jogos ao vivo além do principal */}
                 {liveMatches.filter(m => m.id !== primaryMatch?.id).map(m => (
@@ -255,36 +323,19 @@ export default function WatchPage() {
               </div>
             ) : (
               /* Sem stream_url configurado — placar grande + botão CazéTV */
-              <div className="bg-[#0099CC] rounded-2xl overflow-hidden">
-                {liveMatches.map((m, i) => (
-                  <div key={m.id} className={`px-5 py-4 text-center ${i > 0 ? 'border-t border-white/20' : ''}`}>
-                    <div className="flex items-center justify-center gap-1 mb-3">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"/>
-                      <span className="text-[11px] text-white/70 font-medium uppercase tracking-wide">ao vivo</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-6">
-                      <div className="text-center flex-1">
-                        <p className="text-[11px] text-white/70 mb-1">{m.home_team}</p>
-                        <p className="text-[44px] font-bold text-white leading-none">{m.score_home ?? '—'}</p>
-                      </div>
-                      <p className="text-[20px] text-white/40 font-light">×</p>
-                      <div className="text-center flex-1">
-                        <p className="text-[11px] text-white/70 mb-1">{m.away_team}</p>
-                        <p className="text-[44px] font-bold text-white leading-none">{m.score_away ?? '—'}</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-white/50 mt-2">{m.fase}</p>
+              <div>
+                {liveMatches.map(m => (
+                  <div key={m.id} className="mb-2">
+                    <LiveScoreCard match={m} big/>
                   </div>
                 ))}
-                <div className="px-5 pb-5 pt-1">
-                  <a href={CAZETV_URL} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 active:bg-white/10 transition-colors rounded-xl py-3 w-full text-white font-semibold text-[14px]">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                    </svg>
-                    Assistir ao vivo na CazéTV
-                  </a>
-                </div>
+                <a href={CAZETV_URL} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 bg-[#0099CC] hover:bg-[#007aa8] transition-colors rounded-2xl py-3.5 w-full text-white font-semibold text-[14px]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                  </svg>
+                  Assistir ao vivo na CazéTV
+                </a>
               </div>
             )}
           </div>
@@ -309,7 +360,10 @@ export default function WatchPage() {
         <div className="mx-4 mt-4 bg-white border border-gray-100 rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-[13px] font-bold text-gray-900">Chat do bolão</p>
-            <span className="text-[11px] text-gray-400">{messages.length} mensagen{messages.length !== 1 ? 's' : ''}</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-green-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 animate-pulse"/>
+              {onlineCount} online
+            </span>
           </div>
 
           <div className="px-4 py-3 space-y-3" style={{ maxHeight: 320, overflowY: 'auto' }}>
