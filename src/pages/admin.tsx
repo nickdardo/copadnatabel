@@ -54,6 +54,7 @@ export default function AdminPage() {
   const [players,       setPlayers]       = useState<Player[]>([])
   const [fetching,      setFetching]      = useState(true)
   const [activePhase,   setActivePhase]   = useState('Fase de Grupos')
+  const [matchView,     setMatchView]     = useState<'jogos'|'historico'>('jogos')
   const [syncing,       setSyncing]       = useState(false)
   const [syncResult,    setSyncResult]    = useState<SyncResult | null>(null)
   const [recalcing,     setRecalcing]     = useState(false)
@@ -1856,18 +1857,31 @@ export default function AdminPage() {
             {/* ── PARTIDAS ───────────────────────────────── */}
             {page === 'matches' && (
               <div className="max-w-3xl mx-auto space-y-4">
-                {/* Status summary */}
+                {/* Status summary — clicável, muda a sub-aba */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: 'Ao vivo', count: liveMatches.length, color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
-                    { label: 'Encerrados', count: doneCount, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' },
-                    { label: 'Em breve', count: upcomingCount, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+                    { label: 'Ao vivo',    count: liveMatches.length, color: 'text-red-600',  bg: 'bg-red-50 border-red-200',  view: 'jogos' as const },
+                    { label: 'Em breve',   count: upcomingCount,      color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', view: 'jogos' as const },
+                    { label: 'Encerrados', count: doneCount,          color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200', view: 'historico' as const },
                   ].map(s => (
-                    <div key={s.label} className={`rounded-xl border p-3 text-center ${s.bg}`}>
+                    <button key={s.label} onClick={() => setMatchView(s.view)}
+                      className={`rounded-xl border p-3 text-center transition-all ${s.bg} ${matchView === s.view ? 'ring-2 ring-offset-1 ring-[#0099CC]/40' : 'hover:opacity-80'}`}>
                       <p className={`text-[22px] font-semibold ${s.color}`}>{s.count}</p>
                       <p className={`text-[11px] ${s.color} opacity-80`}>{s.label}</p>
-                    </div>
+                    </button>
                   ))}
+                </div>
+
+                {/* Sub-abas: Jogos (ao vivo + em breve) vs Histórico (encerrados) */}
+                <div className="flex gap-2">
+                  <button onClick={() => setMatchView('jogos')}
+                    className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all ${matchView === 'jogos' ? 'bg-[#0099CC] text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-[#0099CC]/40'}`}>
+                    Jogos
+                  </button>
+                  <button onClick={() => setMatchView('historico')}
+                    className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all ${matchView === 'historico' ? 'bg-gray-700 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                    Histórico ({doneCount})
+                  </button>
                 </div>
 
                 {/* Phase filter */}
@@ -1880,66 +1894,68 @@ export default function AdminPage() {
                   ))}
                 </div>
 
-                {/* Match list — agrupado: Em breve → Ao vivo → Encerrados */}
+                {/* Match list */}
                 <div className="space-y-4">
 
-                  {/* EM BREVE (no topo, agrupado por rodada/data) */}
-                  {upcomingInPhase.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"/>
-                        <h3 className="text-[12px] font-bold text-blue-600 uppercase tracking-wide">Em breve</h3>
-                        <span className="text-[11px] text-gray-400">({filteredMatches.filter(m => m.status === 'upcoming').length})</span>
-                      </div>
-                      {upcomingInPhase.map(group => (
+                  {matchView === 'jogos' ? (
+                    <>
+                      {/* AO VIVO — sempre fixo no topo, nunca enterrado embaixo de "Em breve" */}
+                      {liveInPhase.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                            <h3 className="text-[12px] font-bold text-red-600 uppercase tracking-wide">Ao vivo agora</h3>
+                            <span className="text-[11px] text-gray-400">({liveInPhase.length})</span>
+                          </div>
+                          <div className="bg-white rounded-xl border border-red-100 divide-y divide-gray-100">
+                            {liveInPhase.map(renderMatchCard)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* EM BREVE — agrupado por rodada/data, mais próximo primeiro */}
+                      {upcomingInPhase.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"/>
+                            <h3 className="text-[12px] font-bold text-blue-600 uppercase tracking-wide">Em breve</h3>
+                            <span className="text-[11px] text-gray-400">({filteredMatches.filter(m => m.status === 'upcoming').length})</span>
+                          </div>
+                          {upcomingInPhase.map(group => (
+                            <div key={group.date} className="mb-3">
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 px-1">{group.date}</p>
+                              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                                {group.matches.map(renderMatchCard)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {liveInPhase.length === 0 && upcomingInPhase.length === 0 && (
+                        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                          <p className="text-[13px] text-gray-400">Nenhum jogo ao vivo ou em breve nesta fase.</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* HISTÓRICO — só encerrados, agrupado por data, mais recentes primeiro */}
+                      {doneInPhase.length > 0 ? doneInPhase.map(group => (
                         <div key={group.date} className="mb-3">
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 px-1">{group.date}</p>
                           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
                             {group.matches.map(renderMatchCard)}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* AO VIVO */}
-                  {liveInPhase.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-                        <h3 className="text-[12px] font-bold text-red-600 uppercase tracking-wide">Ao vivo agora</h3>
-                        <span className="text-[11px] text-gray-400">({liveInPhase.length})</span>
-                      </div>
-                      <div className="bg-white rounded-xl border border-red-100 divide-y divide-gray-100">
-                        {liveInPhase.map(renderMatchCard)}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ENCERRADOS (agrupado por data, mais recentes primeiro) */}
-                  {doneInPhase.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400"/>
-                        <h3 className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Encerrados</h3>
-                        <span className="text-[11px] text-gray-400">({filteredMatches.filter(m => m.status === 'done').length})</span>
-                      </div>
-                      {doneInPhase.map(group => (
-                        <div key={group.date} className="mb-3">
-                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 px-1">{group.date}</p>
-                          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                            {group.matches.map(renderMatchCard)}
-                          </div>
+                      )) : (
+                        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                          <p className="text-[13px] text-gray-400">Nenhum jogo encerrado nesta fase ainda.</p>
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
 
-                  {filteredMatches.length === 0 && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                      <p className="text-[13px] text-gray-400">Nenhuma partida nesta fase.</p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
