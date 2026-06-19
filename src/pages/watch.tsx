@@ -83,29 +83,11 @@ function teamColor(team: string): string {
   return TEAM_COLORS[team] || '#185FA5'
 }
 
-// Estima a FASE do jogo (não um minuto exato — não temos relógio real de jogo,
-// só sabemos quando começou). Mostrar "63'" como se fosse precisão real seria
-// enganoso, já que essa conta nem desconta o intervalo. Em vez disso, mostramos
-// um estágio aproximado: 1º tempo, intervalo, 2º tempo ou acréscimos.
-function liveStage(match: Match): string | null {
-  if (!match.match_date) return null
-  const start = new Date(match.match_date).getTime()
-  if (isNaN(start)) return null
-  const diff = Math.floor((Date.now() - start) / 60_000)
-  if (diff < 0) return null
-  if (diff <= 45)  return '1º tempo'
-  if (diff <= 60)  return 'Intervalo'
-  if (diff <= 105) return '2º tempo'
-  if (diff <= 120) return 'Acréscimos'
-  return null // provavelmente já encerrou — deixa só o badge "AO VIVO" genérico
-}
-
-// Card de placar compacto: bandeira A, placar, bandeira B, tempo de jogo — só isso.
+// Card de placar compacto: bandeira A, placar, bandeira B — só isso.
 // Fundo escuro com as cores das duas seleções translúcidas, em uma única linha.
 function LiveScoreCard({ match }: { match: Match }) {
   const homeColor = teamColor(match.home_team)
   const awayColor = teamColor(match.away_team)
-  const stage = liveStage(match)
   return (
     <div className="relative rounded-xl overflow-hidden" style={{ background: '#0a2540' }}>
       <div className="absolute top-0 left-0 h-full" style={{ width: '50%', background: homeColor, opacity: 0.14 }}/>
@@ -116,10 +98,6 @@ function LiveScoreCard({ match }: { match: Match }) {
         <span className="text-white/30 text-[12px] leading-none">×</span>
         <span className="text-white font-bold text-[20px] leading-none">{match.score_away ?? '—'}</span>
         <FlagImg team={match.away_team} size={24}/>
-        <span className="flex items-center gap-1 ml-1 flex-shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"/>
-          <span className="text-[10px] text-red-300 font-bold whitespace-nowrap">{stage || 'AO VIVO'}</span>
-        </span>
       </div>
     </div>
   )
