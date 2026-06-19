@@ -83,15 +83,21 @@ function teamColor(team: string): string {
   return TEAM_COLORS[team] || '#185FA5'
 }
 
-// Calcula o minuto aproximado de jogo a partir do horário de início.
-// Retorna null se não houver match_date ou se passar de 130min (jogo provavelmente travado/encerrado).
-function liveMinute(match: Match): number | null {
+// Estima a FASE do jogo (não um minuto exato — não temos relógio real de jogo,
+// só sabemos quando começou). Mostrar "63'" como se fosse precisão real seria
+// enganoso, já que essa conta nem desconta o intervalo. Em vez disso, mostramos
+// um estágio aproximado: 1º tempo, intervalo, 2º tempo ou acréscimos.
+function liveStage(match: Match): string | null {
   if (!match.match_date) return null
   const start = new Date(match.match_date).getTime()
   if (isNaN(start)) return null
   const diff = Math.floor((Date.now() - start) / 60_000)
-  if (diff < 0 || diff > 130) return null
-  return diff
+  if (diff < 0) return null
+  if (diff <= 45)  return '1º tempo'
+  if (diff <= 60)  return 'Intervalo'
+  if (diff <= 105) return '2º tempo'
+  if (diff <= 120) return 'Acréscimos'
+  return null // provavelmente já encerrou — deixa só o badge "AO VIVO" genérico
 }
 
 // Card de placar compacto: bandeira A, placar, bandeira B, tempo de jogo — só isso.
@@ -99,7 +105,7 @@ function liveMinute(match: Match): number | null {
 function LiveScoreCard({ match }: { match: Match }) {
   const homeColor = teamColor(match.home_team)
   const awayColor = teamColor(match.away_team)
-  const minute = liveMinute(match)
+  const stage = liveStage(match)
   return (
     <div className="relative rounded-xl overflow-hidden" style={{ background: '#0a2540' }}>
       <div className="absolute top-0 left-0 h-full" style={{ width: '50%', background: homeColor, opacity: 0.14 }}/>
@@ -112,7 +118,7 @@ function LiveScoreCard({ match }: { match: Match }) {
         <FlagImg team={match.away_team} size={24}/>
         <span className="flex items-center gap-1 ml-1 flex-shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"/>
-          <span className="text-[10px] text-red-300 font-bold whitespace-nowrap">{minute != null ? `${minute}'` : 'AO VIVO'}</span>
+          <span className="text-[10px] text-red-300 font-bold whitespace-nowrap">{stage || 'AO VIVO'}</span>
         </span>
       </div>
     </div>
