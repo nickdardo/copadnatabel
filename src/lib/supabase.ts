@@ -8,6 +8,7 @@ export type Player = {
   id: string; username: string; nickname: string
   avatar_url?: string; payment_ok: boolean; is_admin: boolean
   created_at: string; last_seen_at?: string
+  total_online_seconds?: number
 }
 
 /** Returns online status based on last_seen_at.
@@ -30,6 +31,17 @@ export function getPresence(last_seen_at?: string): {
   if (days < 7)            return { status: 'offline', label: `${days}d atrás` }
   return { status: 'offline', label: 'Mais de 1 semana' }
 }
+
+/** Formata segundos totais em string legível: "2h 15min", "45min", "<1min" */
+export function formatOnlineTime(totalSeconds?: number): string {
+  const s = totalSeconds || 0
+  if (s < 60) return '<1min'
+  const hours = Math.floor(s / 3600)
+  const mins  = Math.floor((s % 3600) / 60)
+  if (hours === 0) return `${mins}min`
+  return `${hours}h ${mins}min`
+}
+
 export type Match = {
   id: string; home_team: string; away_team: string
   home_flag?: string; away_flag?: string; match_date?: string

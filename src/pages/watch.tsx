@@ -7,6 +7,8 @@ import FlagImg from '@/components/FlagImg'
 import type { Match } from '@/lib/supabase'
 
 const CAZETV_URL = 'https://www.youtube.com/@CazeTV/streams'
+const CHAT_CACHE_KEY  = 'watch_chat_messages_cache'
+const CHAT_SCROLL_KEY = 'watch_chat_scroll_pos'
 
 type ChatMsg = {
   id: string
@@ -81,37 +83,37 @@ function teamColor(team: string): string {
   return TEAM_COLORS[team] || '#185FA5'
 }
 
-// Card de placar com tema escuro e cores das duas seleções translúcidas ao fundo.
-function LiveScoreCard({ match, big }: { match: Match; big?: boolean }) {
+// Calcula o minuto aproximado de jogo a partir do horário de início.
+// Retorna null se não houver match_date ou se passar de 130min (jogo provavelmente travado/encerrado).
+function liveMinute(match: Match): number | null {
+  if (!match.match_date) return null
+  const start = new Date(match.match_date).getTime()
+  if (isNaN(start)) return null
+  const diff = Math.floor((Date.now() - start) / 60_000)
+  if (diff < 0 || diff > 130) return null
+  return diff
+}
+
+// Card de placar compacto: bandeira A, placar, bandeira B, tempo de jogo — só isso.
+// Fundo escuro com as cores das duas seleções translúcidas, em uma única linha.
+function LiveScoreCard({ match }: { match: Match }) {
   const homeColor = teamColor(match.home_team)
   const awayColor = teamColor(match.away_team)
-  const scoreSize = big ? 'text-[44px]' : 'text-[34px]'
+  const minute = liveMinute(match)
   return (
-    <div className="relative rounded-2xl overflow-hidden" style={{ background: '#0a2540' }}>
-      {/* Cores das seleções translúcidas */}
-      <div className="absolute top-0 left-0 h-full" style={{ width: '50%', background: homeColor, opacity: 0.16 }}/>
-      <div className="absolute top-0 right-0 h-full" style={{ width: '50%', background: awayColor, opacity: 0.16 }}/>
-      <div className="relative px-5 py-4">
-        <div className="flex justify-center mb-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: 'rgba(239,68,68,0.9)' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"/>
-            <span className="text-[10px] text-white font-bold tracking-wide">AO VIVO</span>
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-center flex-1">
-            <FlagImg team={match.home_team} size={big ? 40 : 30}/>
-            <p className="text-[11px] text-white/80 mt-1.5 mb-1">{match.home_team}</p>
-            <p className={`${scoreSize} font-bold text-white leading-none`}>{match.score_home ?? '—'}</p>
-          </div>
-          <p className="text-[18px] text-white/40 font-light flex-shrink-0">×</p>
-          <div className="text-center flex-1">
-            <FlagImg team={match.away_team} size={big ? 40 : 30}/>
-            <p className="text-[11px] text-white/80 mt-1.5 mb-1">{match.away_team}</p>
-            <p className={`${scoreSize} font-bold text-white leading-none`}>{match.score_away ?? '—'}</p>
-          </div>
-        </div>
-        {big && <p className="text-[11px] text-white/40 mt-2 text-center">{match.fase}</p>}
+    <div className="relative rounded-xl overflow-hidden" style={{ background: '#0a2540' }}>
+      <div className="absolute top-0 left-0 h-full" style={{ width: '50%', background: homeColor, opacity: 0.14 }}/>
+      <div className="absolute top-0 right-0 h-full" style={{ width: '50%', background: awayColor, opacity: 0.14 }}/>
+      <div className="relative flex items-center justify-center gap-2.5 px-4 py-2.5">
+        <FlagImg team={match.home_team} size={24}/>
+        <span className="text-white font-bold text-[20px] leading-none">{match.score_home ?? '—'}</span>
+        <span className="text-white/30 text-[12px] leading-none">×</span>
+        <span className="text-white font-bold text-[20px] leading-none">{match.score_away ?? '—'}</span>
+        <FlagImg team={match.away_team} size={24}/>
+        <span className="flex items-center gap-1 ml-1 flex-shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"/>
+          <span className="text-[10px] text-red-300 font-bold whitespace-nowrap">{minute != null ? `${minute}'` : 'AO VIVO'}</span>
+        </span>
       </div>
     </div>
   )
@@ -174,13 +176,100 @@ export default function WatchPage() {
   const [sendError,   setSendError]   = useState<string|null>(null)
   const [onlineCount, setOnlineCount] = useState(1)
   const [fetching,    setFetching]    = useState(true)
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
+  const scrollRestored = useRef(false)
+
+  // Salva no sessionStorage as últimas mensagens (cache leve) — permite reabrir
+  // a aba Assistir sem perder o histórico nem refazer a busca completa no banco.
+  function persistMessages(list: ChatMsg[]) {
+    try { sessionStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(list.slice(-150))) } catch { /* sem espaço, ignora */ }
+  }
+
+  function isNearBottom(): boolean {
+    const el = chatScrollRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => {
+      const el = chatScrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
+  }
+
+  function restoreScrollOrBottom() {
+    requestAnimationFrame(() => {
+      const el = chatScrollRef.current
+      if (!el) return
+      const saved = sessionStorage.getItem(CHAT_SCROLL_KEY)
+      el.scrollTop = saved != null ? Number(saved) : el.scrollHeight
+      scrollRestored.current = true
+    })
+  }
+
+  function handleChatScroll() {
+    const el = chatScrollRef.current
+    if (el) sessionStorage.setItem(CHAT_SCROLL_KEY, String(el.scrollTop))
+  }
+
+  // Carrega o chat de forma inteligente: se já existir um cache local (porque o
+  // usuário só navegou para outra aba e voltou), mostra ele instantaneamente e
+  // busca no banco apenas as mensagens criadas DEPOIS da última que já tínhamos —
+  // em vez de recarregar as 100 mensagens inteiras e perder a posição de leitura.
+  async function loadMessagesSmart() {
+    let cached: ChatMsg[] = []
+    try {
+      const raw = sessionStorage.getItem(CHAT_CACHE_KEY)
+      if (raw) cached = JSON.parse(raw)
+    } catch { /* cache corrompido, ignora */ }
+
+    if (cached.length > 0) {
+      setMessages(cached)
+      setFetching(false)
+      restoreScrollOrBottom()
+      const lastTs = cached[cached.length - 1].created_at
+      const { data: newer } = await supabase.from('chat_messages')
+        .select('id, player_id, player_name, player_avatar, message, created_at')
+        .gt('created_at', lastTs)
+        .order('created_at', { ascending: true })
+        .limit(200)
+      if (newer && newer.length > 0) {
+        setMessages(prev => {
+          const merged = [...prev, ...(newer as ChatMsg[]).filter(n => !prev.some(p => p.id === n.id))]
+          persistMessages(merged)
+          return merged
+        })
+        if (isNearBottom()) scrollToBottom()
+      }
+    } else {
+      setFetching(true)
+      const { data } = await supabase.from('chat_messages')
+        .select('id, player_id, player_name, player_avatar, message, created_at')
+        .order('created_at', { ascending: true })
+        .limit(100)
+      const list = (data || []) as ChatMsg[]
+      setMessages(list)
+      persistMessages(list)
+      setFetching(false)
+      scrollToBottom() // primeira visita: vai direto para a última mensagem
+      scrollRestored.current = true
+    }
+  }
 
   async function reloadMessages() {
     const { data } = await supabase.from('chat_messages')
       .select('id, player_id, player_name, player_avatar, message, created_at')
       .order('created_at', { ascending: true }).limit(100)
-    if (data) setMessages(data as ChatMsg[])
+    if (data) {
+      setMessages(prev => {
+        const map = new Map(prev.map(p => [p.id, p]))
+        ;(data as ChatMsg[]).forEach(d => map.set(d.id, d))
+        const merged = Array.from(map.values()).sort((a, b) => a.created_at.localeCompare(b.created_at))
+        persistMessages(merged)
+        return merged
+      })
+    }
   }
 
   useEffect(() => {
@@ -190,34 +279,36 @@ export default function WatchPage() {
   useEffect(() => {
     if (!player) return
 
-    async function load() {
-      setFetching(true)
-      const [{ data: matches }, { data: msgs }, { data: scores }] = await Promise.all([
+    async function loadMatchesAndScores() {
+      const [{ data: matches }, { data: scores }] = await Promise.all([
         supabase.from('matches').select('*').eq('status', 'live').order('match_date'),
-        supabase.from('chat_messages')
-          .select('id, player_id, player_name, player_avatar, message, created_at')
-          .order('created_at', { ascending: true })
-          .limit(100),
         supabase.from('scores').select('player_id, rank_position, total_pts'),
       ])
       setLiveMatches((matches || []) as Match[])
-      setMessages((msgs || []) as ChatMsg[])
       const rm: RankMap = {}
       ;(scores || []).forEach((s: { player_id: string; rank_position: number; total_pts: number }) => {
         if (s.rank_position) rm[s.player_id] = { rank: s.rank_position, pts: s.total_pts || 0 }
       })
       setRankMap(rm)
-      setFetching(false)
     }
-    load()
+    loadMatchesAndScores()
+    loadMessagesSmart()
 
     const chatSub = supabase.channel('watch-chat')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        payload => setMessages(prev => {
+        payload => {
           const m = payload.new as ChatMsg
-          if (prev.some(x => x.id === m.id)) return prev // evita duplicar
-          return [...prev, m]
-        }))
+          const wasNearBottom = isNearBottom()
+          setMessages(prev => {
+            if (prev.some(x => x.id === m.id)) return prev // evita duplicar
+            const merged = [...prev, m]
+            persistMessages(merged)
+            return merged
+          })
+          // Só rola para o fim automaticamente se o usuário já estava lendo
+          // as mensagens mais recentes — não interrompe quem está lendo mais acima.
+          if (wasNearBottom) scrollToBottom()
+        })
       .subscribe()
 
     const matchSub = supabase.channel('watch-matches')
@@ -255,10 +346,6 @@ export default function WatchPage() {
       clearInterval(poll)
     }
   }, [player])
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   async function sendMessage() {
     if (!player || !input.trim() || sending) return
@@ -309,29 +396,20 @@ export default function WatchPage() {
               <div>
                 <YouTubePlayer videoId={videoId} streamUrl={primaryMatch!.stream_url!}/>
                 {/* Placar abaixo do player */}
-                <div className="mt-2">
+                <div className="mt-2 space-y-1.5">
                   <LiveScoreCard match={primaryMatch!}/>
+                  {liveMatches.filter(m => m.id !== primaryMatch?.id).map(m => (
+                    <LiveScoreCard key={m.id} match={m}/>
+                  ))}
                 </div>
-                {/* Se há mais jogos ao vivo além do principal */}
-                {liveMatches.filter(m => m.id !== primaryMatch?.id).map(m => (
-                  <div key={m.id} className="mt-2 bg-gray-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-[12px] text-gray-700">{m.home_team}</span>
-                    <span className="text-[13px] font-bold text-gray-900">{m.score_home ?? '?'} × {m.score_away ?? '?'}</span>
-                    <span className="text-[12px] text-gray-700">{m.away_team}</span>
-                  </div>
-                ))}
               </div>
             ) : (
-              /* Sem stream_url configurado — placar grande + botão CazéTV */
-              <div>
-                {liveMatches.map(m => (
-                  <div key={m.id} className="mb-2">
-                    <LiveScoreCard match={m} big/>
-                  </div>
-                ))}
+              /* Sem stream_url configurado — placares compactos + botão CazéTV */
+              <div className="space-y-1.5">
+                {liveMatches.map(m => <LiveScoreCard key={m.id} match={m}/>)}
                 <a href={CAZETV_URL} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 bg-[#0099CC] hover:bg-[#007aa8] transition-colors rounded-2xl py-3.5 w-full text-white font-semibold text-[14px]">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                  className="flex items-center justify-center gap-2 bg-[#0099CC] hover:bg-[#007aa8] transition-colors rounded-xl py-3 w-full text-white font-semibold text-[13px] mt-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                     <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
                   </svg>
                   Assistir ao vivo na CazéTV
@@ -366,7 +444,7 @@ export default function WatchPage() {
             </span>
           </div>
 
-          <div className="px-4 py-3 space-y-3" style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <div ref={chatScrollRef} onScroll={handleChatScroll} className="px-4 py-3 space-y-3" style={{ maxHeight: 320, overflowY: 'auto' }}>
             {fetching && (
               <div className="flex justify-center py-4">
                 <span className="w-5 h-5 border-2 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin"/>
@@ -415,7 +493,6 @@ export default function WatchPage() {
                 </div>
               )
             })}
-            <div ref={chatEndRef}/>
           </div>
 
           <div className="flex gap-2 px-4 py-3 border-t border-gray-100">

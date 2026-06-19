@@ -243,6 +243,26 @@ export default function Layout({ children, title }: Props) {
       .then(({ data }) => setWatchAtivo(data?.[0]?.watch_ativo || false))
   }, [router.pathname])
 
+  // Heartbeat de tempo online: a cada 60s, se o app estiver em primeiro plano
+  // (aba visível), soma 60s ao tempo total acumulado do jogador no banco.
+  // Usado pelo admin para ver quem mais usa o app.
+  useEffect(() => {
+    if (!player) return
+    const HEARTBEAT_MS = 60_000
+    let foreground = typeof document !== 'undefined' && document.visibilityState === 'visible'
+    const onVisibility = () => { foreground = document.visibilityState === 'visible' }
+    document.addEventListener('visibilitychange', onVisibility)
+    const tick = setInterval(() => {
+      if (foreground) {
+        supabase.rpc('increment_online_time', { p_player_id: player.id, p_seconds: 60 }).then(() => {})
+      }
+    }, HEARTBEAT_MS)
+    return () => {
+      clearInterval(tick)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [player?.id])
+
   // Load group link once
   useEffect(() => {
     supabase.from('pix_config').select('group_link').limit(1).then(({ data }) => {

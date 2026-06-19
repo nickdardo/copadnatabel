@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase, Match, Player, FASE_ORDER, getPresence } from '@/lib/supabase'
+import { supabase, Match, Player, FASE_ORDER, getPresence, formatOnlineTime } from '@/lib/supabase'
 import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 import FlagImg from '@/components/FlagImg'
@@ -1578,6 +1578,38 @@ export default function AdminPage() {
                   ))}
                 </div>
 
+                {/* Top 5 — mais tempo no app */}
+                {nonAdminPlayers.some(p => (p.total_online_seconds || 0) > 0) && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <h3 className="text-[12px] font-bold text-gray-700">Mais tempo no app</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {[...nonAdminPlayers]
+                        .sort((a, b) => (b.total_online_seconds || 0) - (a.total_online_seconds || 0))
+                        .slice(0, 5)
+                        .map((p, i) => {
+                          const name = p.nickname || p.username
+                          const av = p.avatar_url ? (p.avatar_url.startsWith('http') ? p.avatar_url : supabase.storage.from('avatars').getPublicUrl(p.avatar_url).data.publicUrl) : null
+                          return (
+                            <div key={p.id} className="flex items-center gap-2.5">
+                              <span className="text-[11px] font-bold text-gray-300 w-4 text-right flex-shrink-0">{i + 1}</span>
+                              {av
+                                ? <img src={av} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                                : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC] flex-shrink-0">
+                                    {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
+                                  </div>
+                              }
+                              <span className="text-[12px] font-medium text-gray-800 flex-1 truncate">{name}</span>
+                              <span className="text-[11px] font-bold text-[#0099CC] flex-shrink-0">{formatOnlineTime(p.total_online_seconds)}</span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Payment progress */}
                 <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-4">
                   <div className="flex justify-between text-[12px] mb-2">
@@ -1734,7 +1766,7 @@ export default function AdminPage() {
                                         </span>
                                     }
                                   </div>
-                                  <p className="text-[11px] text-gray-400">@{p.username} · {picks} palpites · {presence.label}</p>
+                                  <p className="text-[11px] text-gray-400">@{p.username} · {picks} palpites · {presence.label} · {formatOnlineTime(p.total_online_seconds)} no app</p>
                                 </div>
                                 {/* Payment button */}
                                 <button onClick={() => togglePayment(p)} disabled={togglingId === p.id}
