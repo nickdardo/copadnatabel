@@ -243,23 +243,53 @@ export default function Layout({ children, title }: Props) {
       .then(({ data }) => setWatchAtivo(data?.[0]?.watch_ativo || false))
   }, [router.pathname])
 
-  // Heartbeat de tempo online: a cada 60s, se o app estiver em primeiro plano
-  // (aba visível), soma 60s ao tempo total acumulado do jogador no banco.
-  // Usado pelo admin para ver quem mais usa o app.
+  // Tempo online acumulado: em vez de um timer fixo de 60s (que se reinicia
+  // a cada troca de tela, já que o Layout é remontado em cada página — picks,
+  // ranking, champion etc — e por isso perdia quase todo o tempo de quem navega
+  // bastante), usamos um "checkpoint" salvo no sessionStorage com o horário real.
+  // A cada montagem de página (ou a cada 20s parado na mesma tela), calculamos
+  // quanto tempo de verdade passou desde o último checkpoint e somamos esse
+  // valor exato ao total do jogador — funciona mesmo trocando de tela o tempo
+  // todo, porque não depende de nenhum timer completar sem interrupção.
   useEffect(() => {
     if (!player) return
-    const HEARTBEAT_MS = 60_000
-    let foreground = typeof document !== 'undefined' && document.visibilityState === 'visible'
-    const onVisibility = () => { foreground = document.visibilityState === 'visible' }
-    document.addEventListener('visibilitychange', onVisibility)
-    const tick = setInterval(() => {
-      if (foreground) {
-        supabase.rpc('increment_online_time', { p_player_id: player.id, p_seconds: 60 }).then(() => {})
+    const CHECKPOINT_KEY = 'online_time_checkpoint'
+    const MAX_GAP_SECONDS = 600 // gaps maiores que isso (app fechado/dormindo) não contam como uso
+
+    function syncElapsed() {
+      const now = Date.now()
+      const lastStr = sessionStorage.getItem(CHECKPOINT_KEY)
+      const last = lastStr ? Number(lastStr) : now
+      const deltaSeconds = Math.floor((now - last) / 1000)
+      sessionStorage.setItem(CHECKPOINT_KEY, String(now))
+      if (deltaSeconds > 0 && deltaSeconds <= MAX_GAP_SECONDS) {
+        supabase.rpc('increment_online_time', { p_player_id: player.id, p_seconds: deltaSeconds }).then(() => {})
       }
-    }, HEARTBEAT_MS)
+    }
+
+    // Sincroniza imediatamente ao montar — cobre o tempo que passou desde a
+    // página anterior, mesmo que tenham sido só alguns segundos de navegação.
+    syncElapsed()
+
+    function onVisibility() {
+      if (document.visibilityState === 'hidden') {
+        syncElapsed() // soma o tempo até agora antes de pausar a contagem
+      } else {
+        // Voltou ao app: reseta o checkpoint SEM contar o tempo em segundo plano
+        sessionStorage.setItem(CHECKPOINT_KEY, String(Date.now()))
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    // Para quem fica parado numa mesma tela sem navegar nem trocar de app
+    const tick = setInterval(() => {
+      if (document.visibilityState === 'visible') syncElapsed()
+    }, 20_000)
+
     return () => {
       clearInterval(tick)
       document.removeEventListener('visibilitychange', onVisibility)
+      syncElapsed() // soma o tempo final antes de desmontar (ex: troca de página)
     }
   }, [player?.id])
 
