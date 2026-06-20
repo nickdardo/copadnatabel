@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState, useEffect, useMemo } from 'react'
+import { supabase, calcFactor, FACTOR_PTS } from '@/lib/supabase'
 import TeamFormPopup from '@/components/TeamFormPopup'
 import { IconMedal } from '@/components/Icons'
 import type { Match } from '@/lib/supabase'
@@ -14,6 +14,13 @@ const COLORS = ['#16A34A','#0099CC','#7C3AED','#EA580C','#0F766E','#B91C1C','#D9
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
+// Pontos que um placar específico (ex: 2×1) rendeu, comparado ao resultado
+// oficial do jogo. Retorna null se o jogo ainda não tem placar oficial definido.
+function pointsForScore(home: number, away: number, match: Match): number | null {
+  if (match.score_home == null || match.score_away == null) return null
+  return FACTOR_PTS[calcFactor(home, away, match.score_home, match.score_away)]
 }
 
 function Avatar({ name, avatar, size = 32 }: { name: string; avatar?: string; size?: number }) {
@@ -33,6 +40,7 @@ function PlayerModal({ group, match, currentPlayerId, onClose }: { group: PickGr
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
+  const pts = pointsForScore(group.home, group.away, match)
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
       <div className="bg-white rounded-t-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
@@ -40,15 +48,27 @@ function PlayerModal({ group, match, currentPlayerId, onClose }: { group: PickGr
         <div className="w-9 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-1 flex-shrink-0"/>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
-          <div>
-            <p className="text-[14px] font-bold text-gray-900">
-              {match.home_team} <span className="text-[#0099CC]">{group.home}×{group.away}</span> {match.away_team}
-            </p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-[14px] font-bold text-gray-900 truncate">
+                {match.home_team} <span className="text-[#0099CC]">{group.home}×{group.away}</span> {match.away_team}
+              </p>
+              {pts != null && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                  pts === 10 ? 'bg-green-100 text-green-700' :
+                  pts >= 5    ? 'bg-amber-100 text-amber-700' :
+                  pts > 0     ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-500'
+                }`}>
+                  +{pts}pts
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-gray-400 mt-0.5">
               {group.count} {group.count === 1 ? 'pessoa apostou' : 'pessoas apostaram'} neste placar
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0 ml-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
@@ -102,8 +122,21 @@ export default function GroupPicksCard({ match, currentPlayerId }: { match: Matc
   }, [match.id])
 
   const total = data?.total || 0
-  const dist  = data?.distribution || []
   const wd    = data?.winnerDist || { home: 0, draw: 0, away: 0 }
+
+  // Reordena os placares apostados pela pontuação que cada um rendeu de fato
+  // (comparado ao resultado oficial), não pela popularidade do palpite.
+  // Sem resultado oficial ainda, mantém a ordem original vinda da API.
+  const dist = useMemo(() => {
+    const list = data?.distribution || []
+    if (match.score_home == null || match.score_away == null) return list
+    return [...list].sort((a, b) => {
+      const ptsA = pointsForScore(a.home, a.away, match) ?? 0
+      const ptsB = pointsForScore(b.home, b.away, match) ?? 0
+      if (ptsB !== ptsA) return ptsB - ptsA
+      return b.count - a.count // desempate: mais popular primeiro
+    })
+  }, [data, match.score_home, match.score_away])
 
   if (loading) return (
     <div className="bg-white rounded-xl border border-gray-100 px-4 py-6 flex justify-center">
