@@ -66,6 +66,15 @@ export default function AdminPage() {
   const [streamEditId,  setStreamEditId]  = useState<string | null>(null)
   const [streamUrl,     setStreamUrl]     = useState('')
   const [savingStream,  setSavingStream]  = useState(false)
+  // Correção manual de palpite (admin corrige o palpite de 1 jogador em 1 jogo,
+  // mesmo já travado/ao vivo/encerrado — usado para corrigir bugs de salvamento)
+  const [fixPickMatchId, setFixPickMatchId] = useState<string | null>(null)
+  const [fixPlayerQuery, setFixPlayerQuery] = useState('')
+  const [fixPlayerId,    setFixPlayerId]    = useState<string | null>(null)
+  const [fixHome,        setFixHome]        = useState('')
+  const [fixAway,        setFixAway]        = useState('')
+  const [fixSaving,      setFixSaving]      = useState(false)
+  const [fixMsg,         setFixMsg]         = useState<{ type: 'ok'|'error'; text: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [championStats, setChampionStats] = useState<{ team: string; count: number; flag?: string }[]>([])
   const [totalChampPicks, setTotalChampPicks] = useState(0)
@@ -592,6 +601,36 @@ export default function AdminPage() {
     fetchAll()
   }
 
+  async function fixPlayerPick(matchId: string) {
+    if (!fixPlayerId || fixHome === '' || fixAway === '') {
+      setFixMsg({ type: 'error', text: 'Selecione o jogador e preencha o placar.' })
+      return
+    }
+    setFixSaving(true)
+    setFixMsg(null)
+    try {
+      const res = await fetch('/api/admin/fix-pick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          player_id: fixPlayerId, match_id: matchId,
+          pick_home: fixHome, pick_away: fixAway,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setFixMsg({ type: 'error', text: json.error || 'Falha ao salvar.' })
+      } else {
+        setFixMsg({ type: 'ok', text: 'Palpite corrigido com sucesso!' })
+        setFixPlayerId(null); setFixPlayerQuery(''); setFixHome(''); setFixAway('')
+        fetchAll()
+      }
+    } catch {
+      setFixMsg({ type: 'error', text: 'Erro de conexão. Tente novamente.' })
+    }
+    setFixSaving(false)
+  }
+
   async function togglePayment(p: Player) {
     setTogglingId(p.id)
     const nowPaid = !p.payment_ok
@@ -788,6 +827,14 @@ export default function AdminPage() {
           <div className="flex gap-1.5">
             {m.status !== 'live'     && <button onClick={() => setMatchStatus(m, 'live')}     className="text-[11px] text-red-600 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">Ao vivo</button>}
             {m.status !== 'upcoming' && <button onClick={() => setMatchStatus(m, 'upcoming')} className="text-[11px] border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>}
+            <button onClick={() => {
+                const opening = fixPickMatchId !== m.id
+                setFixPickMatchId(opening ? m.id : null)
+                setFixPlayerId(null); setFixPlayerQuery(''); setFixHome(''); setFixAway(''); setFixMsg(null)
+              }}
+              className={`text-[11px] px-2.5 py-1 rounded-lg transition-colors border ${fixPickMatchId === m.id ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-amber-200 text-amber-600 hover:bg-amber-50'}`}>
+              Corrigir palpite
+            </button>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -836,6 +883,65 @@ export default function AdminPage() {
             <span className="text-[11px] text-red-500 font-medium">Transmissão configurada</span>
             <button onClick={() => saveStreamUrl(m.id, '')}
               className="text-[10px] text-gray-400 hover:text-red-500 underline ml-1">remover</button>
+          </div>
+        )}
+
+        {/* Painel de correção manual de palpite */}
+        {fixPickMatchId === m.id && (
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+            <p className="text-[11px] text-amber-700 font-semibold">Corrigir palpite de um jogador neste jogo</p>
+            <p className="text-[10px] text-amber-600/80 leading-relaxed">
+              Funciona mesmo com o jogo travado, ao vivo ou encerrado. Use só para corrigir palpites
+              que o jogador comprovadamente tentou salvar e falhou por bug — não para reabrir escolha após o resultado.
+            </p>
+
+            {!fixPlayerId ? (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar jogador por nome..."
+                  value={fixPlayerQuery}
+                  onChange={e => setFixPlayerQuery(e.target.value)}
+                  className="w-full h-9 text-[12px] border border-amber-200 rounded-lg bg-white text-gray-900 px-3 placeholder-gray-400"
+                />
+                {fixPlayerQuery.trim().length > 0 && (
+                  <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                    {nonAdminPlayers
+                      .filter(p => (p.nickname || p.username).toLowerCase().includes(fixPlayerQuery.toLowerCase()))
+                      .slice(0, 8)
+                      .map(p => (
+                        <button key={p.id} onClick={() => { setFixPlayerId(p.id); setFixPlayerQuery(p.nickname || p.username) }}
+                          className="w-full text-left px-3 py-2 text-[12px] text-gray-800 hover:bg-amber-50 transition-colors border-b border-gray-50 last:border-0">
+                          {p.nickname || p.username} <span className="text-gray-400">@{p.username}</span>
+                        </button>
+                      ))}
+                    {nonAdminPlayers.filter(p => (p.nickname || p.username).toLowerCase().includes(fixPlayerQuery.toLowerCase())).length === 0 && (
+                      <p className="px-3 py-2 text-[11px] text-gray-400">Nenhum jogador encontrado.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[12px] font-semibold text-gray-800 bg-white border border-amber-200 px-2.5 py-1.5 rounded-lg">
+                  {fixPlayerQuery}
+                </span>
+                <button onClick={() => { setFixPlayerId(null); setFixPlayerQuery('') }} className="text-[11px] text-gray-400 hover:text-red-500 underline">trocar</button>
+                <input type="number" min="0" max="20" placeholder="0" value={fixHome} onChange={e => setFixHome(e.target.value)}
+                  className="w-12 h-9 text-center text-[14px] font-bold border border-amber-200 rounded-lg bg-white text-gray-900"/>
+                <span className="text-gray-400">×</span>
+                <input type="number" min="0" max="20" placeholder="0" value={fixAway} onChange={e => setFixAway(e.target.value)}
+                  className="w-12 h-9 text-center text-[14px] font-bold border border-amber-200 rounded-lg bg-white text-gray-900"/>
+                <button onClick={() => fixPlayerPick(m.id)} disabled={fixSaving}
+                  className="text-[12px] bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors">
+                  {fixSaving ? 'Salvando...' : 'Salvar palpite'}
+                </button>
+              </div>
+            )}
+
+            {fixMsg && (
+              <p className={`text-[11px] font-medium ${fixMsg.type === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{fixMsg.text}</p>
+            )}
           </div>
         )}
       </div>
