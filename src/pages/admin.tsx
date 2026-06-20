@@ -764,6 +764,18 @@ export default function AdminPage() {
     fetchAll()
   }
 
+  // Finaliza manualmente um jogo "ao vivo" com o placar já registrado no card —
+  // usado quando o jogo já terminou de verdade mas o sync automático não
+  // detectou isso (ex: sem ninguém com o painel aberto no momento do fim).
+  async function finishLiveMatch(match: Match) {
+    if (match.score_home == null || match.score_away == null) {
+      alert('Edite e salve o placar final antes de finalizar este jogo.')
+      return
+    }
+    await supabase.from('matches').update({ status: 'done' }).eq('id', match.id)
+    fetchAll()
+  }
+
   async function loadPaymentLogs() {
     const res = await fetch('/api/admin/payment-log')
     const { data } = await res.json()
@@ -847,6 +859,13 @@ export default function AdminPage() {
           <div className="flex gap-1.5">
             {m.status !== 'live'     && <button onClick={() => setMatchStatus(m, 'live')}     className="text-[11px] text-red-600 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">Ao vivo</button>}
             {m.status !== 'upcoming' && <button onClick={() => setMatchStatus(m, 'upcoming')} className="text-[11px] border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>}
+            {m.status === 'live' && (
+              <button onClick={() => finishLiveMatch(m)}
+                title="Marca o jogo como encerrado com o placar atual — use quando o jogo já acabou de verdade mas o sync ainda não atualizou"
+                className="text-[11px] font-semibold text-green-700 border border-green-200 bg-green-50 px-2.5 py-1 rounded-lg hover:bg-green-100 transition-colors">
+                Finalizar jogo
+              </button>
+            )}
             <button onClick={() => {
                 const opening = fixPickMatchId !== m.id
                 setFixPickMatchId(opening ? m.id : null)

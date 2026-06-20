@@ -124,6 +124,12 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       else if (commenceMs > now)                  status = 'upcoming'
       else                                        status = 'live'
 
+      // Uma vez encerrado, nunca reverte sozinho — nem se a Odds API ainda não
+      // confirmou completed=true. Isso evita desfazer uma finalização manual
+      // do admin (ou um 'done' anterior) só porque a API está atrasada para
+      // confirmar o fim da partida. Só um Reset manual no painel reabre o jogo.
+      if (existing?.status === 'done') status = 'done'
+
       const matchData = {
         odds_event_id: ev.id,
         home_team:  homeTeamPT,
