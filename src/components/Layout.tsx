@@ -253,6 +253,7 @@ export default function Layout({ children, title }: Props) {
   // todo, porque não depende de nenhum timer completar sem interrupção.
   useEffect(() => {
     if (!player) return
+    const playerId = player.id // capturado aqui: evita 'player' possibly null dentro dos closures abaixo
     const CHECKPOINT_KEY = 'online_time_checkpoint'
     const MAX_GAP_SECONDS = 600 // gaps maiores que isso (app fechado/dormindo) não contam como uso
 
@@ -263,7 +264,7 @@ export default function Layout({ children, title }: Props) {
       const deltaSeconds = Math.floor((now - last) / 1000)
       sessionStorage.setItem(CHECKPOINT_KEY, String(now))
       if (deltaSeconds > 0 && deltaSeconds <= MAX_GAP_SECONDS) {
-        supabase.rpc('increment_online_time', { p_player_id: player.id, p_seconds: deltaSeconds }).then(() => {})
+        supabase.rpc('increment_online_time', { p_player_id: playerId, p_seconds: deltaSeconds }).then(() => {})
       }
     }
 
