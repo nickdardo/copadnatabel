@@ -197,15 +197,16 @@ export default function AdminPage() {
   // lastSyncTime (que só existe se ESTE navegador disparou o sync agora),
   // este valor é gravado pela própria rota /api/sync a cada execução, então
   // reflete a realidade mesmo que o painel tenha ficado fechado por horas.
+  const checkDbSync = useCallback(async () => {
+    const { data } = await supabase.from('pix_config').select('last_sync_at, last_sync_ok').limit(1)
+    if (data?.[0]) setDbLastSync({ at: data[0].last_sync_at, ok: data[0].last_sync_ok })
+  }, [])
+
   useEffect(() => {
-    async function checkDbSync() {
-      const { data } = await supabase.from('pix_config').select('last_sync_at, last_sync_ok').limit(1)
-      if (data?.[0]) setDbLastSync({ at: data[0].last_sync_at, ok: data[0].last_sync_ok })
-    }
     checkDbSync()
     const interval = setInterval(checkDbSync, 60_000)
     return () => clearInterval(interval)
-  }, [])
+  }, [checkDbSync])
 
   // Presence refresh every 30s
   useEffect(() => {
@@ -528,6 +529,10 @@ export default function AdminPage() {
         setLastSyncTime(new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }))
         if (data.quotaRemaining != null) setQuotaRemaining(data.quotaRemaining)
       }
+      // Atualiza o alerta de "sync parado" na hora, sem esperar o próximo
+      // tick de 60s do polling — senão o banner continua aparecendo por até
+      // 1 minuto mesmo depois de um sync manual bem-sucedido.
+      checkDbSync()
     } catch { setSyncResult({ ok: false, synced: 0, updated: 0, recalculated: false, quotaRemaining: null, error: 'Erro de rede' }) }
     setSyncing(false)
   }
