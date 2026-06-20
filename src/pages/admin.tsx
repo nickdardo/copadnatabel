@@ -85,6 +85,7 @@ export default function AdminPage() {
   const [lastAutoSync,  setLastAutoSync]  = useState<string>('')
   const [autoSyncing,   setAutoSyncing]   = useState(false)
   const [quotaRemaining,setQuotaRemaining]= useState<number|null>(null)
+  const [dbLastSync,    setDbLastSync]    = useState<{ at: string | null; ok: boolean | null }>({ at: null, ok: null })
   const [lastSyncTime,  setLastSyncTime]  = useState<string>('')
   const [pixCpf,        setPixCpf]        = useState('')
   const [pixKeyType,    setPixKeyType]    = useState<PixKeyType>('cpf')
@@ -191,6 +192,20 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Busca do banco quando foi o último sync que de fato rodou — diferente de
+  // lastSyncTime (que só existe se ESTE navegador disparou o sync agora),
+  // este valor é gravado pela própria rota /api/sync a cada execução, então
+  // reflete a realidade mesmo que o painel tenha ficado fechado por horas.
+  useEffect(() => {
+    async function checkDbSync() {
+      const { data } = await supabase.from('pix_config').select('last_sync_at, last_sync_ok').limit(1)
+      if (data?.[0]) setDbLastSync({ at: data[0].last_sync_at, ok: data[0].last_sync_ok })
+    }
+    checkDbSync()
+    const interval = setInterval(checkDbSync, 60_000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Presence refresh every 30s
   useEffect(() => {
@@ -783,6 +798,11 @@ export default function AdminPage() {
   const phases          = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
   const filteredMatches = matches.filter(m => m.fase === activePhase)
   const liveMatches     = matches.filter(m => m.status === 'live')
+  // Sincronização travada: há jogo ao vivo, mas o último sync registrado no
+  // banco já passou de 20 minutos — sinal de que o sync parou de rodar
+  // (navegador fechado, PC desligado, queda de energia, etc).
+  const minutesSinceSync = dbLastSync.at ? Math.floor((Date.now() - new Date(dbLastSync.at).getTime()) / 60_000) : null
+  const syncStalled = liveMatches.length > 0 && (minutesSinceSync == null || minutesSinceSync > 20)
   const doneCount       = matches.filter(m => m.status === 'done').length
   const upcomingCount   = matches.filter(m => m.status === 'upcoming').length
 
@@ -1090,6 +1110,30 @@ export default function AdminPage() {
 
           {/* Content — extra bottom padding on mobile for bottom nav */}
           <main className="flex-1 overflow-y-auto p-3 md:p-5 pb-28 md:pb-5">
+
+            {/* ── ALERTA: SYNC PARADO COM JOGO AO VIVO ── */}
+            {syncStalled && (
+              <div className="max-w-7xl mx-auto mb-4">
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <div className="flex-1 min-w-[200px]">
+                    <p className="text-[13px] font-bold text-red-700">Sincronização parada com jogo ao vivo</p>
+                    <p className="text-[11px] text-red-600/80">
+                      {minutesSinceSync == null
+                        ? 'Nenhum sync foi registrado ainda nesta sessão.'
+                        : `Última sincronização há ${minutesSinceSync}min. O placar pode estar desatualizado.`}
+                    </p>
+                  </div>
+                  <button onClick={triggerSync} disabled={syncing}
+                    className="text-[12px] font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0">
+                    {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ── DASHBOARD ─────────────────────────────── */}
             {page === 'dashboard' && (
