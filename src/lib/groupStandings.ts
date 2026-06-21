@@ -215,4 +215,4 @@ export function detectActivePhase(allMatches: Match[]): string {
 }
 
 /** Fases de mata-mata, na ordem de exibição do bracket (esquerda → direita). */
-export const KNOCKOUT_PHASES = ['Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final']
+export const KNOCKOUT_PHASES = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final']
