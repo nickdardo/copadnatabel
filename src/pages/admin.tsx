@@ -2435,7 +2435,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.15</p>
+                  <p className="text-[42px] font-black leading-none">v1.16</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2459,22 +2459,19 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.15
+{`Bolão Copa 2026 BEL — Atualização v1.16
 
-♾️ Palpites de jogos sem limite
-Altere o palpite de cada jogo quantas vezes quiser até 2h antes do início. Campeão, vice e 3º lugar continuam com limite de 3 alterações.
+⚽ Esqueceu de palpitar? Agora não fica mais zerado
+Se você esquecer de palpitar em algum jogo, o sistema aplica automaticamente um placar de 0×0 para você — e você ganha 50% dos pontos que esse placar teria rendido, comparado ao resultado real.
 
-📊 Estatísticas das seleções
-Toque em qualquer bandeira do app para ver os últimos resultados daquela seleção na Copa — com cores por resultado (verde vitória, cinza empate, vermelho derrota).
+Exemplos:
+• Jogo terminou 0×0 → você ganha 5 pts (metade dos 10 de "acertou tudo")
+• Jogo terminou 1×0 → você ganha 1 pt (metade dos 2 de "acertou 1 gol")
+• Jogo terminou 1×1 → você ganha 2 pts (metade dos 5 de "acertou o vencedor")
 
-🏅 Pódio em destaque
-Na lista de quem apostou em cada placar, 1º, 2º e 3º do ranking aparecem com medalha. Sua linha fica destacada para achar seu nome rapidamente.
+Você vai ver um aviso na aba Encerrados sempre que isso acontecer, deixando claro que foi um palpite automático e não um palpite que você escolheu.
 
-🟢 Online no ranking
-Pontinho verde ao lado do nome de quem está com o app aberto. Clique em "X online agora" para filtrar só os participantes ativos.
-
-📺 Aba Assistir
-Nova aba no menu com player da CazéTV embutido diretamente no app quando o admin configurar o link da transmissão. Inclui chat em tempo real com todos os participantes, mostrando o rank de cada um ao lado do nome.
+Continua valendo muito mais a pena palpitar de verdade — quem acerta o placar exato continua levando os 10 pontos cheios. Isso é só uma rede de segurança para quem esquece, não um substituto para quem participa de verdade.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2487,6 +2484,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.16', desc: 'Palpite automático 0×0 (com 50% dos pontos) para quem esquece de palpitar — não fica mais zerado por esquecimento.' },
                       { v: 'v1.15', desc: 'Palpites ilimitados. Popup de estatísticas em todas as bandeiras. Pódio na lista de apostadores. Filtro de online no ranking. Aba Assistir com player CazéTV, chat ao vivo e rank dos participantes.' },
                       { v: 'v1.13', desc: 'KPIs admin, novas notificações push, Meu Desempenho, Destaques do Feed, Estatísticas do bolão, online no ranking.' },
                       { v: 'v1.12', desc: 'Jornada Em Breve → Ao Vivo → Encerrados nos palpites. Botão 3D de colocação no ranking com scroll automático.' },
