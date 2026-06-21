@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { supabase, Match } from '@/lib/supabase'
 import Layout from '@/components/Layout'
 import TeamFormPopup from '@/components/TeamFormPopup'
+import CompetitionStatusCard from '@/components/CompetitionStatusCard'
 import { TEAMS_SELECT } from '@/lib/flags'
 
 const MAX_CHAMP_EDITS = 3
@@ -79,6 +80,8 @@ export default function ChampionPage() {
     return () => clearInterval(interval)
   }, [])
   const [fetching, setFetching] = useState(true)
+  const [matches, setMatches] = useState<Match[]>([])
+  const [view, setView] = useState<'grupos'|'palpite'>('grupos')
   const [paidCount,setPaidCount]= useState(0)
   const [extraAmount,setExtraAmount]= useState(0)
   const [extraNote,  setExtraNote]  = useState('')
@@ -91,7 +94,8 @@ export default function ChampionPage() {
       supabase.from('champion_picks').select('*').eq('player_id', player.id).maybeSingle(),
       supabase.from('players').select('id', { count:'exact', head:true }).eq('payment_ok', true).eq('is_admin', false),
       supabase.from('prize_config').select('*').limit(1),
-    ]).then(([{ data }, { count }, { data: prizeRows }]) => {
+      supabase.from('matches').select('*'),
+    ]).then(([{ data }, { count }, { data: prizeRows }, { data: matchRows }]) => {
       if (data) {
         setChampion(data.pick_champion); setRunner(data.pick_runner); setThird(data.pick_third)
         setLocked(data.locked || (data.edit_count >= MAX_CHAMP_EDITS))
@@ -102,6 +106,7 @@ export default function ChampionPage() {
         setExtraAmount(Number(prizeRows[0].extra_amount) || 0)
         setExtraNote(prizeRows[0].extra_note || '')
       }
+      setMatches((matchRows || []) as Match[])
       setFetching(false)
     })
   }, [player])
@@ -215,6 +220,29 @@ export default function ChampionPage() {
           </div>
         </div>
 
+        {/* ── Toggle: Grupos (padrão) vs Palpite de campeão ──────── */}
+        <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
+          <button onClick={() => setView('grupos')}
+            className={`flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
+              view === 'grupos' ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-500'
+            }`}>
+            Grupos da Copa
+          </button>
+          <button onClick={() => setView('palpite')}
+            className={`flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
+              view === 'palpite' ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-500'
+            }`}>
+            Meu campeão
+          </button>
+        </div>
+
+        {view === 'grupos' && (
+          <CompetitionStatusCard matches={matches}/>
+        )}
+
+        {view === 'palpite' && (
+        <>
+
         {/* ── Prize pool ───────────────────────────────────── */}
         {prizePool > 0 && (
           <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
@@ -252,7 +280,6 @@ export default function ChampionPage() {
           </div>
         )}
 
-        {/* Edit limit indicator */}
         {/* Status banner — admin lock takes priority over deadline */}
         {adminLocked ? (
           <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
@@ -348,6 +375,10 @@ export default function ChampionPage() {
             Pular por agora
           </button>
         </div>
+
+        </>
+        )}
+
       </div>
     </Layout>
   )
