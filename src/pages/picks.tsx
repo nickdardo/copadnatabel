@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
-import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER } from '@/lib/supabase'
+import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER, effectivePts } from '@/lib/supabase'
 import GroupPicksCard from '@/components/GroupPicksCard'
 import Layout from '@/components/Layout'
 import TeamFormPopup from '@/components/TeamFormPopup'
 import { format, parseISO, subHours, isBefore } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-type PickMap  = Record<string, { home: string; away: string; saved: boolean; editCount: number }>
+type PickMap  = Record<string, { home: string; away: string; saved: boolean; editCount: number; isAuto?: boolean }>
 type GroupConsensus = Record<string, { home: number; away: number; count: number } | null>
 
 const ROUND_SIZE = 8
@@ -134,7 +134,7 @@ export default function PicksPage() {
     const pm: PickMap = {}
     ms.forEach(m => { pm[m.id] = { home: '', away: '', saved: false, editCount: 0 } });
     (pData || []).forEach((p: Pick) => {
-      pm[p.match_id] = { home: String(p.pick_home), away: String(p.pick_away), saved: true, editCount: p.edit_count || 0 }
+      pm[p.match_id] = { home: String(p.pick_home), away: String(p.pick_away), saved: true, editCount: p.edit_count || 0, isAuto: p.is_auto || false }
     })
     setPicks(pm)
     const phases = FASE_ORDER.filter(f => ms.some(m => m.fase === f))
@@ -517,7 +517,7 @@ export default function PicksPage() {
                           const lc = liveColors[liveF]
                           return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{background:lc.bg,color:lc.text}}>{lc.pts} agora</span>
                         })()}
-                        {m.status !== 'live' && factor && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${FACTOR_COLOR[factor]}`}>+{FACTOR_PTS[factor]}pts</span>}
+                        {m.status !== 'live' && factor && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${FACTOR_COLOR[factor]}`}>+{effectivePts(factor, pick.isAuto)}pts</span>}
                         {!locked && pick.saved && !factor && m.status !== 'live' && <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-semibold whitespace-nowrap"><IcoCheck/>Salvo</span>}
                       </div>
                     </div>
@@ -657,21 +657,29 @@ export default function PicksPage() {
                         const f = factor
                         const hasPick = pick.home !== ''
                         const colors = {
-                          f10: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Acertou tudo!',      pts:'+10 pts' },
-                          f7:  { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Vencedor + 1 gol',    pts:'+7 pts'  },
-                          f5:  { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Acertou o vencedor',  pts:'+5 pts'  },
-                          f2:  { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Acertou 1 gol',       pts:'+2 pts'  },
-                          f0:  { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Nenhum acerto',       pts:'0 pts'   },
+                          f10: { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Acertou tudo!'      },
+                          f7:  { bg:'#DCFCE7', border:'#86EFAC', text:'#15803D', icon:'#16A34A', label:'Vencedor + 1 gol'   },
+                          f5:  { bg:'#DBEAFE', border:'#93C5FD', text:'#1D4ED8', icon:'#2563EB', label:'Acertou o vencedor' },
+                          f2:  { bg:'#FEF9C3', border:'#FDE047', text:'#854D0E', icon:'#B45309', label:'Acertou 1 gol'      },
+                          f0:  { bg:'#FEE2E2', border:'#FCA5A5', text:'#DC2626', icon:'#DC2626', label:'Nenhum acerto'      },
                         }
                         const fKey = f ? f.toLowerCase() as keyof typeof colors : 'f0'
                         const c = hasPick && f ? colors[fKey] || colors.f0 : null
                         const iconChar = fKey === 'f10' || fKey === 'f7' ? '✓' : fKey === 'f5' ? '↗' : fKey === 'f2' ? '=' : '✕'
+                        const pts = f ? effectivePts(f, pick.isAuto) : 0
                         return (
                           <div className="mt-2 space-y-2">
+                            {/* Aviso de palpite automático — jogador esqueceu de palpitar */}
+                            {pick.isAuto && (
+                              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                                <span className="text-[10px] text-amber-700 font-medium">Você não palpitou — placar automático 0×0 aplicado (50% dos pontos)</span>
+                              </div>
+                            )}
                             {hasPick && c && (
                               <div className="flex items-center justify-between px-1">
                                 <div className="flex flex-col gap-1">
-                                  <span className="text-[9px] text-gray-400 font-medium">Meu palpite</span>
+                                  <span className="text-[9px] text-gray-400 font-medium">{pick.isAuto ? 'Palpite automático' : 'Meu palpite'}</span>
                                   <div className="flex items-center gap-1">
                                     <div className="w-6 h-6 rounded-md flex items-center justify-center text-[13px] font-bold border"
                                       style={{background:c.bg,borderColor:c.border,color:c.text}}>{pick.home}</div>
@@ -687,7 +695,7 @@ export default function PicksPage() {
                                     <span className="text-[11px] font-semibold" style={{color:c.text}}>{c.label}</span>
                                   </div>
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                    style={{background:c.bg,color:c.text}}>{c.pts}</span>
+                                    style={{background:c.bg,color:c.text}}>+{pts} pts{pick.isAuto ? ' (50%)' : ''}</span>
                                 </div>
                               </div>
                             )}

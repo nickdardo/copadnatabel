@@ -58,6 +58,8 @@ export default function AdminPage() {
   const [syncing,       setSyncing]       = useState(false)
   const [syncResult,    setSyncResult]    = useState<SyncResult | null>(null)
   const [recalcing,     setRecalcing]     = useState(false)
+  const [backfilling,   setBackfilling]   = useState(false)
+  const [backfillMsg,   setBackfillMsg]   = useState<string | null>(null)
   const [recalcMsg,     setRecalcMsg]     = useState('')
   const [editId,        setEditId]        = useState<string | null>(null)
   const [resH,          setResH]          = useState('')
@@ -551,6 +553,24 @@ export default function AdminPage() {
     setRecalcing(false)
   }
 
+  async function backfillAutoPicks() {
+    setBackfilling(true)
+    setBackfillMsg(null)
+    try {
+      const res = await fetch('/api/admin/backfill-auto-picks', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) {
+        setBackfillMsg(json.error || 'Falha ao aplicar picks automáticos.')
+      } else {
+        setBackfillMsg(`${json.totalApplied} palpite${json.totalApplied === 1 ? '' : 's'} automático${json.totalApplied === 1 ? '' : 's'} aplicado${json.totalApplied === 1 ? '' : 's'} em ${json.matchesChecked} jogo${json.matchesChecked === 1 ? '' : 's'} encerrado${json.matchesChecked === 1 ? '' : 's'}. Recalcule o ranking para os pontos refletirem.`)
+        fetchAll()
+      }
+    } catch {
+      setBackfillMsg('Erro de conexão.')
+    }
+    setBackfilling(false)
+  }
+
   async function calcBadges() {
     setCalcingBadges(true)
     const res = await fetch('/api/admin/badges', { method: 'POST' })
@@ -777,7 +797,24 @@ export default function AdminPage() {
       alert('Edite e salve o placar final antes de finalizar este jogo.')
       return
     }
-    await supabase.from('matches').update({ status: 'done' }).eq('id', match.id)
+    try {
+      const res = await fetch('/api/admin/finish-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match_id: match.id }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        alert(json.error || 'Falha ao finalizar o jogo.')
+        return
+      }
+      if (json.autoApplied > 0) {
+        alert(`Jogo finalizado! ${json.autoApplied} jogador${json.autoApplied === 1 ? '' : 'es'} que não palpitou recebeu palpite automático 0×0 (com 50% dos pontos). Lembre de recalcular o ranking.`)
+      }
+    } catch {
+      alert('Erro de conexão ao finalizar o jogo.')
+      return
+    }
     fetchAll()
   }
 
@@ -1694,6 +1731,21 @@ export default function AdminPage() {
                       Recalcula pontos de todos. Use <strong>após confirmar resultados</strong> manualmente ou depois de sincronizar.
                     </p>
                     {recalcMsg && <p className={`text-[10px] mt-1.5 font-medium ${recalcMsg.startsWith('Erro') ? 'text-red-500' : 'text-green-600'}`}>{recalcMsg}</p>}
+                  </div>
+
+                  {/* Backfill picks automáticos */}
+                  <div className="bg-white border border-amber-200 rounded-xl p-4">
+                    <button onClick={backfillAutoPicks} disabled={backfilling}
+                      className="w-full flex items-center justify-center gap-2 bg-amber-600 text-white rounded-lg py-2.5 text-[13px] font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors mb-3">
+                      {backfilling ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}
+                      Aplicar palpites automáticos pendentes
+                    </button>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      Cria o palpite 0×0 (50% dos pontos) para quem esqueceu de palpitar em jogos <strong>já encerrados</strong>. Use uma vez para aplicar retroativamente; daqui pra frente isso já acontece automaticamente quando cada jogo encerra.
+                    </p>
+                    {backfillMsg && (
+                      <p className="text-[11px] font-medium text-amber-700 mt-2">{backfillMsg}</p>
+                    )}
                   </div>
 
                   {/* Badges */}

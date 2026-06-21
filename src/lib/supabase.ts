@@ -53,6 +53,7 @@ export type Match = {
 export type Pick = {
   id: string; player_id: string; match_id: string
   pick_home: number; pick_away: number; submitted_at: string; edit_count: number
+  is_auto?: boolean
 }
 export type ChampionPick = {
   id: string; player_id: string
@@ -77,6 +78,13 @@ export function calcFactor(pH:number,pA:number,rH:number,rA:number):'F10'|'F7'|'
   return 'F0'
 }
 export const FACTOR_PTS: Record<string,number> = {F10:10,F7:7,F5:5,F2:2,F0:0}
+
+/** Pontos de fato ganhos por um palpite — 50% (arredondado para baixo) se for
+ *  automático (jogador esqueceu de palpitar), valor cheio caso contrário. */
+export function effectivePts(factor: string, isAuto?: boolean): number {
+  const raw = FACTOR_PTS[factor] ?? 0
+  return isAuto ? Math.floor(raw * 0.5) : raw
+}
 export const FACTOR_LABEL: Record<string,string> = {
   F10: 'Acertou tudo!',
   F7:  'Vencedor + 1 gol',

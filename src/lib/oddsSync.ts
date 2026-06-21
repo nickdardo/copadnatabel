@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getFlag } from '@/lib/flags'
+import { applyAutoPicksForMatch } from '@/lib/autoPicks'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 const SPORT_KEY = 'soccer_fifa_world_cup'
@@ -155,7 +156,13 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
           const { error } = await supabaseAdmin.from('matches').update(matchData).eq('odds_event_id', ev.id)
           if (!error) {
             updated++
-            if (status === 'done' && existing.status !== 'done') hasNewResults = true
+            if (status === 'done' && existing.status !== 'done') {
+              hasNewResults = true
+              // Quem esqueceu de palpitar nesse jogo recebe automaticamente
+              // um palpite de 0×0 (com 50% dos pontos que isso renderia) —
+              // ver lib/autoPicks.ts e a regra em v1.16_palpite_automatico.sql
+              await applyAutoPicksForMatch(existing.id)
+            }
           }
         }
       }
