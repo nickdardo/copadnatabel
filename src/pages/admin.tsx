@@ -2122,7 +2122,7 @@ export default function AdminPage() {
                 </div>
 
                 {activePhase === 'Fase de Grupos' && (
-                  <GroupLabelEditor matches={matches}/>
+                  <GroupLabelEditor/>
                 )}
 
                 {/* Match list */}

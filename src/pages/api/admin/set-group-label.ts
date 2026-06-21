@@ -42,13 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const caller = await getSessionAdmin(req)
   if (!caller) return res.status(401).json({ error: 'Apenas administradores podem usar esta ferramenta.' })
 
-  const { teams, group_label } = req.body
-  if (!Array.isArray(teams) || teams.length === 0 || !group_label) {
+  const { team_name, group_label } = req.body
+  if (!team_name || !group_label) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes.' })
   }
 
-  const rows = teams.map((team: string) => ({ team_name: team, group_label }))
-  const { error } = await admin.from('team_group_overrides').upsert(rows, { onConflict: 'team_name' })
+  const { error } = await admin.from('team_group_overrides').upsert(
+    { team_name, group_label },
+    { onConflict: 'team_name' }
+  )
   if (error) return res.status(500).json({ error: error.message })
 
   return res.json({ ok: true })

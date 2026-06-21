@@ -36,6 +36,9 @@ const EN_TO_PT: Record<string, string> = {
   'Indonesia':'Indonésia','Qatar':'Qatar','South Africa':'África do Sul',
   'Trinidad and Tobago':'Trinidad e Tobago','El Salvador':'El Salvador',
   'Cuba':'Cuba','Guatemala':'Guatemala','Haiti':'Haiti',
+  'Bosnia and Herzegovina':'Bósnia e Herzegovina','Bosnia & Herzegovina':'Bósnia e Herzegovina',
+  'Curacao':'Curaçau','Curaçao':'Curaçau','Jordan':'Jordânia',
+  'Cape Verde':'Cabo Verde','Cabo Verde':'Cabo Verde','Uzbekistan':'Uzbequistão',
 }
 
 function translateTeam(enName: string): string {

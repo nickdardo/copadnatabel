@@ -19,59 +19,102 @@ export type TeamStanding = {
   points: number
 }
 
+// Distribuição OFICIAL dos 12 grupos da Copa do Mundo 2026 (fonte: fifa.com).
+// Usada como base — sempre pode ser corrigida pontualmente pelo admin via
+// a tabela `team_group_overrides` (ex: se algum time desistir e for trocado).
+export const OFFICIAL_GROUPS_2026: Record<string, string> = {
+  'México': 'A', 'Coreia do Sul': 'A', 'Tchéquia': 'A', 'África do Sul': 'A',
+  'Canadá': 'B', 'Suíça': 'B', 'Bósnia e Herzegovina': 'B', 'Qatar': 'B',
+  'Brasil': 'C', 'Marrocos': 'C', 'Escócia': 'C', 'Haiti': 'C',
+  'Estados Unidos': 'D', 'Austrália': 'D', 'Paraguai': 'D', 'Turquia': 'D',
+  'Alemanha': 'E', 'Costa do Marfim': 'E', 'Equador': 'E', 'Curaçau': 'E',
+  'Países Baixos': 'F', 'Japão': 'F', 'Suécia': 'F', 'Tunísia': 'F',
+  'Nova Zelândia': 'G', 'Irã': 'G', 'Bélgica': 'G', 'Egito': 'G',
+  'Uruguai': 'H', 'Arábia Saudita': 'H', 'Espanha': 'H', 'Cabo Verde': 'H',
+  'Noruega': 'I', 'França': 'I', 'Senegal': 'I', 'Iraque': 'I',
+  'Argentina': 'J', 'Áustria': 'J', 'Jordânia': 'J', 'Argélia': 'J',
+  'Colômbia': 'K', 'RD Congo': 'K', 'Portugal': 'K', 'Uzbequistão': 'K',
+  'Inglaterra': 'L', 'Gana': 'L', 'Panamá': 'L', 'Croácia': 'L',
+}
+
+// Mesma lista, mas organizada por grupo — útil para a tela de edição do
+// admin mostrar todos os 48 times mesmo antes de qualquer jogo existir.
+export const ALL_TEAMS_BY_GROUP_2026: Record<string, string[]> = (() => {
+  const byGroup: Record<string, string[]> = {}
+  Object.entries(OFFICIAL_GROUPS_2026).forEach(([team, label]) => {
+    if (!byGroup[label]) byGroup[label] = []
+    byGroup[label].push(team)
+  })
+  Object.values(byGroup).forEach(list => list.sort())
+  return byGroup
+})()
+
 /**
- * Detecta automaticamente os grupos da fase de grupos a partir dos próprios
- * confrontos já cadastrados — sem precisar de nenhum cadastro manual nem
- * fonte externa. Cada grupo de 4 seleções joga exatamente entre si (todos
- * contra todos), então basta encontrar os "clusters" de times conectados
- * pelos confrontos da fase de grupos (componentes conectados de um grafo).
- *
- * A LETRA atribuída a cada cluster (A, B, C...) é só um palpite estável
- * (ordem alfabética) até o admin corrigir manualmente via `overrides` —
- * isso é necessário porque não há garantia de que a ordem alfabética bata
- * com a letra oficial da FIFA para aquele grupo específico.
+ * Detecta os grupos da fase de grupos. Usa, em ordem de prioridade:
+ * 1) Correção manual do admin (`overrides`, salva no banco) — sempre vence.
+ * 2) Distribuição oficial hardcoded (`OFFICIAL_GROUPS_2026`).
+ * 3) Como último recurso, agrupamento automático por "quem jogou com quem"
+ *    nos confrontos já cadastrados — só entra em ação para times que não
+ *    estejam nem nos overrides nem na lista oficial (ex: nome digitado de
+ *    forma diferente do esperado).
  */
 export function detectGroups(allMatches: Match[], overrides: Record<string, string> = {}): GroupInfo[] {
   const groupMatches = allMatches.filter(m => m.fase === 'Fase de Grupos')
 
-  const adj: Record<string, Set<string>> = {}
-  function addEdge(a: string, b: string) {
-    if (!adj[a]) adj[a] = new Set()
-    if (!adj[b]) adj[b] = new Set()
-    adj[a].add(b)
-    adj[b].add(a)
-  }
-  groupMatches.forEach(m => addEdge(m.home_team, m.away_team))
+  const allTeams = new Set<string>()
+  groupMatches.forEach(m => { allTeams.add(m.home_team); allTeams.add(m.away_team) })
 
-  const visited = new Set<string>()
-  const clusters: string[][] = []
-  Object.keys(adj).forEach(team => {
-    if (visited.has(team)) return
-    const cluster: string[] = []
-    const queue = [team]
-    visited.add(team)
-    while (queue.length) {
-      const t = queue.shift()!
-      cluster.push(t)
-      adj[t].forEach(n => { if (!visited.has(n)) { visited.add(n); queue.push(n) } })
-    }
-    clusters.push(cluster)
+  const labelOf: Record<string, string> = {}
+  const unresolved: string[] = []
+  allTeams.forEach(team => {
+    const label = overrides[team] || OFFICIAL_GROUPS_2026[team]
+    if (label) labelOf[team] = label
+    else unresolved.push(team)
   })
 
-  // Ordem estável (fallback): pelo nome do time alfabeticamente menor de cada grupo
-  clusters.sort((a, b) => [...a].sort()[0].localeCompare([...b].sort()[0]))
-
-  const fallbackLabels = 'ABCDEFGHIJKL'
-  return clusters.map((teams, i) => {
-    const sortedTeams = [...teams].sort()
-    // Se qualquer time do cluster tiver uma letra corrigida pelo admin, usa ela
-    const overrideLabel = sortedTeams.map(t => overrides[t]).find(Boolean)
-    return {
-      label: overrideLabel || fallbackLabels[i] || String(i + 1),
-      teams: sortedTeams,
-      matches: groupMatches.filter(m => teams.includes(m.home_team) && teams.includes(m.away_team)),
+  // Fallback por componente conectado, só para times não resolvidos acima
+  if (unresolved.length > 0) {
+    const adj: Record<string, Set<string>> = {}
+    function addEdge(a: string, b: string) {
+      if (!adj[a]) adj[a] = new Set()
+      if (!adj[b]) adj[b] = new Set()
+      adj[a].add(b); adj[b].add(a)
     }
-  }).sort((a, b) => a.label.localeCompare(b.label))
+    groupMatches.forEach(m => {
+      if (unresolved.includes(m.home_team) || unresolved.includes(m.away_team)) {
+        addEdge(m.home_team, m.away_team)
+      }
+    })
+    const visited = new Set<string>()
+    let extraIndex = 0
+    unresolved.forEach(team => {
+      if (visited.has(team) || labelOf[team]) return
+      const cluster: string[] = []
+      const queue = [team]
+      visited.add(team)
+      while (queue.length) {
+        const t = queue.shift()!
+        cluster.push(t)
+        ;(adj[t] || new Set()).forEach(n => { if (!visited.has(n)) { visited.add(n); queue.push(n) } })
+      }
+      const label = `?${++extraIndex}` // marca visualmente como não confirmado
+      cluster.forEach(t => { labelOf[t] = label })
+    })
+  }
+
+  const byLabel: Record<string, string[]> = {}
+  Object.entries(labelOf).forEach(([team, label]) => {
+    if (!byLabel[label]) byLabel[label] = []
+    byLabel[label].push(team)
+  })
+
+  return Object.entries(byLabel)
+    .map(([label, teams]) => ({
+      label,
+      teams: teams.sort(),
+      matches: groupMatches.filter(m => teams.includes(m.home_team) && teams.includes(m.away_team)),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
 }
 
 /** Calcula a classificação (J/V/E/D/SG/Pts) de um grupo, com os critérios
