@@ -23,7 +23,7 @@ const ISO: Record<string, string> = {
   'Costa Rica':'cr','El Salvador':'sv','Tunísia':'tn','Argélia':'dz',
   'Egito':'eg','Finlândia':'fi','Islândia':'is','Kosovo':'xk',
   'Luxemburgo':'lu','Uzbequistão':'uz','Uzbekistan':'uz',
-  'Curaçao':'cw','Cape Verde':'cv','Jordan':'jo',
+  'Curaçao':'cw','Cape Verde':'cv','Cabo Verde':'cv','Jordan':'jo','Jordânia':'jo',
   'Costa do Marfim':'ci','País de Gales':'gb-wls',
   'Mexico':'mx','Ecuador':'ec','Canada':'ca','South Africa':'za',
   'Korea Republic':'kr','South Korea':'kr','Czech Republic':'cz',
@@ -41,7 +41,7 @@ const ISO: Record<string, string> = {
   'New Zealand':'nz','Panama':'pa','Tunisia':'tn','Algeria':'dz',
   'Egypt':'eg','Finland':'fi','Iceland':'is','Paraguay':'py',
   'Ivory Coast':'ci','Trinidad and Tobago':'tt','Indonesia':'id',
-  'Curacao':'cw','Albania':'al',
+  'Curacao':'cw','Curaçau':'cw','Albania':'al',
 }
 
 function getIso(team: string): string | null {

@@ -519,6 +519,12 @@ export default function PicksPage() {
                         })()}
                         {m.status !== 'live' && factor && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${FACTOR_COLOR[factor]}`}>+{effectivePts(factor, pick.isAuto)}pts</span>}
                         {!locked && pick.saved && !factor && m.status !== 'live' && <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-semibold whitespace-nowrap"><IcoCheck/>Salvo</span>}
+                        {!locked && !pick.saved && pick.home !== '' && pick.away !== '' && m.status !== 'live' && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-red-600 font-bold whitespace-nowrap bg-red-50 px-1.5 py-0.5 rounded">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                            Não salvo
+                          </span>
+                        )}
                       </div>
                     </div>
 
