@@ -89,6 +89,7 @@ export default function AdminPage() {
   const [autoSyncing,   setAutoSyncing]   = useState(false)
   const [quotaRemaining,setQuotaRemaining]= useState<number|null>(null)
   const [dbLastSync,    setDbLastSync]    = useState<{ at: string | null; ok: boolean | null }>({ at: null, ok: null })
+  const [syncCheckLoaded, setSyncCheckLoaded] = useState(false)
   const [lastSyncTime,  setLastSyncTime]  = useState<string>('')
   const [pixCpf,        setPixCpf]        = useState('')
   const [pixKeyType,    setPixKeyType]    = useState<PixKeyType>('cpf')
@@ -203,6 +204,7 @@ export default function AdminPage() {
   const checkDbSync = useCallback(async () => {
     const { data } = await supabase.from('pix_config').select('last_sync_at, last_sync_ok').limit(1)
     if (data?.[0]) setDbLastSync({ at: data[0].last_sync_at, ok: data[0].last_sync_ok })
+    setSyncCheckLoaded(true)
   }, [])
 
   useEffect(() => {
@@ -857,7 +859,11 @@ export default function AdminPage() {
   // banco já passou de 20 minutos — sinal de que o sync parou de rodar
   // (navegador fechado, PC desligado, queda de energia, etc).
   const minutesSinceSync = dbLastSync.at ? Math.floor((Date.now() - new Date(dbLastSync.at).getTime()) / 60_000) : null
-  const syncStalled = liveMatches.length > 0 && (minutesSinceSync == null || minutesSinceSync > 20)
+  // syncCheckLoaded evita um falso positivo: enquanto a busca ao banco ainda
+  // não respondeu (logo após montar a página), minutesSinceSync é null por
+  // não sabermos ainda — sem essa flag, o banner "pisca" por uma fração de
+  // segundo a cada troca de aba, até a resposta real chegar.
+  const syncStalled = syncCheckLoaded && liveMatches.length > 0 && (minutesSinceSync == null || minutesSinceSync > 20)
   const doneCount       = matches.filter(m => m.status === 'done').length
   const upcomingCount   = matches.filter(m => m.status === 'upcoming').length
 
