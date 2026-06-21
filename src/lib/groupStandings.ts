@@ -25,8 +25,13 @@ export type TeamStanding = {
  * fonte externa. Cada grupo de 4 seleções joga exatamente entre si (todos
  * contra todos), então basta encontrar os "clusters" de times conectados
  * pelos confrontos da fase de grupos (componentes conectados de um grafo).
+ *
+ * A LETRA atribuída a cada cluster (A, B, C...) é só um palpite estável
+ * (ordem alfabética) até o admin corrigir manualmente via `overrides` —
+ * isso é necessário porque não há garantia de que a ordem alfabética bata
+ * com a letra oficial da FIFA para aquele grupo específico.
  */
-export function detectGroups(allMatches: Match[]): GroupInfo[] {
+export function detectGroups(allMatches: Match[], overrides: Record<string, string> = {}): GroupInfo[] {
   const groupMatches = allMatches.filter(m => m.fase === 'Fase de Grupos')
 
   const adj: Record<string, Set<string>> = {}
@@ -53,15 +58,20 @@ export function detectGroups(allMatches: Match[]): GroupInfo[] {
     clusters.push(cluster)
   })
 
-  // Ordem estável: pelo nome do time alfabeticamente menor de cada grupo
+  // Ordem estável (fallback): pelo nome do time alfabeticamente menor de cada grupo
   clusters.sort((a, b) => [...a].sort()[0].localeCompare([...b].sort()[0]))
 
-  const labels = 'ABCDEFGHIJKL'
-  return clusters.map((teams, i) => ({
-    label: labels[i] || String(i + 1),
-    teams: [...teams].sort(),
-    matches: groupMatches.filter(m => teams.includes(m.home_team) && teams.includes(m.away_team)),
-  }))
+  const fallbackLabels = 'ABCDEFGHIJKL'
+  return clusters.map((teams, i) => {
+    const sortedTeams = [...teams].sort()
+    // Se qualquer time do cluster tiver uma letra corrigida pelo admin, usa ela
+    const overrideLabel = sortedTeams.map(t => overrides[t]).find(Boolean)
+    return {
+      label: overrideLabel || fallbackLabels[i] || String(i + 1),
+      teams: sortedTeams,
+      matches: groupMatches.filter(m => teams.includes(m.home_team) && teams.includes(m.away_team)),
+    }
+  }).sort((a, b) => a.label.localeCompare(b.label))
 }
 
 /** Calcula a classificação (J/V/E/D/SG/Pts) de um grupo, com os critérios

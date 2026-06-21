@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 import FlagImg from '@/components/FlagImg'
 import type { Match } from '@/lib/supabase'
 import { detectGroups, calcGroupTable, detectActivePhase, KNOCKOUT_PHASES } from '@/lib/groupStandings'
@@ -12,7 +13,19 @@ function fmtShortDate(iso?: string) {
 
 // ── Tabela de grupos (fase de grupos) ──
 function GroupsTable({ matches }: { matches: Match[] }) {
-  const groups = useMemo(() => detectGroups(matches), [matches])
+  const [overrides, setOverrides] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    supabase.from('team_group_overrides').select('team_name, group_label').then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((r: { team_name: string; group_label: string }) => { map[r.team_name] = r.group_label })
+        setOverrides(map)
+      }
+    })
+  }, [])
+
+  const groups = useMemo(() => detectGroups(matches, overrides), [matches, overrides])
   const [active, setActive] = useState(0)
 
   if (groups.length === 0) {

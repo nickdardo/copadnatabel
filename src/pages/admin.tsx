@@ -5,6 +5,7 @@ import { supabase, Match, Player, FASE_ORDER, getPresence, formatOnlineTime } fr
 import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 import FlagImg from '@/components/FlagImg'
+import GroupLabelEditor from '@/components/GroupLabelEditor'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
@@ -2119,6 +2120,10 @@ export default function AdminPage() {
                     </button>
                   ))}
                 </div>
+
+                {activePhase === 'Fase de Grupos' && (
+                  <GroupLabelEditor matches={matches}/>
+                )}
 
                 {/* Match list */}
                 <div className="space-y-4">
