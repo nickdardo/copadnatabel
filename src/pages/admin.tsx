@@ -2473,6 +2473,9 @@ Você vai ver um aviso na aba Encerrados sempre que isso acontecer, deixando cla
 
 Continua valendo muito mais a pena palpitar de verdade — quem acerta o placar exato continua levando os 10 pontos cheios. Isso é só uma rede de segurança para quem esquece, não um substituto para quem participa de verdade.
 
+🏆 Classificação dos grupos e chaveamento mata-mata
+Na tela Campeão, novo botão "Grupos da Copa" (que já abre primeiro) mostra a tabela de cada grupo — com bandeira, jogos, vitórias, saldo de gols e pontos. Os 2 primeiros de cada grupo aparecem destacados. Quando a fase de grupos terminar, esse mesmo espaço já vira o chaveamento das oitavas, quartas, semifinal e final automaticamente, conforme os jogos forem sendo cadastrados — sem precisar de mais nenhuma atualização. O botão "Meu campeão" leva pra tela de sempre, com a escolha de campeão, vice e 3º lugar.
+
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                 </div>
@@ -2484,7 +2487,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
-                      { v: 'v1.16', desc: 'Palpite automático 0×0 (com 50% dos pontos) para quem esquece de palpitar — não fica mais zerado por esquecimento.' },
+                      { v: 'v1.16', desc: 'Palpite automático 0×0 (50% dos pontos) para quem esquece de palpitar. Classificação dos grupos e chaveamento mata-mata na tela Campeão.' },
                       { v: 'v1.15', desc: 'Palpites ilimitados. Popup de estatísticas em todas as bandeiras. Pódio na lista de apostadores. Filtro de online no ranking. Aba Assistir com player CazéTV, chat ao vivo e rank dos participantes.' },
                       { v: 'v1.13', desc: 'KPIs admin, novas notificações push, Meu Desempenho, Destaques do Feed, Estatísticas do bolão, online no ranking.' },
                       { v: 'v1.12', desc: 'Jornada Em Breve → Ao Vivo → Encerrados nos palpites. Botão 3D de colocação no ranking com scroll automático.' },
