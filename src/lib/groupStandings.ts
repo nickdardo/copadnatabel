@@ -22,32 +22,82 @@ export type TeamStanding = {
 // Distribuição OFICIAL dos 12 grupos da Copa do Mundo 2026 (fonte: fifa.com).
 // Usada como base — sempre pode ser corrigida pontualmente pelo admin via
 // a tabela `team_group_overrides` (ex: se algum time desistir e for trocado).
+// Inclui também o nome em inglês de cada seleção como chave alternativa —
+// rede de segurança para jogos que tenham sido sincronizados antes de uma
+// tradução existir no sistema (o nome fica em inglês no banco até o time
+// jogar de novo e o sync atualizar).
 export const OFFICIAL_GROUPS_2026: Record<string, string> = {
-  'México': 'A', 'Coreia do Sul': 'A', 'Tchéquia': 'A', 'África do Sul': 'A',
-  'Canadá': 'B', 'Suíça': 'B', 'Bósnia e Herzegovina': 'B', 'Qatar': 'B',
-  'Brasil': 'C', 'Marrocos': 'C', 'Escócia': 'C', 'Haiti': 'C',
-  'Estados Unidos': 'D', 'Austrália': 'D', 'Paraguai': 'D', 'Turquia': 'D',
-  'Alemanha': 'E', 'Costa do Marfim': 'E', 'Equador': 'E', 'Curaçau': 'E',
-  'Países Baixos': 'F', 'Japão': 'F', 'Suécia': 'F', 'Tunísia': 'F',
-  'Nova Zelândia': 'G', 'Irã': 'G', 'Bélgica': 'G', 'Egito': 'G',
-  'Uruguai': 'H', 'Arábia Saudita': 'H', 'Espanha': 'H', 'Cabo Verde': 'H',
-  'Noruega': 'I', 'França': 'I', 'Senegal': 'I', 'Iraque': 'I',
-  'Argentina': 'J', 'Áustria': 'J', 'Jordânia': 'J', 'Argélia': 'J',
-  'Colômbia': 'K', 'RD Congo': 'K', 'Portugal': 'K', 'Uzbequistão': 'K',
-  'Inglaterra': 'L', 'Gana': 'L', 'Panamá': 'L', 'Croácia': 'L',
+  'México': 'A', 'Mexico': 'A',
+  'Coreia do Sul': 'A', 'South Korea': 'A', 'Korea Republic': 'A',
+  'Tchéquia': 'A', 'Czech Republic': 'A', 'Czechia': 'A',
+  'África do Sul': 'A', 'South Africa': 'A',
+  'Canadá': 'B', 'Canada': 'B',
+  'Suíça': 'B', 'Switzerland': 'B',
+  'Bósnia e Herzegovina': 'B', 'Bosnia and Herzegovina': 'B', 'Bosnia & Herzegovina': 'B',
+  'Qatar': 'B',
+  'Brasil': 'C', 'Brazil': 'C',
+  'Marrocos': 'C', 'Morocco': 'C',
+  'Escócia': 'C', 'Scotland': 'C',
+  'Haiti': 'C',
+  'Estados Unidos': 'D', 'United States': 'D', 'USA': 'D',
+  'Austrália': 'D', 'Australia': 'D',
+  'Paraguai': 'D', 'Paraguay': 'D',
+  'Turquia': 'D', 'Turkey': 'D', 'Turkiye': 'D',
+  'Alemanha': 'E', 'Germany': 'E',
+  'Costa do Marfim': 'E', "Ivory Coast": 'E', "Cote d'Ivoire": 'E',
+  'Equador': 'E', 'Ecuador': 'E',
+  'Curaçau': 'E', 'Curacao': 'E', 'Curaçao': 'E',
+  'Países Baixos': 'F', 'Netherlands': 'F', 'Holanda': 'F',
+  'Japão': 'F', 'Japan': 'F',
+  'Suécia': 'F', 'Sweden': 'F',
+  'Tunísia': 'F', 'Tunisia': 'F',
+  'Nova Zelândia': 'G', 'New Zealand': 'G',
+  'Irã': 'G', 'Iran': 'G',
+  'Bélgica': 'G', 'Belgium': 'G',
+  'Egito': 'G', 'Egypt': 'G',
+  'Uruguai': 'H', 'Uruguay': 'H',
+  'Arábia Saudita': 'H', 'Saudi Arabia': 'H',
+  'Espanha': 'H', 'Spain': 'H',
+  'Cabo Verde': 'H', 'Cape Verde': 'H',
+  'Noruega': 'I', 'Norway': 'I',
+  'França': 'I', 'France': 'I',
+  'Senegal': 'I',
+  'Iraque': 'I', 'Iraq': 'I',
+  'Argentina': 'J',
+  'Áustria': 'J', 'Austria': 'J',
+  'Jordânia': 'J', 'Jordan': 'J',
+  'Argélia': 'J', 'Algeria': 'J',
+  'Colômbia': 'K', 'Colombia': 'K',
+  'RD Congo': 'K', 'DR Congo': 'K', 'Congo DR': 'K',
+  'Portugal': 'K',
+  'Uzbequistão': 'K', 'Uzbekistan': 'K',
+  'Inglaterra': 'L', 'England': 'L',
+  'Gana': 'L', 'Ghana': 'L',
+  'Panamá': 'L', 'Panama': 'L',
+  'Croácia': 'L', 'Croatia': 'L',
+}
+
+// Lista "oficial" só com os nomes em português, para exibição no editor do
+// admin (o mapa OFFICIAL_GROUPS_2026 acima tem entradas duplicadas em inglês
+// como fallback de resiliência, mas isso não deve aparecer na tela de edição).
+const PT_NAMES_BY_GROUP: Record<string, string[]> = {
+  A: ['México', 'Coreia do Sul', 'Tchéquia', 'África do Sul'],
+  B: ['Canadá', 'Suíça', 'Bósnia e Herzegovina', 'Qatar'],
+  C: ['Brasil', 'Marrocos', 'Escócia', 'Haiti'],
+  D: ['Estados Unidos', 'Austrália', 'Paraguai', 'Turquia'],
+  E: ['Alemanha', 'Costa do Marfim', 'Equador', 'Curaçau'],
+  F: ['Países Baixos', 'Japão', 'Suécia', 'Tunísia'],
+  G: ['Nova Zelândia', 'Irã', 'Bélgica', 'Egito'],
+  H: ['Uruguai', 'Arábia Saudita', 'Espanha', 'Cabo Verde'],
+  I: ['Noruega', 'França', 'Senegal', 'Iraque'],
+  J: ['Argentina', 'Áustria', 'Jordânia', 'Argélia'],
+  K: ['Colômbia', 'RD Congo', 'Portugal', 'Uzbequistão'],
+  L: ['Inglaterra', 'Gana', 'Panamá', 'Croácia'],
 }
 
 // Mesma lista, mas organizada por grupo — útil para a tela de edição do
 // admin mostrar todos os 48 times mesmo antes de qualquer jogo existir.
-export const ALL_TEAMS_BY_GROUP_2026: Record<string, string[]> = (() => {
-  const byGroup: Record<string, string[]> = {}
-  Object.entries(OFFICIAL_GROUPS_2026).forEach(([team, label]) => {
-    if (!byGroup[label]) byGroup[label] = []
-    byGroup[label].push(team)
-  })
-  Object.values(byGroup).forEach(list => list.sort())
-  return byGroup
-})()
+export const ALL_TEAMS_BY_GROUP_2026: Record<string, string[]> = PT_NAMES_BY_GROUP
 
 /**
  * Detecta os grupos da fase de grupos. Usa, em ordem de prioridade:
@@ -114,7 +164,14 @@ export function detectGroups(allMatches: Match[], overrides: Record<string, stri
       teams: teams.sort(),
       matches: groupMatches.filter(m => teams.includes(m.home_team) && teams.includes(m.away_team)),
     }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+    .sort((a, b) => {
+      // Grupos A-L sempre vêm primeiro, em ordem alfabética; qualquer
+      // fallback não resolvido (label começando com "?") fica por último.
+      const aUnresolved = a.label.startsWith('?')
+      const bUnresolved = b.label.startsWith('?')
+      if (aUnresolved !== bUnresolved) return aUnresolved ? 1 : -1
+      return a.label.localeCompare(b.label)
+    })
 }
 
 /** Calcula a classificação (J/V/E/D/SG/Pts) de um grupo, com os critérios

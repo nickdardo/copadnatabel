@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import FlagImg from '@/components/FlagImg'
-import { OFFICIAL_GROUPS_2026 } from '@/lib/groupStandings'
+import { ALL_TEAMS_BY_GROUP_2026 } from '@/lib/groupStandings'
 
 const GROUP_LETTERS = 'ABCDEFGHIJKL'.split('')
 
@@ -21,16 +21,14 @@ export default function GroupLabelEditor() {
 
   useEffect(() => { loadOverrides() }, [])
 
-  // Letra efetiva de cada time: override do admin (se houver) > lista oficial
-  const effectiveLabel: Record<string, string> = {}
-  Object.keys(OFFICIAL_GROUPS_2026).forEach(team => {
-    effectiveLabel[team] = overrides[team] || OFFICIAL_GROUPS_2026[team]
-  })
-
+  // Letra efetiva de cada time: override do admin (se houver) > grupo oficial
   const teamsByGroup: Record<string, string[]> = {}
-  Object.entries(effectiveLabel).forEach(([team, label]) => {
-    if (!teamsByGroup[label]) teamsByGroup[label] = []
-    teamsByGroup[label].push(team)
+  Object.entries(ALL_TEAMS_BY_GROUP_2026).forEach(([defaultLabel, teams]) => {
+    teams.forEach(team => {
+      const label = overrides[team] || defaultLabel
+      if (!teamsByGroup[label]) teamsByGroup[label] = []
+      teamsByGroup[label].push(team)
+    })
   })
   Object.values(teamsByGroup).forEach(list => list.sort())
 
