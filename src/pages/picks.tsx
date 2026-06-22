@@ -1,10 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Match, Pick, calcFactor, FACTOR_PTS, FACTOR_COLOR, FASE_ORDER, effectivePts } from '@/lib/supabase'
 import GroupPicksCard from '@/components/GroupPicksCard'
 import Layout from '@/components/Layout'
 import TeamFormPopup from '@/components/TeamFormPopup'
+import GroupStandingsModal from '@/components/GroupStandingsModal'
+import { detectGroups, calcGroupTable } from '@/lib/groupStandings'
 import { format, parseISO, subHours, isBefore } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -19,6 +21,15 @@ const IcoBall   = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="no
 const IcoLock   = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
 const IcoArrowL = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
 const IcoArrowR = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+
+// Cor do badge de colocação no grupo — mesma linguagem semântica de cor já
+// usada pros pontos do palpite (verde/azul/âmbar), pra ficar consistente.
+function posBadgeColor(position: number): string {
+  if (position === 1) return '#3B6D11'
+  if (position === 2) return '#185FA5'
+  if (position === 3) return '#854F0B'
+  return '#5F5E5A'
+}
 
 // Countdown hook — returns formatted string "Xh Ym" or "Fechado"
 function useCountdown(lockAt: Date | null) {
@@ -95,6 +106,32 @@ export default function PicksPage() {
   const setTabManual = (t: typeof tab) => { tabManuallySet.current = true; setTab(t) }
   const [round,       setRound]       = useState(0)
   const [consensus,   setConsensus]   = useState<GroupConsensus>({})
+  const [groupOverrides, setGroupOverrides] = useState<Record<string, string>>({})
+  const [groupModalLabel, setGroupModalLabel] = useState<string | null>(null)
+
+  // Correções manuais de grupo feitas pelo admin (GroupLabelEditor) — mesma
+  // fonte usada no card Campeão, pra manter a colocação exibida aqui idêntica.
+  useEffect(() => {
+    supabase.from('team_group_overrides').select('team_name, group_label').then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((r: { team_name: string; group_label: string }) => { map[r.team_name] = r.group_label })
+        setGroupOverrides(map)
+      }
+    })
+  }, [])
+
+  const groups = useMemo(() => detectGroups(matches, groupOverrides), [matches, groupOverrides])
+
+  // Mapa time → { label do grupo, colocação atual } — usado pro selo central
+  // e pro badge de posição ao lado de cada bandeira nos cards de jogo.
+  const teamGroupInfo = useMemo(() => {
+    const map: Record<string, { label: string; position: number }> = {}
+    groups.forEach(g => {
+      calcGroupTable(g).forEach((s, i) => { map[s.team] = { label: g.label, position: i + 1 } })
+    })
+    return map
+  }, [groups])
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
 
@@ -487,9 +524,16 @@ export default function PicksPage() {
                 const factor = m.status==='done' && m.score_home!==undefined && pick.home!==''
                   ? calcFactor(Number(pick.home), Number(pick.away), m.score_home!, m.score_away!) : null
                 const timeBRT = m.match_date ? fmtBRT(m.match_date, 'HH:mm') : ''
+                // Palpite preenchido na tela mas ainda não confirmado — mesma condição
+                // da tag "Não salvo" no header, usada aqui para destacar o card inteiro.
+                const isUnsavedPick = !locked && !pick.saved && pick.home !== '' && pick.away !== '' && m.status !== 'live'
+                // Grupo e colocação atual — só na fase de grupos (mata-mata não tem "Grupo X")
+                const homeInfo  = m.fase === 'Fase de Grupos' ? teamGroupInfo[m.home_team] : undefined
+                const awayInfo  = m.fase === 'Fase de Grupos' ? teamGroupInfo[m.away_team] : undefined
+                const groupLabel = homeInfo?.label || awayInfo?.label || null
 
                 return (
-                  <div key={m.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                  <div key={m.id} className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isUnsavedPick ? 'border-2 border-red-400 pulse-unsaved' : 'border border-gray-100'}`}>
                     {/* Card header */}
                     <div className={`px-3 py-1.5 flex items-center justify-between border-b ${m.status==='live'?'bg-red-50 border-red-100':m.status==='done'?'bg-gray-50 border-gray-100':(m.status==='upcoming'&&isLocked(m))?'bg-amber-50/70 border-amber-100':'bg-blue-50/40 border-blue-100/40'}`}>
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -530,11 +574,28 @@ export default function PicksPage() {
 
                     {/* Match body: flag | name | input × input | name | flag */}
                     <div className="px-2 py-3">
+                      {/* Selo de grupo — só na fase de grupos, abre modal com a classificação completa */}
+                      {groupLabel && (
+                        <div className="flex justify-center mb-2">
+                          <button onClick={() => setGroupModalLabel(groupLabel)}
+                            className="text-[10px] font-semibold text-[#0099CC] border border-[#0099CC]/30 bg-[#0099CC]/5 px-3 py-1 rounded-full hover:bg-[#0099CC]/10 active:scale-95 transition-all">
+                            Grupo {groupLabel} · ver classificação
+                          </button>
+                        </div>
+                      )}
                       {/* Teams row */}
                       <div className="flex items-center justify-between gap-1 mb-2">
                         {/* Home */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <TeamFormPopup team={m.home_team} size={44}/>
+                          <div className="relative inline-block">
+                            <TeamFormPopup team={m.home_team} size={44}/>
+                            {homeInfo && (
+                              <span className="absolute -bottom-0.5 -right-0.5 w-[15px] h-[15px] rounded-full text-white text-[8px] font-bold flex items-center justify-center border-2 border-white pointer-events-none"
+                                style={{ background: posBadgeColor(homeInfo.position) }}>
+                                {homeInfo.position}º
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.home_team.length > 8 ? m.home_team.slice(0,8)+'.' : m.home_team}
                           </span>
@@ -606,7 +667,15 @@ export default function PicksPage() {
 
                         {/* Away */}
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <TeamFormPopup team={m.away_team} size={44}/>
+                          <div className="relative inline-block">
+                            <TeamFormPopup team={m.away_team} size={44}/>
+                            {awayInfo && (
+                              <span className="absolute -bottom-0.5 -left-0.5 w-[15px] h-[15px] rounded-full text-white text-[8px] font-bold flex items-center justify-center border-2 border-white pointer-events-none"
+                                style={{ background: posBadgeColor(awayInfo.position) }}>
+                                {awayInfo.position}º
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] font-bold text-gray-700 text-center leading-tight uppercase w-full truncate px-1">
                             {m.away_team.length > 8 ? m.away_team.slice(0,8)+'.' : m.away_team}
                           </span>
@@ -813,6 +882,15 @@ export default function PicksPage() {
             )}
           </div>
         </div>
+      )}
+
+      {groupModalLabel && (
+        <GroupStandingsModal
+          matches={matches}
+          overrides={groupOverrides}
+          initialLabel={groupModalLabel}
+          onClose={() => setGroupModalLabel(null)}
+        />
       )}
     </Layout>
   )

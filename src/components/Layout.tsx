@@ -172,10 +172,6 @@ export default function Layout({ children, title }: Props) {
   const [loadingLog, setLoadingLog] = useState(false)
   const [notifyBannerHidden, setNotifyBannerHidden] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
-  const [hasUpdate,    setHasUpdate]    = useState(() =>
-    typeof window !== 'undefined' && sessionStorage.getItem('app_update_pending') === '1'
-  )
-  const [isUpdating,   setIsUpdating]   = useState(false)
   const [hasLive,      setHasLive]      = useState(false)
   const [watchAtivo,   setWatchAtivo]   = useState(false)
 
@@ -301,35 +297,6 @@ export default function Layout({ children, title }: Props) {
     })
   }, [])
 
-  // Version checker — polls every 3 minutes
-  const latestVersionRef = useRef<string>('')
-  useEffect(() => {
-    let cancelled = false
-    // Store current version on first load
-    const checkVersion = async () => {
-      try {
-        const res = await fetch('/api/version?t=' + Date.now())
-        if (!res.ok || cancelled) return
-        const { version } = await res.json()
-        if (cancelled) return // o Layout já desmontou (troca de aba) — ignora resposta tardia
-        latestVersionRef.current = version
-        const stored = sessionStorage.getItem('app_version')
-        if (!stored) {
-          // First check — just save, don't show banner
-          sessionStorage.setItem('app_version', version)
-          return
-        }
-        if (stored !== version) {
-          sessionStorage.setItem('app_update_pending', '1')
-          setHasUpdate(true)
-        }
-      } catch {}
-    }
-    checkVersion()
-    const interval = setInterval(checkVersion, 3 * 60 * 1000) // every 3 min
-    return () => { cancelled = true; clearInterval(interval) }
-  }, [])
-
   // PWA install detection
   useEffect(() => {
     // Check if already installed
@@ -453,54 +420,6 @@ export default function Layout({ children, title }: Props) {
       )}
 
       <div className="min-h-screen bg-gray-50 pb-[80px]">
-
-        {/* ── Update modal — popup central, fica até o usuário decidir ── */}
-        {hasUpdate && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,20,40,0.7)' }}>
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
-              <div className="w-14 h-14 rounded-full bg-[#0099CC]/10 flex items-center justify-center mx-auto mb-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                </svg>
-              </div>
-              <p className="text-[16px] font-bold text-gray-900 mb-1.5">Nova versão disponível!</p>
-              <p className="text-[13px] text-gray-500 mb-5 leading-relaxed">Atualize para continuar usando o bolão corretamente, com todas as últimas melhorias.</p>
-              <button
-                onClick={async () => {
-                  setHasUpdate(false)
-                  setIsUpdating(true)
-                  document.body.style.overflow = 'hidden'
-                  sessionStorage.removeItem('app_version')
-                  sessionStorage.removeItem('app_update_pending')
-                  try {
-                    if ('serviceWorker' in navigator) {
-                      const regs = await navigator.serviceWorker.getRegistrations()
-                      await Promise.all(regs.map(r => r.unregister()))
-                    }
-                    if ('caches' in window) {
-                      const keys = await caches.keys()
-                      await Promise.all(keys.map(k => caches.delete(k)))
-                    }
-                    await new Promise(r => setTimeout(r, 400))
-                  } catch {}
-                  window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now())
-                }}
-                className="w-full bg-[#0099CC] text-white font-bold text-[14px] py-3 rounded-xl hover:bg-[#007aa8] transition-colors mb-2">
-                Atualizar agora
-              </button>
-              <button
-                onClick={() => {
-                  if (latestVersionRef.current) sessionStorage.setItem('app_version', latestVersionRef.current)
-                  sessionStorage.removeItem('app_update_pending')
-                  setHasUpdate(false)
-                }}
-                className="w-full text-gray-400 text-[13px] py-2 hover:text-gray-500 transition-colors">
-                Mais tarde
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* ── Notification activation banner ──────────────── */}
         {player && !notifyEnabled && !notifyBannerHidden && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
@@ -770,19 +689,11 @@ export default function Layout({ children, title }: Props) {
         <main>{children}</main>
 
         {/* ── Bottom nav ──────────────────────────────────── */}
-        {/* Update loading overlay */}
-        {isUpdating && (
-          <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center gap-4"
-            style={{transform:'translateZ(0)'}}>
-            <span className="w-10 h-10 border-3 border-[#0099CC]/20 border-t-[#0099CC] rounded-full animate-spin" style={{borderWidth:3}}/>
-            <p className="text-[14px] font-semibold text-gray-700">Atualizando...</p>
-            <p className="text-[11px] text-gray-400">Aguarde um momento</p>
-          </div>
-        )}
-
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20"
+        {/* Mobile: pílula flutuante translúcida com desfoque (estilo WhatsApp).
+            A partir de sm (tablets/desktop) volta pra barra sólida tradicional. */}
+        <nav className="fixed z-20 left-4 right-4 bottom-[calc(env(safe-area-inset-bottom)_+_12px)] rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_2px_24px_rgba(0,0,0,0.10)]
+            sm:left-0 sm:right-0 sm:bottom-0 sm:rounded-none sm:bg-white sm:backdrop-blur-none sm:border-0 sm:border-t sm:border-gray-100 sm:shadow-none sm:pb-[max(env(safe-area-inset-bottom),8px)]"
           style={{
-            paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
             transform: 'translateZ(0)',
             WebkitTransform: 'translateZ(0)',
           }}>
