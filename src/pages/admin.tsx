@@ -2446,7 +2446,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.16</p>
+                  <p className="text-[42px] font-black leading-none">v1.17</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2470,22 +2470,19 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.16
+{`Bolão Copa 2026 BEL — Atualização v1.17
 
-⚽ Esqueceu de palpitar? Agora não fica mais zerado
-Se você esquecer de palpitar em algum jogo, o sistema aplica automaticamente um placar de 0×0 para você — e você ganha 50% dos pontos que esse placar teria rendido, comparado ao resultado real.
+🔄 Aviso de atualização mais confiável
+Corrigimos o aviso de "nova versão disponível", que em alguns celulares aparecia e fechava rápido demais ao trocar de aba, sem dar tempo de tocar em "Atualizar". Agora ele fica fixo na tela até você decidir.
 
-Exemplos:
-• Jogo terminou 0×0 → você ganha 5 pts (metade dos 10 de "acertou tudo")
-• Jogo terminou 1×0 → você ganha 1 pt (metade dos 2 de "acertou 1 gol")
-• Jogo terminou 1×1 → você ganha 2 pts (metade dos 5 de "acertou o vencedor")
+🚩 Não esqueça de confirmar seu palpite
+Preencheu o placar mas esqueceu de confirmar? Agora o card daquele jogo pulsa com uma borda vermelha até você tocar em "Confirmar palpites" lá embaixo — pra ninguém mais perder pontos por esquecimento.
 
-Você vai ver um aviso na aba Encerrados sempre que isso acontecer, deixando claro que foi um palpite automático e não um palpite que você escolheu.
+🏳️ Grupo e colocação direto no card do jogo
+Nos jogos da fase de grupos, um selo "Grupo X" aparece no card — toque nele e veja a classificação completa do grupo, na hora. Do lado de cada bandeira, uma bolinha colorida mostra a colocação atual da seleção (1º, 2º, 3º ou 4º).
 
-Continua valendo muito mais a pena palpitar de verdade — quem acerta o placar exato continua levando os 10 pontos cheios. Isso é só uma rede de segurança para quem esquece, não um substituto para quem participa de verdade.
-
-🏆 Classificação dos grupos e chaveamento mata-mata
-Na tela Campeão, novo botão "Grupos da Copa" (que já abre primeiro) mostra a tabela de cada grupo — com bandeira, jogos, vitórias, saldo de gols e pontos. Os 2 primeiros de cada grupo aparecem destacados. Quando a fase de grupos terminar, esse mesmo espaço já vira o chaveamento das oitavas, quartas, semifinal e final automaticamente, conforme os jogos forem sendo cadastrados — sem precisar de mais nenhuma atualização. O botão "Meu campeão" leva pra tela de sempre, com a escolha de campeão, vice e 3º lugar.
+📱 Menu de navegação mais moderno
+No celular, o menu inferior agora é flutuante e levemente transparente, deixando o app com uma cara mais atual.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2498,6 +2495,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.17', desc: 'Correção do popup de atualização (parava de piscar ao trocar de aba — lógica movida pro _app.tsx). Card pulsa em vermelho quando o palpite não foi confirmado. Selo de grupo + colocação nos cards de jogo, com modal de classificação. Menu inferior transparente no mobile.' },
                       { v: 'v1.16', desc: 'Palpite automático 0×0 (50% dos pontos) para quem esquece de palpitar. Classificação dos grupos e chaveamento mata-mata na tela Campeão.' },
                       { v: 'v1.15', desc: 'Palpites ilimitados. Popup de estatísticas em todas as bandeiras. Pódio na lista de apostadores. Filtro de online no ranking. Aba Assistir com player CazéTV, chat ao vivo e rank dos participantes.' },
                       { v: 'v1.13', desc: 'KPIs admin, novas notificações push, Meu Desempenho, Destaques do Feed, Estatísticas do bolão, online no ranking.' },
