@@ -304,12 +304,14 @@ export default function Layout({ children, title }: Props) {
   // Version checker — polls every 3 minutes
   const latestVersionRef = useRef<string>('')
   useEffect(() => {
+    let cancelled = false
     // Store current version on first load
     const checkVersion = async () => {
       try {
         const res = await fetch('/api/version?t=' + Date.now())
-        if (!res.ok) return
+        if (!res.ok || cancelled) return
         const { version } = await res.json()
+        if (cancelled) return // o Layout já desmontou (troca de aba) — ignora resposta tardia
         latestVersionRef.current = version
         const stored = sessionStorage.getItem('app_version')
         if (!stored) {
@@ -325,7 +327,7 @@ export default function Layout({ children, title }: Props) {
     }
     checkVersion()
     const interval = setInterval(checkVersion, 3 * 60 * 1000) // every 3 min
-    return () => clearInterval(interval)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [])
 
   // PWA install detection
@@ -452,53 +454,51 @@ export default function Layout({ children, title }: Props) {
 
       <div className="min-h-screen bg-gray-50 pb-[80px]">
 
-        {/* ── Update banner ──────────────────────────────── */}
+        {/* ── Update modal — popup central, fica até o usuário decidir ── */}
         {hasUpdate && (
-          <div className="bg-gradient-to-r from-[#0099CC] to-[#003a6e] text-white px-4 py-2.5 flex items-center gap-3 z-30 relative">
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-                <polyline points="23 4 23 10 17 10"/>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-              </svg>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,20,40,0.7)' }}>
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
+              <div className="w-14 h-14 rounded-full bg-[#0099CC]/10 flex items-center justify-center mx-auto mb-4">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+              </div>
+              <p className="text-[16px] font-bold text-gray-900 mb-1.5">Nova versão disponível!</p>
+              <p className="text-[13px] text-gray-500 mb-5 leading-relaxed">Atualize para continuar usando o bolão corretamente, com todas as últimas melhorias.</p>
+              <button
+                onClick={async () => {
+                  setHasUpdate(false)
+                  setIsUpdating(true)
+                  document.body.style.overflow = 'hidden'
+                  sessionStorage.removeItem('app_version')
+                  sessionStorage.removeItem('app_update_pending')
+                  try {
+                    if ('serviceWorker' in navigator) {
+                      const regs = await navigator.serviceWorker.getRegistrations()
+                      await Promise.all(regs.map(r => r.unregister()))
+                    }
+                    if ('caches' in window) {
+                      const keys = await caches.keys()
+                      await Promise.all(keys.map(k => caches.delete(k)))
+                    }
+                    await new Promise(r => setTimeout(r, 400))
+                  } catch {}
+                  window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now())
+                }}
+                className="w-full bg-[#0099CC] text-white font-bold text-[14px] py-3 rounded-xl hover:bg-[#007aa8] transition-colors mb-2">
+                Atualizar agora
+              </button>
+              <button
+                onClick={() => {
+                  if (latestVersionRef.current) sessionStorage.setItem('app_version', latestVersionRef.current)
+                  sessionStorage.removeItem('app_update_pending')
+                  setHasUpdate(false)
+                }}
+                className="w-full text-gray-400 text-[13px] py-2 hover:text-gray-500 transition-colors">
+                Mais tarde
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold leading-tight">Nova versão disponível!</p>
-              <p className="text-[10px] text-white/70 leading-tight">Atualize para continuar usando o bolão corretamente.</p>
-            </div>
-            <button
-              onClick={async () => {
-                setHasUpdate(false)
-                setIsUpdating(true)
-                document.body.style.overflow = 'hidden'
-                sessionStorage.removeItem('app_version')
-                sessionStorage.removeItem('app_update_pending')
-                try {
-                  if ('serviceWorker' in navigator) {
-                    const regs = await navigator.serviceWorker.getRegistrations()
-                    await Promise.all(regs.map(r => r.unregister()))
-                  }
-                  if ('caches' in window) {
-                    const keys = await caches.keys()
-                    await Promise.all(keys.map(k => caches.delete(k)))
-                  }
-                  await new Promise(r => setTimeout(r, 400))
-                } catch {}
-                window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now())
-              }}
-              className="flex-shrink-0 bg-white text-[#0099CC] text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors hover:bg-white/90 whitespace-nowrap">
-              Atualizar agora
-            </button>
-            <button
-              onClick={() => {
-                if (latestVersionRef.current) sessionStorage.setItem('app_version', latestVersionRef.current)
-                sessionStorage.removeItem('app_update_pending')
-                setHasUpdate(false)
-              }}
-              className="flex-shrink-0 text-white/50 hover:text-white/80 transition-colors p-1">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
           </div>
         )}
 
