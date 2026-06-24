@@ -34,7 +34,13 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
   const [hasUpdate,  setHasUpdate]  = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [notifyEnabled, setNotifyEnabled] = useState(true) // true até checarmos, pra não "flashar" o convite
+  const [debugLog, setDebugLog] = useState<string[]>([]) // TEMPORÁRIO — painel de diagnóstico, remover depois
   const latestVersionRef = useRef<string>('')
+
+  function logDebug(msg: string) {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+    setDebugLog(prev => [`${time}  ${msg}`, ...prev].slice(0, 10))
+  }
 
   // Estado da permissão de notificação — checado uma vez, atualizado quando
   // o jogador ativa pelo botão dentro do próprio popup.
@@ -46,25 +52,32 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
   const checkVersion = useRef(async () => {
     try {
       const res = await fetch('/api/version?t=' + Date.now())
-      if (!res.ok) return
+      if (!res.ok) { logDebug(`fetch falhou (status ${res.status})`); return }
       const { version } = await res.json()
       latestVersionRef.current = version
       const stored = sessionStorage.getItem('app_version')
       if (!stored) {
         // Primeira checagem desta sessão — só guarda, não mostra popup
         sessionStorage.setItem('app_version', version)
+        logDebug(`1ª checagem da sessão — salvando versão "${version}"`)
         return
       }
       if (stored !== version) {
         sessionStorage.setItem('app_update_pending', '1')
         setHasUpdate(true)
+        logDebug(`DIFERENTE → salvo="${stored}" novo="${version}" → ATIVANDO popup`)
+      } else {
+        logDebug(`igual → salvo="${stored}" novo="${version}" → sem popup`)
       }
-    } catch {}
+    } catch (e) {
+      logDebug(`ERRO na checagem: ${String(e)}`)
+    }
   })
 
   // Roda 1x ao abrir o app + a cada 3 minutos
   useEffect(() => {
     let cancelled = false
+    logDebug('AppContent montou (deveria acontecer só 1x por sessão)')
     const run = () => { if (!cancelled) checkVersion.current() }
     run()
     const interval = setInterval(run, 3 * 60 * 1000)
@@ -74,7 +87,7 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
   // Roda também a cada troca de aba — sem risco de "piscar", porque este
   // componente não desmonta entre navegações (diferente do Layout antigo).
   useEffect(() => {
-    const onRouteChange = () => { checkVersion.current() }
+    const onRouteChange = (url: string) => { logDebug(`routeChangeComplete → ${url}`); checkVersion.current() }
     router.events.on('routeChangeComplete', onRouteChange)
     return () => router.events.off('routeChangeComplete', onRouteChange)
   }, [router.events])
@@ -129,6 +142,18 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
 
       {/* Splash only on first open per session */}
       {showSplash && <SplashScreen onDone={onSplashDone}/>}
+
+      {/* ── PAINEL DE DIAGNÓSTICO TEMPORÁRIO — remover depois de achar o bug ── */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999,
+        background: 'rgba(0,0,0,0.92)', color: '#39ff6a', fontFamily: 'monospace',
+        fontSize: 10, padding: '6px 8px', maxHeight: '38vh', overflowY: 'auto',
+        borderBottom: '2px solid #39ff6a',
+      }}>
+        <div style={{ color:'#fff', fontWeight:'bold' }}>hasUpdate AGORA: {String(hasUpdate)} — rota: {router.pathname}</div>
+        {debugLog.length === 0 && <div>(aguardando primeira checagem...)</div>}
+        {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+      </div>
 
       {/* ── Painel de nova versão — central, fixo, não pisca mais ao navegar.
           Quando o jogador ainda não ativou notificações, aproveita o mesmo
