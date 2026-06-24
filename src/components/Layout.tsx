@@ -166,12 +166,23 @@ export default function Layout({ children, title }: Props) {
   const [isIos, setIsIos] = useState(false)
   const [groupLink, setGroupLink] = useState<string | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
-  const [notifyEnabled, setNotifyEnabled] = useState(false)
+  const [notifyEnabled, setNotifyEnabled] = useState(() => {
+    // Calcula o valor real já na primeira renderização — em vez de
+    // começar sempre "false" e corrigir depois num useEffect. Como o
+    // Layout remonta a cada troca de aba, começar "false" sempre fazia
+    // o banner de notificação pipocar por uma fração de segundo pra
+    // quem já tinha ativado, até o efeito corrigir o estado. Esse era
+    // o "banner piscando" — não o popup de atualização.
+    if (typeof window === 'undefined' || typeof Notification === 'undefined') return false
+    return Notification.permission === 'granted'
+  })
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [showNotifyLog, setShowNotifyLog] = useState(false)
   const [notifyLog, setNotifyLog] = useState<{title:string;body:string;time:number}[]>([])
   const [loadingLog, setLoadingLog] = useState(false)
-  const [notifyBannerHidden, setNotifyBannerHidden] = useState(false)
+  const [notifyBannerHidden, setNotifyBannerHidden] = useState(() =>
+    typeof window !== 'undefined' && sessionStorage.getItem('notify_banner_hidden') === '1'
+  )
   const bellRef = useRef<HTMLButtonElement>(null)
   const [hasLive,      setHasLive]      = useState(false)
   const [watchAtivo,   setWatchAtivo]   = useState(false)
