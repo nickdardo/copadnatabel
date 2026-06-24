@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { subscribeToPush as subscribeToPushShared } from '@/lib/push'
 import Head from 'next/head'
 import { useEffect, useState, useRef } from 'react'
 import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconInfo } from '@/components/Icons'
@@ -358,28 +359,14 @@ export default function Layout({ children, title }: Props) {
   }, [player?.avatar_url])
 
   async function subscribeToPush(): Promise<boolean> {
-    if (!player || !('Notification' in window) || !('serviceWorker' in navigator)) return false
-    if (typeof Notification === 'undefined') return false
-    const perm = await Notification.requestPermission()
-    if (perm !== 'granted') return false
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-    if (!vapidKey) return false
-    try {
-      const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKey,
-      })
-      await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: player.id, subscription: sub }),
-      })
+    if (!player) return false
+    const ok = await subscribeToPushShared(player.id)
+    if (ok) {
       setNotifyEnabled(true)
       localStorage.removeItem('notify_dismissed_count')
       localStorage.removeItem('notify_dismissed_at')
-      return true
-    } catch { return false }
+    }
+    return ok
   }
 
   function handleLogout() { logout(); router.push('/') }
