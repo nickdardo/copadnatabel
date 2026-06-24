@@ -431,11 +431,12 @@ export default function AdminPage() {
       const now = Date.now()
       const current = matchesRef.current // always up-to-date, avoids stale closure
 
-      // 1. Live match → sync every 5min until it ends
+      // 1. Live match → sync every 1min until it ends (era 5min — encurtado
+      // pra dar mais precisão na notificação de gol em tempo real)
       const liveMatch = current.find(m => m.status === 'live')
       if (liveMatch) {
         doSync(true)
-        syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000)
+        syncTimer = setTimeout(scheduleNext, 1 * 60 * 1000)
         return
       }
 
