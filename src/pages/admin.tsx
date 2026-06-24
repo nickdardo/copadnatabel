@@ -2447,7 +2447,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.17</p>
+                  <p className="text-[42px] font-black leading-none">v1.17.2</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2471,19 +2471,19 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.17
+{`Bolão Copa 2026 BEL — Atualização v1.17.2
 
-🔄 Aviso de atualização mais confiável
-Corrigimos o aviso de "nova versão disponível", que em alguns celulares aparecia e fechava rápido demais ao trocar de aba, sem dar tempo de tocar em "Atualizar". Agora ele fica fixo na tela até você decidir.
+🔔 Resolvido de vez o aviso que piscava
+Era o banner azul de "ative as notificações" no topo da tela, não o popup de atualização — ele calculava o estado errado a cada troca de aba. Agora calcula certo desde o primeiro instante, e não pisca mais.
 
-🚩 Não esqueça de confirmar seu palpite
-Preencheu o placar mas esqueceu de confirmar? Agora o card daquele jogo pulsa com uma borda vermelha até você tocar em "Confirmar palpites" lá embaixo — pra ninguém mais perder pontos por esquecimento.
+⚽ Notificação de gol em tempo real
+A cada gol, você recebe um aviso na hora com o placar, o seu palpite naquele jogo e quantos pontos você está fazendo se terminar assim.
 
-🏳️ Grupo e colocação direto no card do jogo
-Nos jogos da fase de grupos, um selo "Grupo X" aparece no card — toque nele e veja a classificação completa do grupo, na hora. Do lado de cada bandeira, uma bolinha colorida mostra a colocação atual da seleção (1º, 2º, 3º ou 4º).
+⏱️ Sync mais rápido durante o jogo
+Os placares agora atualizam a cada 1 minuto enquanto tem jogo ao vivo (era 5 minutos).
 
-📱 Menu de navegação mais moderno
-No celular, o menu inferior agora é flutuante e levemente transparente, deixando o app com uma cara mais atual.
+📋 Resumo das novidades direto no aviso de atualização
+Quando aparece "Nova versão disponível", o próprio aviso já mostra o resumo do que mudou.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2496,6 +2496,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.17.2', desc: 'Corrigido de vez o banner de notificação que piscava ao trocar de aba (calculava o estado errado a cada remontagem). Notificação de gol com palpite e pontos em tempo real. Sync ao vivo de 5min para 1min. Popup de atualização agora mostra o resumo das novidades e um aviso reforçado pra ativar notificações.' },
                       { v: 'v1.17', desc: 'Correção do popup de atualização (parava de piscar ao trocar de aba — lógica movida pro _app.tsx). Card pulsa em vermelho quando o palpite não foi confirmado. Selo de grupo + colocação nos cards de jogo, com modal de classificação. Menu inferior transparente no mobile.' },
                       { v: 'v1.16', desc: 'Palpite automático 0×0 (50% dos pontos) para quem esquece de palpitar. Classificação dos grupos e chaveamento mata-mata na tela Campeão.' },
                       { v: 'v1.15', desc: 'Palpites ilimitados. Popup de estatísticas em todas as bandeiras. Pódio na lista de apostadores. Filtro de online no ranking. Aba Assistir com player CazéTV, chat ao vivo e rank dos participantes.' },

@@ -34,6 +34,7 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
   const [hasUpdate,  setHasUpdate]  = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [notifyEnabled, setNotifyEnabled] = useState(true) // true até checarmos, pra não "flashar" o convite
+  const [changelog, setChangelog] = useState('')
   const latestVersionRef = useRef<string>('')
 
   // Estado da permissão de notificação — checado uma vez, atualizado quando
@@ -47,7 +48,7 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
     try {
       const res = await fetch('/api/version?t=' + Date.now())
       if (!res.ok) return
-      const { version } = await res.json()
+      const { version, changelog: log } = await res.json()
       latestVersionRef.current = version
       const stored = sessionStorage.getItem('app_version')
       if (!stored) {
@@ -57,6 +58,7 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
       }
       if (stored !== version) {
         sessionStorage.setItem('app_update_pending', '1')
+        setChangelog(typeof log === 'string' ? log : '')
         setHasUpdate(true)
       }
     } catch {}
@@ -135,8 +137,8 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
           popup pra convidar a ativar o sino (em vez de um banner separado). */}
       {hasUpdate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,20,40,0.7)' }}>
-          <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-xl">
-            <div className="px-6 pt-6 pb-5 text-center">
+          <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-xl max-h-[85vh] flex flex-col">
+            <div className="px-6 pt-6 pb-5 text-center flex-shrink-0">
               <div className="w-14 h-14 rounded-full bg-[#0099CC]/10 flex items-center justify-center mx-auto mb-4">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round">
                   <polyline points="23 4 23 10 17 10"/>
@@ -148,7 +150,25 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
                 Atualize para continuar usando o bolão corretamente, com todas as últimas melhorias e correções.
               </p>
             </div>
-            <div className="px-6 pb-6">
+
+            {/* Resumo do que mudou nesta versão — vem direto do servidor, então
+                mostra sempre a novidade real, mesmo pra quem está na versão antiga. */}
+            {changelog && (
+              <div className="px-6 pb-4 overflow-y-auto flex-shrink-0">
+                <div className="bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">O que mudou</p>
+                  <ul className="space-y-1">
+                    {changelog.split('\n').filter(Boolean).map((line, i) => (
+                      <li key={i} className="text-[12px] text-gray-600 leading-snug flex gap-1.5">
+                        <span className="text-[#0099CC] flex-shrink-0">•</span><span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            <div className="px-6 pb-6 flex-shrink-0">
               <button onClick={handleUpdateNow}
                 className="w-full bg-[#0099CC] text-white font-bold text-[14px] py-3 rounded-xl hover:bg-[#007aa8] transition-colors mb-2 active:scale-[.98]">
                 Atualizar agora
@@ -159,19 +179,23 @@ function AppContent({ Component, pageProps, showSplash, onSplashDone }: {
               </button>
             </div>
 
+            {/* Aviso sobre notificações — tom de alerta mesmo, não só sugestão,
+                porque sem isso o jogador perde os avisos de gol/palpite/atualização. */}
             {player && !notifyEnabled && (
-              <div className="px-5 pb-5 -mt-1">
+              <div className="px-5 pb-5 -mt-1 flex-shrink-0">
                 <button onClick={handleActivateBell}
-                  className="w-full flex items-center gap-3 bg-[#EFF8FC] border border-[#0099CC]/20 rounded-xl px-3 py-3 text-left hover:bg-[#E6F1FB] transition-colors">
-                  <div className="w-9 h-9 rounded-full bg-[#0099CC]/15 flex items-center justify-center flex-shrink-0">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2" strokeLinecap="round">
+                  className="w-full flex items-start gap-3 bg-[#FFF7E6] border border-[#F2B91A]/40 rounded-xl px-3 py-3 text-left hover:bg-[#FFF1D1] transition-colors">
+                  <div className="w-9 h-9 rounded-full bg-[#F2B91A]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8860B" strokeWidth="2" strokeLinecap="round">
                       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                       <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-gray-900 leading-tight">Já aproveite e ative o sino 🔔</p>
-                    <p className="text-[10.5px] text-gray-500 leading-snug mt-0.5">Receba avisos de gol, do seu palpite e de próximas atualizações.</p>
+                    <p className="text-[12px] font-bold text-gray-900 leading-tight">⚠️ Suas notificações estão desativadas</p>
+                    <p className="text-[10.5px] text-gray-600 leading-snug mt-0.5">
+                      Sem isso ativado, você não recebe avisos de gol, do seu palpite nem de próximas atualizações do bolão. Toque aqui pra ativar agora.
+                    </p>
                   </div>
                 </button>
               </div>
