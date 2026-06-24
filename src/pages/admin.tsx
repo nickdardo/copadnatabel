@@ -8,7 +8,7 @@ import FlagImg from '@/components/FlagImg'
 import GroupLabelEditor from '@/components/GroupLabelEditor'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
-type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; error?: string }
+type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; goalsNotified?: number; goalEvents?: unknown[]; error?: string }
 
 function fmtBRT(dateStr: string) {
   try {
@@ -1788,7 +1788,13 @@ export default function AdminPage() {
 
                 {syncResult && (
                   <div className={`rounded-xl px-4 py-3 text-[12px] ${syncResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                    {syncResult.ok ? `Sincronizado: +${syncResult.synced} novos · ${syncResult.updated} atualizados` : `Erro: ${syncResult.error}`}
+                    {syncResult.ok
+                      ? `Sincronizado: +${syncResult.synced} novos · ${syncResult.updated} atualizados${
+                          (syncResult.goalEvents?.length ?? 0) > 0
+                            ? ` · ⚽ ${syncResult.goalEvents!.length} gol(s) detectado(s), ${syncResult.goalsNotified ?? 0} notificação(ões) enviada(s)`
+                            : ''
+                        }`
+                      : `Erro: ${syncResult.error}`}
                   </div>
                 )}
               </div>
