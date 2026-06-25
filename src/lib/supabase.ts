@@ -48,7 +48,7 @@ export type Match = {
   fase: string; status: 'upcoming'|'live'|'done'
   score_home?: number; score_away?: number
   sort_order: number; odds_event_id?: string; group_name?: string
-  stream_url?: string
+  stream_url?: string; bracket_side?: 'A' | 'B' | null
 }
 export type Pick = {
   id: string; player_id: string; match_id: string

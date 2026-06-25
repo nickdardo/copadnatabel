@@ -6,6 +6,7 @@ import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 import FlagImg from '@/components/FlagImg'
 import GroupLabelEditor from '@/components/GroupLabelEditor'
+import BracketSideEditor from '@/components/BracketSideEditor'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; goalsNotified?: number; goalEvents?: unknown[]; error?: string }
@@ -853,7 +854,14 @@ export default function AdminPage() {
   const paidCount       = nonAdminPlayers.filter(p => p.payment_ok).length
   const pendingCount    = nonAdminPlayers.filter(p => !p.payment_ok).length
   const prizePool       = paidCount * (parseFloat(pixValor) || 10) + currentExtra
-  const phases          = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
+  // Fases eliminatórias sempre aparecem no filtro, mesmo sem nenhum confronto
+  // cadastrado ainda — é a única forma de o admin chegar no BracketSideEditor
+  // pra cadastrar o primeiro confronto manualmente.
+  const KNOCKOUT_PHASES_ADMIN = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final']
+  const phases          = Array.from(new Set([
+    ...FASE_ORDER.filter(f => matches.some(m => m.fase === f)),
+    ...KNOCKOUT_PHASES_ADMIN,
+  ])).sort((a, b) => FASE_ORDER.indexOf(a) - FASE_ORDER.indexOf(b))
   const filteredMatches = matches.filter(m => m.fase === activePhase)
   const liveMatches     = matches.filter(m => m.status === 'live')
   // Sincronização travada: há jogo ao vivo, mas o último sync registrado no
@@ -2136,6 +2144,10 @@ export default function AdminPage() {
 
                 {activePhase === 'Fase de Grupos' && (
                   <GroupLabelEditor/>
+                )}
+
+                {['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final'].includes(activePhase) && (
+                  <BracketSideEditor/>
                 )}
 
                 {/* Match list */}

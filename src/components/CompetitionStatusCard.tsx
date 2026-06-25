@@ -178,26 +178,36 @@ const PHASE_SHORT_LABEL: Record<string, string> = {
   'Final': 'Final',
 }
 
-function KnockoutBracket({ matches }: { matches: Match[] }) {
-  // Só entram na navegação fases que já têm pelo menos 1 jogo real cadastrado
-  // — sem placeholders de "1º do Grupo X" antes dos confrontos existirem.
-  const phasesWithGames = useMemo(
-    () => KNOCKOUT_PHASES.filter(p => matches.some(m => m.fase === p)),
-    [matches]
+// Fases que pertencem a um dos lados da chave — a Final é o ponto de
+// encontro dos dois lados, por isso fica fora dessa lista.
+const SIDE_PHASES = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais']
+
+function ChevronDown() {
+  return (
+    <div className="flex justify-center py-1.5">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#85B7EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
   )
+}
 
-  const initialIndex = useMemo(() => {
-    const active = detectActivePhase(matches)
-    const idx = phasesWithGames.indexOf(active)
-    return idx >= 0 ? idx : phasesWithGames.length - 1
-  }, [matches, phasesWithGames])
+function KnockoutBracket({ matches }: { matches: Match[] }) {
+  const [side, setSide] = useState<'A' | 'B'>('A')
 
-  const [index, setIndex] = useState(initialIndex)
+  const hasAnyKnockout = useMemo(() => KNOCKOUT_PHASES.some(p => matches.some(m => m.fase === p)), [matches])
+  const finalMatch = matches.find(m => m.fase === 'Final')
 
-  // Se os dados mudarem (ex: nova fase passou a ter jogos), realinha o índice
-  useEffect(() => { setIndex(initialIndex) }, [initialIndex])
+  const groupsForSide = useMemo(() => {
+    return SIDE_PHASES
+      .map(phase => ({
+        phase,
+        matches: matches
+          .filter(m => m.fase === phase && m.bracket_side === side)
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+      }))
+      .filter(g => g.matches.length > 0)
+  }, [matches, side])
 
-  if (phasesWithGames.length === 0) {
+  if (!hasAnyKnockout) {
     return (
       <p className="text-[12px] text-gray-400 text-center py-6">
         O chaveamento aparece aqui quando a fase de grupos terminar e os primeiros confrontos forem definidos.
@@ -205,43 +215,42 @@ function KnockoutBracket({ matches }: { matches: Match[] }) {
     )
   }
 
-  const safeIndex = Math.min(index, phasesWithGames.length - 1)
-  const phase = phasesWithGames[safeIndex]
-  const phaseMatches = matches.filter(m => m.fase === phase).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <button onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={safeIndex === 0}
-          aria-label="Fase anterior"
-          className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 disabled:opacity-30 transition-opacity">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <div className="flex gap-2 mb-3">
+        <button onClick={() => setSide('A')}
+          className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${side === 'A' ? 'bg-[#0099CC] text-white' : 'bg-gray-100 text-gray-500'}`}>
+          Lado A
         </button>
-        <div className="flex-1 text-center min-w-0">
-          <p className="text-[13px] font-bold text-gray-800 truncate">{PHASE_SHORT_LABEL[phase] || phase}</p>
-          <p className="text-[10px] text-gray-400">Fase {safeIndex + 1} de {phasesWithGames.length}</p>
+        <button onClick={() => setSide('B')}
+          className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${side === 'B' ? 'bg-[#0099CC] text-white' : 'bg-gray-100 text-gray-500'}`}>
+          Lado B
+        </button>
+      </div>
+
+      {groupsForSide.length === 0 && (
+        <p className="text-[12px] text-gray-400 text-center py-4">
+          Nenhum confronto deste lado classificado ainda.
+        </p>
+      )}
+
+      {groupsForSide.map((g, i) => (
+        <div key={g.phase}>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">{PHASE_SHORT_LABEL[g.phase] || g.phase}</p>
+          <div className="space-y-2">
+            {g.matches.map(m => <MatchBox key={m.id} match={m} full/>)}
+          </div>
+          {i < groupsForSide.length - 1 && <ChevronDown/>}
         </div>
-        <button onClick={() => setIndex(i => Math.min(phasesWithGames.length - 1, i + 1))} disabled={safeIndex === phasesWithGames.length - 1}
-          aria-label="Próxima fase"
-          className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity ${
-            safeIndex === phasesWithGames.length - 1 ? 'bg-gray-100 opacity-30' : 'bg-[#0099CC]'
-          }`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={safeIndex === phasesWithGames.length - 1 ? '#6B7280' : 'white'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
+      ))}
 
-      {/* Barra de progresso entre as fases já disponíveis */}
-      <div className="flex justify-center gap-1.5 mb-4">
-        {phasesWithGames.map((p, i) => (
-          <button key={p} onClick={() => setIndex(i)} aria-label={PHASE_SHORT_LABEL[p] || p}
-            className="h-1 rounded-full transition-all"
-            style={{ width: 18, background: i === safeIndex ? '#0099CC' : '#E5E7EB' }}/>
-        ))}
-      </div>
-
-      <div className="space-y-2">
-        {phaseMatches.map(m => <MatchBox key={m.id} match={m} full/>)}
-      </div>
+      {finalMatch && (
+        <>
+          <ChevronDown/>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Final</p>
+          <MatchBox match={finalMatch} full/>
+        </>
+      )}
     </div>
   )
 }
