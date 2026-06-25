@@ -4,7 +4,7 @@ import FlagImg from '@/components/FlagImg'
 import type { Match } from '@/lib/supabase'
 import { detectGroups, calcGroupTable, detectActivePhase, KNOCKOUT_PHASES } from '@/lib/groupStandings'
 
-type Props = { matches: Match[] }
+type Props = { matches: Match[]; forceKnockoutView?: boolean }
 
 function fmtShortDate(iso?: string) {
   if (!iso) return ''
@@ -256,9 +256,9 @@ function KnockoutBracket({ matches }: { matches: Match[] }) {
 }
 
 // ── Componente principal ──
-export default function CompetitionStatusCard({ matches }: Props) {
+export default function CompetitionStatusCard({ matches, forceKnockoutView }: Props) {
   const activePhase = useMemo(() => detectActivePhase(matches), [matches])
-  const isGroupStage = activePhase === 'Fase de Grupos'
+  const isGroupStage = !forceKnockoutView && activePhase === 'Fase de Grupos'
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-4">

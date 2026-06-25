@@ -7,6 +7,7 @@ import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 import FlagImg from '@/components/FlagImg'
 import GroupLabelEditor from '@/components/GroupLabelEditor'
 import BracketSideEditor from '@/components/BracketSideEditor'
+import CompetitionStatusCard from '@/components/CompetitionStatusCard'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; goalsNotified?: number; goalEvents?: unknown[]; error?: string }
@@ -56,6 +57,7 @@ export default function AdminPage() {
   const [players,       setPlayers]       = useState<Player[]>([])
   const [fetching,      setFetching]      = useState(true)
   const [activePhase,   setActivePhase]   = useState('Fase de Grupos')
+  const [showBracketPreview, setShowBracketPreview] = useState(false)
   const [matchView,     setMatchView]     = useState<'jogos'|'historico'>('jogos')
   const [syncing,       setSyncing]       = useState(false)
   const [syncResult,    setSyncResult]    = useState<SyncResult | null>(null)
@@ -2147,7 +2149,14 @@ export default function AdminPage() {
                 )}
 
                 {['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final'].includes(activePhase) && (
-                  <BracketSideEditor/>
+                  <>
+                    <BracketSideEditor/>
+                    <button onClick={() => setShowBracketPreview(true)}
+                      className="w-full flex items-center justify-center gap-2 bg-[#0099CC]/5 border border-[#0099CC]/20 text-[#0099CC] text-[12px] font-semibold py-2.5 rounded-xl hover:bg-[#0099CC]/10 transition-colors">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Pré-visualizar chaveamento
+                    </button>
+                  </>
                 )}
 
                 {/* Match list */}
@@ -2655,6 +2664,28 @@ Atualizem o app para a versão mais recente! 🏆`}
           </div>
         )
       })()}
+      {/* Preview do chaveamento — só o admin vê, não afeta o que o jogador
+          vê na tela Campeão (essa troca lá continua automática, baseada
+          no status real dos jogos via detectActivePhase). */}
+      {showBracketPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+          <div className="bg-gray-50 rounded-2xl w-full max-w-sm shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+              <div>
+                <p className="text-[14px] font-bold text-gray-900">Pré-visualização</p>
+                <p className="text-[11px] text-gray-400">Só você vê isso — os jogadores continuam vendo os grupos até o primeiro jogo do mata-mata começar</p>
+              </div>
+              <button onClick={() => setShowBracketPreview(false)} aria-label="Fechar"
+                className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 flex-shrink-0 ml-2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="px-4 pb-4 overflow-y-auto">
+              <CompetitionStatusCard matches={matches} forceKnockoutView/>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
