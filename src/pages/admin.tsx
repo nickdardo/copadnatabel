@@ -7,6 +7,7 @@ import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 import FlagImg from '@/components/FlagImg'
 import GroupLabelEditor from '@/components/GroupLabelEditor'
 import BracketSideEditor from '@/components/BracketSideEditor'
+import OfficialBracketPanel from '@/components/OfficialBracketPanel'
 import CompetitionStatusCard from '@/components/CompetitionStatusCard'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
@@ -2150,6 +2151,7 @@ export default function AdminPage() {
 
                 {['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final'].includes(activePhase) && (
                   <>
+                    <OfficialBracketPanel/>
                     <BracketSideEditor/>
                     <button onClick={() => setShowBracketPreview(true)}
                       className="w-full flex items-center justify-center gap-2 bg-[#0099CC]/5 border border-[#0099CC]/20 text-[#0099CC] text-[12px] font-semibold py-2.5 rounded-xl hover:bg-[#0099CC]/10 transition-colors">

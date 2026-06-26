@@ -16,7 +16,7 @@ const admin = createClient(
 )
 
 const COOKIE_NAME = 'bolao_session'
-const KNOCKOUT_PHASES = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final']
+const KNOCKOUT_PHASES = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Terceiro Lugar', 'Final']
 
 async function getSessionAdmin(req: NextApiRequest): Promise<{ id: string } | null> {
   const cookies = parse(req.headers.cookie || '')
@@ -46,15 +46,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const caller = await getSessionAdmin(req)
   if (!caller) return res.status(401).json({ error: 'Apenas administradores podem usar esta ferramenta.' })
 
-  const { fase, home_team, away_team, bracket_side, match_date } = req.body
+  const { fase, home_team, away_team, bracket_side, match_date, official_match_number } = req.body
   if (!fase || !home_team || !away_team || home_team === away_team) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes ou inválidos.' })
   }
   if (!KNOCKOUT_PHASES.includes(fase)) {
     return res.status(400).json({ error: 'Fase inválida.' })
   }
-  if (fase !== 'Final' && bracket_side !== 'A' && bracket_side !== 'B') {
-    return res.status(400).json({ error: 'Escolha o lado A ou B (exceto na Final).' })
+  if (fase !== 'Final' && fase !== 'Terceiro Lugar' && bracket_side !== 'A' && bracket_side !== 'B') {
+    return res.status(400).json({ error: 'Escolha o lado A ou B (exceto na Final/3º lugar).' })
   }
 
   const sortOrder = match_date
@@ -65,12 +65,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     home_team, away_team,
     home_flag: getFlag(home_team), away_flag: getFlag(away_team),
     fase,
-    bracket_side: fase === 'Final' ? null : bracket_side,
+    bracket_side: (fase === 'Final' || fase === 'Terceiro Lugar') ? null : bracket_side,
     match_date: match_date || null,
     status: 'upcoming',
     score_home: null, score_away: null,
     sort_order: sortOrder,
     odds_event_id: null,
+    official_match_number: official_match_number || null,
   })
   if (error) return res.status(500).json({ error: error.message })
 
