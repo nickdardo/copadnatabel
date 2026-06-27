@@ -47,20 +47,27 @@ function translateTeam(enName: string): string {
 
 function detectPhase(commenceTime: string): string {
   const ts = new Date(commenceTime).getTime()
-  // Copa 2026: 48 teams, 12 groups
-  // Group stage: Jun 11–25
-  // Round of 32: Jun 27–Jul 3
-  // Round of 16 (Oitavas): Jul 4–7
-  // Quarterfinals: Jul 9–11
-  // Semifinals: Jul 14–15
-  // Third place: Jul 18
-  // Final: Jul 19
-  if (ts < new Date('2026-06-27T00:00:00Z').getTime()) return 'Fase de Grupos'
-  if (ts < new Date('2026-07-04T00:00:00Z').getTime()) return 'Dezesseis Avos de Final'
-  if (ts < new Date('2026-07-09T00:00:00Z').getTime()) return 'Oitavas de Final'
-  if (ts < new Date('2026-07-14T00:00:00Z').getTime()) return 'Quartas de Final'
-  if (ts < new Date('2026-07-18T00:00:00Z').getTime()) return 'Semifinais'
-  if (ts < new Date('2026-07-19T00:00:00Z').getTime()) return 'Terceiro Lugar'
+  // Copa 2026: 48 times, 12 grupos
+  // Fase de grupos: 11–27 de junho (a última rodada é dia 27)
+  // Dezesseis avos de final: 28 de junho – 3 de julho
+  // Oitavas de final: 4–7 de julho
+  // Quartas de final: 9–11 de julho
+  // Semifinais: 14–15 de julho
+  // 3º lugar: 18 de julho
+  // Final: 19 de julho
+  //
+  // Os cortes usam meia-noite do horário do Pacífico (UTC-7, o fuso mais
+  // atrasado entre as cidades-sede dos EUA/Canadá/México) em vez de meia-
+  // noite UTC. Isso evita classificar errado um jogo da última rodada de
+  // uma fase que começa à noite no Pacífico — ele ainda cai depois da
+  // meia-noite UTC do dia seguinte, mas a fase certa (do dia anterior, no
+  // fuso local) só termina de fato à meia-noite Pacífico.
+  if (ts < new Date('2026-06-28T07:00:00Z').getTime()) return 'Fase de Grupos'
+  if (ts < new Date('2026-07-04T07:00:00Z').getTime()) return 'Dezesseis Avos de Final'
+  if (ts < new Date('2026-07-09T07:00:00Z').getTime()) return 'Oitavas de Final'
+  if (ts < new Date('2026-07-14T07:00:00Z').getTime()) return 'Quartas de Final'
+  if (ts < new Date('2026-07-18T07:00:00Z').getTime()) return 'Semifinais'
+  if (ts < new Date('2026-07-19T07:00:00Z').getTime()) return 'Terceiro Lugar'
   return 'Final'
 }
 
