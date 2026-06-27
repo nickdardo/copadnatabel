@@ -61,11 +61,15 @@ export default function ChampionPage() {
   const [deadlinePassed, setDeadlinePassed] = useState(isDeadlinePassed())
   const [countdown, setCountdown] = useState(getCountdown())
   const [adminLocked, setAdminLocked] = useState(false)
+  const [bracketAtivo, setBracketAtivo] = useState(false)
 
   // Load admin lock state from pix_config
   useEffect(() => {
-    supabase.from('pix_config').select('champ_bloqueado').limit(1).then(({ data }) => {
-      if (data?.[0]) setAdminLocked(data[0].champ_bloqueado || false)
+    supabase.from('pix_config').select('champ_bloqueado, bracket_ativo').limit(1).then(({ data }) => {
+      if (data?.[0]) {
+        setAdminLocked(data[0].champ_bloqueado || false)
+        setBracketAtivo(data[0].bracket_ativo || false)
+      }
     })
   }, [])
 
@@ -237,7 +241,7 @@ export default function ChampionPage() {
         </div>
 
         {view === 'grupos' && (
-          <CompetitionStatusCard matches={matches}/>
+          <CompetitionStatusCard matches={matches} forceKnockoutView={bracketAtivo}/>
         )}
 
         {view === 'palpite' && (

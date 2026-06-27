@@ -2,7 +2,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import FlagImg from '@/components/FlagImg'
 import type { Match } from '@/lib/supabase'
-import { detectGroups, calcGroupTable, detectActivePhase, KNOCKOUT_PHASES } from '@/lib/groupStandings'
+import { detectGroups, calcGroupTable, detectActivePhase } from '@/lib/groupStandings'
+import BracketChart from '@/components/BracketChart'
+import { buildBracketContext } from '@/lib/officialBracket2026'
 
 type Props = { matches: Match[]; forceKnockoutView?: boolean }
 
@@ -136,123 +138,27 @@ function GroupsTable({ matches }: { matches: Match[] }) {
   )
 }
 
-// ── Bracket de mata-mata ──
-function MatchBox({ match, full }: { match?: Match; full?: boolean }) {
-  const sizeClass = full ? 'w-full' : 'w-[148px] flex-shrink-0'
-  if (!match) {
-    return (
-      <div className={`bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-2 ${sizeClass}`}>
-        <p className="text-[10px] text-gray-400 text-center">A definir</p>
-      </div>
-    )
-  }
-  const done = match.status === 'done'
-  return (
-    <div className={`rounded-lg px-3 py-2.5 border ${sizeClass} ${done ? 'bg-white border-gray-200' : 'bg-blue-50/40 border-blue-100'}`}>
-      <div className="flex items-center justify-between gap-1 mb-1.5">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <FlagImg team={match.home_team} size={full ? 18 : 14}/>
-          <span className={`truncate text-gray-700 ${full ? 'text-[12px]' : 'text-[10px]'}`}>{match.home_team}</span>
-        </div>
-        <span className={`font-bold flex-shrink-0 ${full ? 'text-[13px]' : 'text-[11px]'} ${done ? 'text-gray-900' : 'text-gray-300'}`}>{match.score_home ?? '-'}</span>
-      </div>
-      <div className="flex items-center justify-between gap-1">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <FlagImg team={match.away_team} size={full ? 18 : 14}/>
-          <span className={`truncate text-gray-700 ${full ? 'text-[12px]' : 'text-[10px]'}`}>{match.away_team}</span>
-        </div>
-        <span className={`font-bold flex-shrink-0 ${full ? 'text-[13px]' : 'text-[11px]'} ${done ? 'text-gray-900' : 'text-gray-300'}`}>{match.score_away ?? '-'}</span>
-      </div>
-      {!done && match.match_date && (
-        <p className="text-[9px] text-blue-400 text-center mt-1.5">{fmtShortDate(match.match_date)}</p>
-      )}
-    </div>
-  )
-}
-
-const PHASE_SHORT_LABEL: Record<string, string> = {
-  'Dezesseis Avos de Final': 'Dezesseis avos de final',
-  'Oitavas de Final': 'Oitavas de final',
-  'Quartas de Final': 'Quartas de final',
-  'Semifinais': 'Semifinais',
-  'Final': 'Final',
-}
-
-// Fases que pertencem a um dos lados da chave — a Final é o ponto de
-// encontro dos dois lados, por isso fica fora dessa lista.
-const SIDE_PHASES = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais']
-
-function ChevronDown() {
-  return (
-    <div className="flex justify-center py-1.5">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#85B7EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-  )
-}
-
+// ── Bracket de mata-mata — chave horizontal (BracketChart), igual ao
+// painel do admin, só que somente leitura. Resolve os times automaticamente
+// pela classificação dos grupos + jogos do mata-mata já encerrados; quando
+// um confronto real já foi criado pelo admin (vinculado a um número
+// oficial), mostra ele direto. ──
 function KnockoutBracket({ matches }: { matches: Match[] }) {
-  const [side, setSide] = useState<'A' | 'B'>('A')
+  const [overrides, setOverrides] = useState<Record<string, string>>({})
 
-  const hasAnyKnockout = useMemo(() => KNOCKOUT_PHASES.some(p => matches.some(m => m.fase === p)), [matches])
-  const finalMatch = matches.find(m => m.fase === 'Final')
+  useEffect(() => {
+    supabase.from('team_group_overrides').select('team_name, group_label').then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((r: { team_name: string; group_label: string }) => { map[r.team_name] = r.group_label })
+        setOverrides(map)
+      }
+    })
+  }, [])
 
-  const groupsForSide = useMemo(() => {
-    return SIDE_PHASES
-      .map(phase => ({
-        phase,
-        matches: matches
-          .filter(m => m.fase === phase && m.bracket_side === side)
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-      }))
-      .filter(g => g.matches.length > 0)
-  }, [matches, side])
+  const ctx = useMemo(() => buildBracketContext(matches, overrides), [matches, overrides])
 
-  if (!hasAnyKnockout) {
-    return (
-      <p className="text-[12px] text-gray-400 text-center py-6">
-        O chaveamento aparece aqui quando a fase de grupos terminar e os primeiros confrontos forem definidos.
-      </p>
-    )
-  }
-
-  return (
-    <div>
-      <div className="flex gap-2 mb-3">
-        <button onClick={() => setSide('A')}
-          className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${side === 'A' ? 'bg-[#0099CC] text-white' : 'bg-gray-100 text-gray-500'}`}>
-          Lado A
-        </button>
-        <button onClick={() => setSide('B')}
-          className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${side === 'B' ? 'bg-[#0099CC] text-white' : 'bg-gray-100 text-gray-500'}`}>
-          Lado B
-        </button>
-      </div>
-
-      {groupsForSide.length === 0 && (
-        <p className="text-[12px] text-gray-400 text-center py-4">
-          Nenhum confronto deste lado classificado ainda.
-        </p>
-      )}
-
-      {groupsForSide.map((g, i) => (
-        <div key={g.phase}>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">{PHASE_SHORT_LABEL[g.phase] || g.phase}</p>
-          <div className="space-y-2">
-            {g.matches.map(m => <MatchBox key={m.id} match={m} full/>)}
-          </div>
-          {i < groupsForSide.length - 1 && <ChevronDown/>}
-        </div>
-      ))}
-
-      {finalMatch && (
-        <>
-          <ChevronDown/>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Final</p>
-          <MatchBox match={finalMatch} full/>
-        </>
-      )}
-    </div>
-  )
+  return <BracketChart ctx={ctx}/>
 }
 
 // ── Componente principal ──

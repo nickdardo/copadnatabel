@@ -6,6 +6,9 @@ import Head from 'next/head'
 import { formatPixKeyDisplay, getKeyTypeLabel, PixKeyType } from '@/lib/pix'
 import FlagImg from '@/components/FlagImg'
 import GroupLabelEditor from '@/components/GroupLabelEditor'
+import BracketSideEditor from '@/components/BracketSideEditor'
+import OfficialBracketPanel from '@/components/OfficialBracketPanel'
+import CompetitionStatusCard from '@/components/CompetitionStatusCard'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
 type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; goalsNotified?: number; goalEvents?: unknown[]; error?: string }
@@ -55,6 +58,7 @@ export default function AdminPage() {
   const [players,       setPlayers]       = useState<Player[]>([])
   const [fetching,      setFetching]      = useState(true)
   const [activePhase,   setActivePhase]   = useState('Fase de Grupos')
+  const [showBracketPreview, setShowBracketPreview] = useState(false)
   const [matchView,     setMatchView]     = useState<'jogos'|'historico'>('jogos')
   const [syncing,       setSyncing]       = useState(false)
   const [syncResult,    setSyncResult]    = useState<SyncResult | null>(null)
@@ -139,6 +143,7 @@ export default function AdminPage() {
   const [modoVisitante,  setModoVisitante]  = useState(false)
   const [travamentoJogos,setTravamentoJogos]= useState(true)
   const [watchAtivo,     setWatchAtivo]     = useState(false)
+  const [bracketAtivo,   setBracketAtivo]   = useState(false)
   const [savingLock,     setSavingLock]     = useState(false)
 
   useEffect(() => {
@@ -313,13 +318,14 @@ export default function AdminPage() {
 
   // Load copa lock state
   useEffect(() => {
-    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos, watch_ativo').limit(1).then(({ data }) => {
+    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos, watch_ativo, bracket_ativo').limit(1).then(({ data }) => {
       if (data?.[0]) {
         setCopaBloqueada(data[0].copa_bloqueada || false)
         setChampBloqueado(data[0].champ_bloqueado || false)
         setModoVisitante(data[0].modo_visitante || false)
         setTravamentoJogos(data[0].lock_jogos ?? true)
         setWatchAtivo(data[0].watch_ativo || false)
+        setBracketAtivo(data[0].bracket_ativo || false)
       }
     })
   }, [])
@@ -366,6 +372,19 @@ export default function AdminPage() {
     const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
     if (rows?.[0]) await supabase.from('pix_config').update({ watch_ativo: newVal }).eq('id', rows[0].id)
     setWatchAtivo(newVal)
+    setSavingLock(false)
+  }
+
+  // Interruptor manual do chaveamento — quando ativo, força a tela Campeão
+  // de todo jogador a mostrar a chave mata-mata, mesmo que nenhum jogo
+  // tenha começado ainda (sem isso, a troca só acontece automaticamente
+  // quando o primeiro confronto eliminatório vira 'live').
+  async function toggleBracketAtivo() {
+    setSavingLock(true)
+    const newVal = !bracketAtivo
+    const { data: rows } = await supabase.from('pix_config').select('id').limit(1)
+    if (rows?.[0]) await supabase.from('pix_config').update({ bracket_ativo: newVal }).eq('id', rows[0].id)
+    setBracketAtivo(newVal)
     setSavingLock(false)
   }
 
@@ -853,7 +872,14 @@ export default function AdminPage() {
   const paidCount       = nonAdminPlayers.filter(p => p.payment_ok).length
   const pendingCount    = nonAdminPlayers.filter(p => !p.payment_ok).length
   const prizePool       = paidCount * (parseFloat(pixValor) || 10) + currentExtra
-  const phases          = FASE_ORDER.filter(f => matches.some(m => m.fase === f))
+  // Fases eliminatórias sempre aparecem no filtro, mesmo sem nenhum confronto
+  // cadastrado ainda — é a única forma de o admin chegar no BracketSideEditor
+  // pra cadastrar o primeiro confronto manualmente.
+  const KNOCKOUT_PHASES_ADMIN = ['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final']
+  const phases          = Array.from(new Set([
+    ...FASE_ORDER.filter(f => matches.some(m => m.fase === f)),
+    ...KNOCKOUT_PHASES_ADMIN,
+  ])).sort((a, b) => FASE_ORDER.indexOf(a) - FASE_ORDER.indexOf(b))
   const filteredMatches = matches.filter(m => m.fase === activePhase)
   const liveMatches     = matches.filter(m => m.status === 'live')
   // Sincronização travada: há jogo ao vivo, mas o último sync registrado no
@@ -1596,7 +1622,7 @@ export default function AdminPage() {
                               <div key={r.player_id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${pos === 1 ? 'bg-amber-50 border border-amber-100' : 'bg-gray-50'}`}>
                                 <span className={`text-[14px] font-bold w-5 text-center flex-shrink-0 ${medal}`}>{pos}</span>
                                 {av
-                                  ? <img src={av} alt={r.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                                  ? <img src={av} alt={r.name} loading="lazy" className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
                                   : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC] flex-shrink-0">
                                       {r.name.split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                     </div>
@@ -1645,7 +1671,7 @@ export default function AdminPage() {
                             <div key={p.id} className="flex items-center gap-2.5 py-2">
                               <div className="relative flex-shrink-0">
                                 {av
-                                  ? <img src={av} alt={name} className="w-7 h-7 rounded-full object-cover"/>
+                                  ? <img src={av} alt={name} loading="lazy" className="w-7 h-7 rounded-full object-cover"/>
                                   : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC]">
                                       {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                     </div>
@@ -1837,7 +1863,7 @@ export default function AdminPage() {
                             <div key={p.id} className="flex items-center gap-2.5">
                               <span className="text-[11px] font-bold text-gray-300 w-4 text-right flex-shrink-0">{i + 1}</span>
                               {av
-                                ? <img src={av} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                                ? <img src={av} alt={name} loading="lazy" className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
                                 : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC] flex-shrink-0">
                                     {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                   </div>
@@ -1985,7 +2011,7 @@ export default function AdminPage() {
                                 <span className="text-[11px] font-bold text-gray-300 w-5 text-right flex-shrink-0">{rowNumber}</span>
                                 <div className="relative flex-shrink-0">
                                   {av
-                                    ? <img src={av} alt={name} className="w-9 h-9 rounded-full object-cover"/>
+                                    ? <img src={av} alt={name} loading="lazy" className="w-9 h-9 rounded-full object-cover"/>
                                     : <div className="w-9 h-9 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[10px] font-bold text-[#0099CC]">
                                         {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                       </div>
@@ -2136,6 +2162,35 @@ export default function AdminPage() {
 
                 {activePhase === 'Fase de Grupos' && (
                   <GroupLabelEditor/>
+                )}
+
+                {['Dezesseis Avos de Final', 'Oitavas de Final', 'Quartas de Final', 'Semifinais', 'Final'].includes(activePhase) && (
+                  <>
+                    <OfficialBracketPanel/>
+                    <BracketSideEditor/>
+
+                    <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-[13px] font-semibold text-gray-800">Mostrar chaveamento no app dos jogadores</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          {bracketAtivo
+                            ? 'Ativo — todo jogador já vê a chave, mesmo antes do 1º jogo do mata-mata começar.'
+                            : 'Desativado — troca sozinho pra chave quando o 1º jogo do mata-mata começar.'}
+                        </p>
+                      </div>
+                      <button onClick={toggleBracketAtivo} disabled={savingLock}
+                        aria-label="Alternar exibição do chaveamento pros jogadores"
+                        className={`w-11 h-6 rounded-full flex-shrink-0 ml-3 relative transition-colors disabled:opacity-50 ${bracketAtivo ? 'bg-[#0099CC]' : 'bg-gray-200'}`}>
+                        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${bracketAtivo ? 'left-[22px]' : 'left-0.5'}`}/>
+                      </button>
+                    </div>
+
+                    <button onClick={() => setShowBracketPreview(true)}
+                      className="w-full flex items-center justify-center gap-2 bg-[#0099CC]/5 border border-[#0099CC]/20 text-[#0099CC] text-[12px] font-semibold py-2.5 rounded-xl hover:bg-[#0099CC]/10 transition-colors">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Pré-visualizar chaveamento
+                    </button>
+                  </>
                 )}
 
                 {/* Match list */}
@@ -2643,6 +2698,28 @@ Atualizem o app para a versão mais recente! 🏆`}
           </div>
         )
       })()}
+      {/* Preview do chaveamento — só o admin vê, não afeta o que o jogador
+          vê na tela Campeão (essa troca lá continua automática, baseada
+          no status real dos jogos via detectActivePhase). */}
+      {showBracketPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+          <div className="bg-gray-50 rounded-2xl w-full max-w-sm shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+              <div>
+                <p className="text-[14px] font-bold text-gray-900">Pré-visualização</p>
+                <p className="text-[11px] text-gray-400">Só você vê isso — os jogadores continuam vendo os grupos até o primeiro jogo do mata-mata começar</p>
+              </div>
+              <button onClick={() => setShowBracketPreview(false)} aria-label="Fechar"
+                className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 flex-shrink-0 ml-2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="px-4 pb-4 overflow-y-auto">
+              <CompetitionStatusCard matches={matches} forceKnockoutView/>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
