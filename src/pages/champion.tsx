@@ -5,6 +5,7 @@ import { supabase, Match } from '@/lib/supabase'
 import Layout from '@/components/Layout'
 import TeamFormPopup from '@/components/TeamFormPopup'
 import CompetitionStatusCard from '@/components/CompetitionStatusCard'
+import BracketFab from '@/components/BracketFab'
 import { TEAMS_SELECT } from '@/lib/flags'
 
 const MAX_CHAMP_EDITS = 3
@@ -152,6 +153,7 @@ export default function ChampionPage() {
 
   return (
     <Layout title="Bolão Copa 2026 BEL">
+      <BracketFab matches={matches}/>
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
 
         {/* Payment gate banner */}

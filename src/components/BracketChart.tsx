@@ -174,6 +174,26 @@ function StackedLayout(props: Props) {
   )
 }
 
+// Modal de tela cheia com a chave empilhada (Lado A / Lado B) — exportado
+// separadamente pra também poder ser aberto a partir de um gatilho externo
+// (o botão flutuante na tela Campeão), não só pelo botão "Expandir" interno.
+export function BracketFullscreenModal({ ctx, onClose, ...rest }: Props & { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-10">
+        <p className="text-[14px] font-bold text-gray-900">Chaveamento completo</p>
+        <button onClick={onClose} aria-label="Fechar"
+          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div className="p-4">
+        <StackedLayout ctx={ctx} {...rest}/>
+      </div>
+    </div>
+  )
+}
+
 // Chave completa, estilo site oficial da FIFA. No card mostra a versão
 // compacta com rolagem lateral; o botão de expandir abre em tela cheia
 // com Lado A e Lado B empilhados, sem precisar arrastar.
@@ -192,20 +212,7 @@ export default function BracketChart(props: Props) {
 
       <ScrollLayout {...props}/>
 
-      {expanded && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-10">
-            <p className="text-[14px] font-bold text-gray-900">Chaveamento completo</p>
-            <button onClick={() => setExpanded(false)} aria-label="Fechar"
-              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div className="p-4">
-            <StackedLayout {...props}/>
-          </div>
-        </div>
-      )}
+      {expanded && <BracketFullscreenModal {...props} onClose={() => setExpanded(false)}/>}
     </div>
   )
 }
