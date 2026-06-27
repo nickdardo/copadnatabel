@@ -5,13 +5,16 @@ import { BracketFullscreenModal } from '@/components/BracketChart'
 
 const STORAGE_KEY = 'bracket_fab_pos'
 
-// Botão flutuante arrastável, só na tela Campeão — dá acesso rápido ao
-// chaveamento completo mesmo enquanto o jogador está vendo "Grupos da
-// Copa" ou "Meu campeão", sem precisar esperar o admin ativar a troca
-// automática pra todo mundo. Sempre visível, mesmo que os confrontos
-// ainda estejam só com a fórmula ("Vencedor Grupo A" etc). A posição que
-// o jogador arrastar fica salva (localStorage) pra próxima vez que abrir.
-export default function BracketFab({ matches }: { matches: Match[] }) {
+// Botão flutuante arrastável, disponível em todas as telas (vive no
+// Layout, não em uma página específica) — dá acesso rápido ao chaveamento
+// completo de qualquer lugar do app, sem precisar trocar de aba e perder
+// o que estava fazendo. Continua valioso mesmo depois que a tela Campeão
+// passa a mostrar a chave automaticamente, porque nas outras abas
+// (Palpites, Ranking, Assistir, Regras) não tem outro jeito rápido de
+// espiar o chaveamento. Sempre visível, mesmo só com fórmula ("Vencedor
+// Grupo A"). A posição que o jogador arrastar fica salva (localStorage).
+export default function BracketFab() {
+  const [matches, setMatches] = useState<Match[]>([])
   const [overrides, setOverrides] = useState<Record<string, string>>({})
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
@@ -23,6 +26,7 @@ export default function BracketFab({ matches }: { matches: Match[] }) {
   const posRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
+    supabase.from('matches').select('*').then(({ data }) => { if (data) setMatches(data) })
     supabase.from('team_group_overrides').select('team_name, group_label').then(({ data }) => {
       if (data) {
         const map: Record<string, string> = {}

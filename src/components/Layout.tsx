@@ -6,6 +6,7 @@ import Head from 'next/head'
 import { useEffect, useState, useRef } from 'react'
 import { IconTrophy, IconBall, IconBarChart, IconSettings, IconLogout, IconInfo } from '@/components/Icons'
 import TutorialModal from '@/components/TutorialModal'
+import BracketFab from '@/components/BracketFab'
 
 // Bottom nav items (sem o botão central Assistir que é renderizado separado)
 const NAV_LEFT  = [
@@ -418,6 +419,7 @@ export default function Layout({ children, title }: Props) {
       )}
 
       <div className="min-h-screen bg-gray-50 pb-[80px]">
+        <BracketFab/>
 
         {/* ── Notification activation banner ──────────────── */}
         {player && !notifyEnabled && !notifyBannerHidden && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
