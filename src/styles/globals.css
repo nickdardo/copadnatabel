@@ -45,3 +45,13 @@
 .pulse-unsaved {
   animation: pulseUnsaved 1.8s ease-in-out infinite;
 }
+
+/* Botão flutuante do chaveamento — anel azul que pulsa e some, tipo notificação chegando */
+@keyframes bracketFabPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0,153,204,0.55); }
+  70%  { box-shadow: 0 0 0 12px rgba(0,153,204,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,153,204,0); }
+}
+.bracket-fab-pulse {
+  animation: bracketFabPulse 2s ease-out infinite;
+}

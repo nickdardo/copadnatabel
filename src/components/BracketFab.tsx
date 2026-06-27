@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase, Match } from '@/lib/supabase'
 import { buildBracketContext } from '@/lib/officialBracket2026'
 import { BracketFullscreenModal } from '@/components/BracketChart'
-import { IconTrophy } from '@/components/Icons'
 
 const STORAGE_KEY = 'bracket_fab_pos'
 
@@ -102,8 +101,8 @@ export default function BracketFab({ matches }: { matches: Match[] }) {
         onTouchStart={onDown}
         aria-label="Ver chaveamento mata-mata"
         style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 40, touchAction: 'none' }}
-        className="w-12 h-12 rounded-full bg-[#0099CC] flex items-center justify-center shadow-lg active:scale-95 transition-transform">
-        <IconTrophy size={20} className="text-white"/>
+        className="w-14 h-14 rounded-full flex items-center justify-center active:scale-95 transition-transform bracket-fab-pulse">
+        <img src="/copa2026-logo.jpg" alt="" className="w-12 h-12 rounded-full object-cover pointer-events-none"/>
       </button>
       {open && <BracketFullscreenModal ctx={ctx} onClose={() => setOpen(false)}/>}
     </>

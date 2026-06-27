@@ -33,6 +33,19 @@ const PHASE_ABBR: Record<string, string> = {
   'Semifinais': 'Semifinal',
 }
 
+function fmtSlotDate(iso?: string | null, short?: boolean): string {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    if (short) return `${dd}/${mm}`
+    const hh = String(d.getHours()).padStart(2, '0')
+    const min = String(d.getMinutes()).padStart(2, '0')
+    return `${dd}/${mm} ${hh}:${min}`
+  } catch { return '' }
+}
+
 function SlotBox({ slot, ctx, editable, pickedThird, onPickThird, onCreate, onLink, creatingMatch, findSyncedMatch, colWidth }: Props & { slot: OfficialSlot; colWidth: number }) {
   const existing = ctx.matchesByOfficialNumber[slot.match]
   const home = resolveSlot(slot.home, ctx.standingsByGroup, ctx.top8Thirds, ctx.matchesByOfficialNumber)
@@ -41,9 +54,10 @@ function SlotBox({ slot, ctx, editable, pickedThird, onPickThird, onCreate, onLi
   const nameSize = colWidth < 110 ? '9.5px' : '10.5px'
 
   if (existing) {
+    const dateStr = fmtSlotDate(existing.match_date, colWidth < 110)
     return (
       <div style={{ width: colWidth }} className="bg-white rounded-lg border border-green-100 px-1.5 py-1.5 flex-shrink-0">
-        <div className="text-[7.5px] font-semibold text-green-600 mb-1">J{slot.match} ✓</div>
+        <div className="text-[7.5px] font-semibold text-green-600 mb-1">J{slot.match} ✓{dateStr ? ` · ${dateStr}` : ''}</div>
         <div className="flex items-center gap-1 truncate" style={{ fontSize: nameSize, color: '#1f2937' }}><FlagImg team={existing.home_team} size={flagSize}/><span className="truncate">{existing.home_team}</span></div>
         <div className="flex items-center gap-1 truncate mt-0.5" style={{ fontSize: nameSize, color: '#1f2937' }}><FlagImg team={existing.away_team} size={flagSize}/><span className="truncate">{existing.away_team}</span></div>
       </div>
@@ -59,7 +73,7 @@ function SlotBox({ slot, ctx, editable, pickedThird, onPickThird, onCreate, onLi
 
   return (
     <div style={{ width: colWidth }} className="bg-white rounded-lg border border-gray-100 px-1.5 py-1.5 flex-shrink-0">
-      <div className="text-[7.5px] font-semibold text-[#0099CC] mb-1">J{slot.match}</div>
+      <div className="text-[7.5px] font-semibold text-[#0099CC] mb-1">J{slot.match}{slot.dateHint ? ` · ${fmtSlotDate(slot.dateHint, colWidth < 110)}` : ''}</div>
 
       {editable && home.candidates && home.candidates.length > 1 ? (
         <select value={pickedThird?.[homeCandKey] || ''} onChange={e => onPickThird?.(homeCandKey, e.target.value)}
