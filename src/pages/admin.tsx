@@ -2508,7 +2508,7 @@ export default function AdminPage() {
                 {/* Current version banner */}
                 <div className="bg-gradient-to-br from-[#0099CC] to-[#006a99] rounded-2xl p-6 text-center text-white shadow-lg">
                   <p className="text-[12px] font-medium text-white/70 uppercase tracking-wide mb-1">Versão atual</p>
-                  <p className="text-[42px] font-black leading-none">v1.17.2</p>
+                  <p className="text-[42px] font-black leading-none">v1.17.3</p>
                   <p className="text-[12px] text-white/70 mt-2">Bolão Copa 2026 BEL</p>
                 </div>
 
@@ -2532,19 +2532,16 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div id="changelog-text" className="px-5 py-4 text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-{`Bolão Copa 2026 BEL — Atualização v1.17.2
+{`Bolão Copa 2026 BEL — Atualização v1.17.3
 
-🔔 Resolvido de vez o aviso que piscava
-Era o banner azul de "ative as notificações" no topo da tela, não o popup de atualização — ele calculava o estado errado a cada troca de aba. Agora calcula certo desde o primeiro instante, e não pisca mais.
+🏆 Chaveamento mata-mata com a chave real da Copa
+A tela Campeão agora mostra o chaveamento oficial das eliminatórias, com quem enfrenta quem e a data de cada jogo — preenchendo sozinho conforme os grupos terminam e os jogos do mata-mata vão saindo.
 
-⚽ Notificação de gol em tempo real
-A cada gol, você recebe um aviso na hora com o placar, o seu palpite naquele jogo e quantos pontos você está fazendo se terminar assim.
+🔵 Botão flutuante pra ver a chave a qualquer momento
+Um botão com a logo da Copa (que você pode arrastar pra onde quiser na tela) abre o chaveamento completo, mesmo enquanto está vendo a classificação dos grupos.
 
-⏱️ Sync mais rápido durante o jogo
-Os placares agora atualizam a cada 1 minuto enquanto tem jogo ao vivo (era 5 minutos).
-
-📋 Resumo das novidades direto no aviso de atualização
-Quando aparece "Nova versão disponível", o próprio aviso já mostra o resumo do que mudou.
+⚡ App mais rápido
+Otimizamos o carregamento das fotos de perfil no ranking e nas listas — o app fica mais leve e rápido pra todo mundo.
 
 Atualizem o app para a versão mais recente! 🏆`}
                   </div>
@@ -2557,6 +2554,7 @@ Atualizem o app para a versão mais recente! 🏆`}
                   </div>
                   <div className="divide-y divide-gray-50">
                     {[
+                      { v: 'v1.17.3', desc: 'Chaveamento mata-mata oficial da Copa 2026, com resolução automática (classificação dos grupos + jogos encerrados) e editor manual de apoio. Painel admin com chave horizontal estilo FIFA, botão de expandir (visão empilhada Lado A/B) e interruptor manual+automático pra ativar pros jogadores. Botão flutuante arrastável na tela Campeão. Datas reais/oficiais em cada confronto. Correção do bug de login que travava o cookie de sessão (afetava todas as ferramentas admin autenticadas). Correção da fase "Dezesseis Avos de Final" que estava sendo rotulada como "Oitavas de Final" no sync. Otimização de avatares (redimensiona antes do upload, lazy loading nas listas) pra reduzir consumo de Cached Egress no Supabase.' },
                       { v: 'v1.17.2', desc: 'Corrigido de vez o banner de notificação que piscava ao trocar de aba (calculava o estado errado a cada remontagem). Notificação de gol com palpite e pontos em tempo real. Sync ao vivo de 5min para 1min. Popup de atualização agora mostra o resumo das novidades e um aviso reforçado pra ativar notificações.' },
                       { v: 'v1.17', desc: 'Correção do popup de atualização (parava de piscar ao trocar de aba — lógica movida pro _app.tsx). Card pulsa em vermelho quando o palpite não foi confirmado. Selo de grupo + colocação nos cards de jogo, com modal de classificação. Menu inferior transparente no mobile.' },
                       { v: 'v1.16', desc: 'Palpite automático 0×0 (50% dos pontos) para quem esquece de palpitar. Classificação dos grupos e chaveamento mata-mata na tela Campeão.' },

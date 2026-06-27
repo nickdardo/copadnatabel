@@ -9,10 +9,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 const APP_VERSION = process.env.APP_VERSION || '1.0.0'
 
 const DEFAULT_CHANGELOG = [
-  'Avisos de atualização que apareciam e fechavam rápido demais — corrigido',
-  'Notificação de gol com seu palpite e os pontos na hora',
-  'Grupo e colocação direto no card do jogo',
-  'Menu inferior mais moderno no celular',
+  'Chaveamento mata-mata oficial da Copa, com data de cada jogo',
+  'Botão flutuante na tela Campeão pra ver a chave a qualquer hora',
+  'App mais rápido — fotos de perfil otimizadas',
 ].join('\n')
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
