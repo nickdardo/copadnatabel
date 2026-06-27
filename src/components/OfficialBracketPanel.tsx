@@ -45,6 +45,32 @@ export default function OfficialBracketPanel() {
 
   const ctx = useMemo(() => buildBracketContext(matches, overrides), [matches, overrides])
 
+  // Jogos que a Odds API já sincronizou pra essa fase, mas que ainda não
+  // foram vinculados a um número oficial (status >= upcoming, time real
+  // já conhecido). Usado pra reconhecer automaticamente um confronto que
+  // já existe, em vez de oferecer criar um duplicado.
+  function findSyncedMatch(fase: string, homeTeam: string, awayTeam: string): Match | undefined {
+    return matches.find(m =>
+      m.fase === fase && !m.official_match_number &&
+      ((m.home_team === homeTeam && m.away_team === awayTeam) ||
+       (m.home_team === awayTeam && m.away_team === homeTeam))
+    )
+  }
+
+  async function linkMatch(slot: OfficialSlot, existingMatch: Match) {
+    setCreatingMatch(slot.match)
+    setErrMsg(null)
+    try {
+      const res = await fetch('/api/admin/set-bracket-side', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match_id: existingMatch.id, bracket_side: slot.side, official_match_number: slot.match }),
+      })
+      if (res.ok) await load()
+      else { const j = await res.json(); setErrMsg(j.error || 'Erro ao vincular.') }
+    } catch { setErrMsg('Erro de conexão.') }
+    setCreatingMatch(null)
+  }
+
   async function createMatch(slot: OfficialSlot, homeTeam: string, awayTeam: string) {
     setCreatingMatch(slot.match)
     setErrMsg(null)
@@ -84,6 +110,7 @@ export default function OfficialBracketPanel() {
     const homeTeam = home.candidates && home.candidates.length > 1 ? pickedThird[slot.match * 10 + 1] : home.team
     const awayTeam = away.candidates && away.candidates.length > 1 ? pickedThird[slot.match * 10 + 2] : away.team
     const bothKnown = !!homeTeam && !!awayTeam
+    const synced = bothKnown ? findSyncedMatch(slot.fase, homeTeam!, awayTeam!) : undefined
 
     return (
       <div key={slot.match} className="bg-white rounded-lg border border-gray-100 px-2.5 py-2">
@@ -118,7 +145,13 @@ export default function OfficialBracketPanel() {
           </div>
         )}
 
-        {bothKnown && (
+        {bothKnown && synced && (
+          <button onClick={() => linkMatch(slot, synced)} disabled={creatingMatch === slot.match}
+            className="w-full mt-2 bg-green-600 text-white text-[10.5px] font-semibold py-1.5 rounded-md disabled:opacity-50">
+            {creatingMatch === slot.match ? 'Vinculando...' : '✓ Já sincronizado — vincular ao Jogo ' + slot.match}
+          </button>
+        )}
+        {bothKnown && !synced && (
           <button onClick={() => createMatch(slot, homeTeam!, awayTeam!)} disabled={creatingMatch === slot.match}
             className="w-full mt-2 bg-[#0099CC] text-white text-[10.5px] font-semibold py-1.5 rounded-md disabled:opacity-50">
             {creatingMatch === slot.match ? 'Criando...' : '+ Criar confronto real'}

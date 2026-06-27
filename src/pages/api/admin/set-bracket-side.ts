@@ -42,12 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const caller = await getSessionAdmin(req)
   if (!caller) return res.status(401).json({ error: 'Apenas administradores podem usar esta ferramenta.' })
 
-  const { match_id, bracket_side } = req.body
+  const { match_id, bracket_side, official_match_number } = req.body
   if (!match_id || (bracket_side !== 'A' && bracket_side !== 'B' && bracket_side !== null)) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes ou inválidos.' })
   }
 
-  const { error } = await admin.from('matches').update({ bracket_side }).eq('id', match_id)
+  const update: { bracket_side: 'A' | 'B' | null; official_match_number?: number } = { bracket_side }
+  if (official_match_number) update.official_match_number = official_match_number
+
+  const { error } = await admin.from('matches').update(update).eq('id', match_id)
   if (error) return res.status(500).json({ error: error.message })
 
   return res.json({ ok: true })

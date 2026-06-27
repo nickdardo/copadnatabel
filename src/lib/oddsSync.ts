@@ -56,9 +56,10 @@ function detectPhase(commenceTime: string): string {
   // Third place: Jul 18
   // Final: Jul 19
   if (ts < new Date('2026-06-27T00:00:00Z').getTime()) return 'Fase de Grupos'
-  if (ts < new Date('2026-07-04T00:00:00Z').getTime()) return 'Oitavas de Final'
-  if (ts < new Date('2026-07-09T00:00:00Z').getTime()) return 'Quartas de Final'
-  if (ts < new Date('2026-07-14T00:00:00Z').getTime()) return 'Semifinais'
+  if (ts < new Date('2026-07-04T00:00:00Z').getTime()) return 'Dezesseis Avos de Final'
+  if (ts < new Date('2026-07-09T00:00:00Z').getTime()) return 'Oitavas de Final'
+  if (ts < new Date('2026-07-14T00:00:00Z').getTime()) return 'Quartas de Final'
+  if (ts < new Date('2026-07-18T00:00:00Z').getTime()) return 'Semifinais'
   if (ts < new Date('2026-07-19T00:00:00Z').getTime()) return 'Terceiro Lugar'
   return 'Final'
 }
