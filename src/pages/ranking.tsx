@@ -521,7 +521,7 @@ export default function RankingPage() {
                   </div>
 
                   {photo
-                    ? <img src={photo} alt={name} className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm"/>
+                    ? <img src={photo} alt={name} loading="lazy" className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm"/>
                     : <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white border-2 border-white shadow-sm"
                         style={{ background: color }}>
                         {initials(name)}

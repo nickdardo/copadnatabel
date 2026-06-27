@@ -1607,7 +1607,7 @@ export default function AdminPage() {
                               <div key={r.player_id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${pos === 1 ? 'bg-amber-50 border border-amber-100' : 'bg-gray-50'}`}>
                                 <span className={`text-[14px] font-bold w-5 text-center flex-shrink-0 ${medal}`}>{pos}</span>
                                 {av
-                                  ? <img src={av} alt={r.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                                  ? <img src={av} alt={r.name} loading="lazy" className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
                                   : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC] flex-shrink-0">
                                       {r.name.split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                     </div>
@@ -1656,7 +1656,7 @@ export default function AdminPage() {
                             <div key={p.id} className="flex items-center gap-2.5 py-2">
                               <div className="relative flex-shrink-0">
                                 {av
-                                  ? <img src={av} alt={name} className="w-7 h-7 rounded-full object-cover"/>
+                                  ? <img src={av} alt={name} loading="lazy" className="w-7 h-7 rounded-full object-cover"/>
                                   : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC]">
                                       {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                     </div>
@@ -1848,7 +1848,7 @@ export default function AdminPage() {
                             <div key={p.id} className="flex items-center gap-2.5">
                               <span className="text-[11px] font-bold text-gray-300 w-4 text-right flex-shrink-0">{i + 1}</span>
                               {av
-                                ? <img src={av} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                                ? <img src={av} alt={name} loading="lazy" className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
                                 : <div className="w-7 h-7 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[9px] font-bold text-[#0099CC] flex-shrink-0">
                                     {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                   </div>
@@ -1996,7 +1996,7 @@ export default function AdminPage() {
                                 <span className="text-[11px] font-bold text-gray-300 w-5 text-right flex-shrink-0">{rowNumber}</span>
                                 <div className="relative flex-shrink-0">
                                   {av
-                                    ? <img src={av} alt={name} className="w-9 h-9 rounded-full object-cover"/>
+                                    ? <img src={av} alt={name} loading="lazy" className="w-9 h-9 rounded-full object-cover"/>
                                     : <div className="w-9 h-9 rounded-full bg-[#E6F4FA] flex items-center justify-center text-[10px] font-bold text-[#0099CC]">
                                         {(name||'?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase()}
                                       </div>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Score, FACTOR_PTS } from '@/lib/supabase'
+import { resizeAndCompressImage } from '@/lib/imageResize'
 import Head from 'next/head'
 
 const IcoCheck  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -103,17 +104,28 @@ export default function ProfileSetupPage() {
     setSaving(true)
     let avatarPath = player.avatar_url || null
 
-    // Upload photo if selected
+    // Upload photo if selected — redimensiona/comprime antes, pra não
+    // mandar foto de celular em tamanho original (3-5MB) pro Storage.
+    // Sempre reencodado como JPEG pelo canvas, então a extensão final
+    // é sempre .jpg, independente do formato original (heic, png, etc).
     if (avatarFile) {
       setUploading(true)
-      const ext  = avatarFile.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${player.id}/avatar.${ext}`
+      const path = `${player.id}/avatar.jpg`
+
+      let toUpload: Blob = avatarFile
+      try {
+        toUpload = await resizeAndCompressImage(avatarFile, 320, 0.82)
+      } catch {
+        // Se o redimensionamento falhar por algum motivo, sobe o original
+        // mesmo (melhor que travar o usuário) — ainda vale o limite de 5MB.
+      }
 
       const { error: upErr } = await supabase.storage
         .from('avatars')
-        .upload(path, avatarFile, {
+        .upload(path, toUpload, {
           upsert: true,
-          contentType: avatarFile.type || `image/${ext}`,
+          contentType: 'image/jpeg',
+          cacheControl: '604800', // 7 dias — evita re-baixar o mesmo avatar sem necessidade
         })
 
       setUploading(false)

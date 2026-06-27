@@ -26,7 +26,7 @@ function pointsForScore(home: number, away: number, match: Match): number | null
 function Avatar({ name, avatar, size = 32 }: { name: string; avatar?: string; size?: number }) {
   const av = avatar ? (avatar.startsWith('http') ? avatar : supabase.storage.from('avatars').getPublicUrl(avatar).data.publicUrl) : null
   const color = COLORS[name.charCodeAt(0) % COLORS.length]
-  if (av) return <img src={av} alt={name} className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }}/>
+  if (av) return <img src={av} alt={name} loading="lazy" className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }}/>
   return (
     <div className="rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold"
       style={{ width: size, height: size, background: color, fontSize: size * 0.32 }}>
