@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { syncFromOddsAPI } from '@/lib/oddsSync'
+import { notifyGoalEvents } from '@/lib/goalNotify'
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,5 +46,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) recalcError = error.message
   }
 
-  return res.status(200).json({ ok: !result.error, ...result, recalcError, timestamp: new Date().toISOString() })
+  // Notifica cada jogador, individualmente, sempre que um gol é detectado
+  // num jogo ao vivo — com o placar, o palpite dele e quantos pontos faria
+  // se o jogo terminasse agora com esse placar.
+  let goalsNotified = 0
+  if (!result.error && result.goalEvents.length > 0) {
+    const { notified } = await notifyGoalEvents(result.goalEvents)
+    goalsNotified = notified
+  }
+
+  return res.status(200).json({ ok: !result.error, ...result, goalsNotified, recalcError, timestamp: new Date().toISOString() })
 }

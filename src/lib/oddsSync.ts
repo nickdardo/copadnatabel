@@ -65,11 +65,15 @@ function detectPhase(commenceTime: string): string {
 
 type OddsEvent = { id:string; home_team:string; away_team:string; commence_time:string }
 type OddsScore = OddsEvent & { completed:boolean; scores: Array<{name:string;score:string}>|null }
-export type SyncResult = { synced:number; updated:number; recalculated:boolean; quotaRemaining:number|null; error?:string }
+export type GoalEvent = {
+  matchId: string; homeTeam: string; awayTeam: string
+  scoreHome: number; scoreAway: number; scoringTeam: 'home' | 'away'
+}
+export type SyncResult = { synced:number; updated:number; recalculated:boolean; quotaRemaining:number|null; goalEvents:GoalEvent[]; error?:string }
 
 export async function syncFromOddsAPI(): Promise<SyncResult> {
   const apiKey = process.env.ODDS_API_KEY
-  if (!apiKey) return { synced:0, updated:0, recalculated:false, quotaRemaining:null, error:'ODDS_API_KEY not set' }
+  if (!apiKey) return { synced:0, updated:0, recalculated:false, quotaRemaining:null, goalEvents:[], error:'ODDS_API_KEY not set' }
 
   let quotaRemaining: number | null = null
 
@@ -79,7 +83,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       { cache: 'no-store' }
     )
     quotaRemaining = Number(eventsRes.headers.get('x-requests-remaining') ?? null)
-    if (!eventsRes.ok) return { synced:0, updated:0, recalculated:false, quotaRemaining, error:`Events: ${await eventsRes.text()}` }
+    if (!eventsRes.ok) return { synced:0, updated:0, recalculated:false, quotaRemaining, goalEvents:[], error:`Events: ${await eventsRes.text()}` }
     const events: OddsEvent[] = await eventsRes.json()
 
     const scoresRes = await fetch(
@@ -99,6 +103,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
     ;(existingRows || []).forEach((m: any) => { if (m.odds_event_id) existingMap[m.odds_event_id] = m })
 
     let synced=0, updated=0, hasNewResults=false
+    const goalEvents: GoalEvent[] = []
     const now = Date.now()
 
     for (const ev of events) {
@@ -156,6 +161,19 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
           || (scoreHome !== null && existing.score_home === null)
           || (scoreAway !== null && existing.score_away === null)
         if (changed) {
+          // Detecta gol de verdade: jogo já estava 'live' antes E depois, e o
+          // placar subiu (em vez de ter ido de null→0 no apito inicial, que
+          // não é gol — é só o jogo começando).
+          const wasLive = existing.status === 'live'
+          const isLive  = status === 'live'
+          const homeUp  = existing.score_home !== null && scoreHome !== null && scoreHome > existing.score_home
+          const awayUp  = existing.score_away !== null && scoreAway !== null && scoreAway > existing.score_away
+          if (wasLive && isLive && (homeUp || awayUp) && scoreHome !== null && scoreAway !== null) {
+            goalEvents.push({
+              matchId: existing.id, homeTeam: homeTeamPT, awayTeam: awayTeamPT,
+              scoreHome, scoreAway, scoringTeam: homeUp ? 'home' : 'away',
+            })
+          }
           const { error } = await supabaseAdmin.from('matches').update(matchData).eq('odds_event_id', ev.id)
           if (!error) {
             updated++
@@ -177,8 +195,8 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       recalculated = !error
     }
 
-    return { synced, updated, recalculated, quotaRemaining }
+    return { synced, updated, recalculated, quotaRemaining, goalEvents }
   } catch (err: any) {
-    return { synced:0, updated:0, recalculated:false, quotaRemaining, error: err.message }
+    return { synced:0, updated:0, recalculated:false, quotaRemaining, goalEvents:[], error: err.message }
   }
 }
