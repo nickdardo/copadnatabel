@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useRouter } from 'next/router'
 import { supabase, Match } from '@/lib/supabase'
 import { buildBracketContext } from '@/lib/officialBracket2026'
+import { detectActivePhase } from '@/lib/groupStandings'
 import { BracketFullscreenModal } from '@/components/BracketChart'
 
 const STORAGE_KEY = 'bracket_fab_pos'
@@ -8,14 +10,18 @@ const STORAGE_KEY = 'bracket_fab_pos'
 // Botão flutuante arrastável, disponível em todas as telas (vive no
 // Layout, não em uma página específica) — dá acesso rápido ao chaveamento
 // completo de qualquer lugar do app, sem precisar trocar de aba e perder
-// o que estava fazendo. Continua valioso mesmo depois que a tela Campeão
-// passa a mostrar a chave automaticamente, porque nas outras abas
-// (Palpites, Ranking, Assistir, Regras) não tem outro jeito rápido de
-// espiar o chaveamento. Sempre visível, mesmo só com fórmula ("Vencedor
-// Grupo A"). A posição que o jogador arrastar fica salva (localStorage).
+// o que estava fazendo. Na tela Campeão especificamente, ele checa se a
+// chave já é o conteúdo principal ali (toggle bracket_ativo ligado, ou
+// algum jogo do mata-mata já em andamento) — se for, se esconde, porque
+// mostraria a mesma coisa duas vezes; se não for (ainda nos grupos),
+// continua aparecendo normalmente, igual nas outras abas. Sempre visível
+// fora da Campeão, mesmo só com fórmula ("Vencedor Grupo A"). A posição
+// que o jogador arrastar fica salva (localStorage).
 export default function BracketFab() {
+  const router = useRouter()
   const [matches, setMatches] = useState<Match[]>([])
   const [overrides, setOverrides] = useState<Record<string, string>>({})
+  const [bracketAtivo, setBracketAtivo] = useState(false)
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
 
@@ -33,6 +39,9 @@ export default function BracketFab() {
         data.forEach((r: { team_name: string; group_label: string }) => { map[r.team_name] = r.group_label })
         setOverrides(map)
       }
+    })
+    supabase.from('pix_config').select('bracket_ativo').limit(1).then(({ data }) => {
+      if (data?.[0]) setBracketAtivo(data[0].bracket_ativo || false)
     })
   }, [])
 
@@ -97,6 +106,18 @@ export default function BracketFab() {
   }, [])
 
   if (!pos) return null
+
+  // Na tela Campeão, a chave é mostrada como conteúdo principal quando o
+  // toggle bracket_ativo está ligado OU quando algum jogo do mata-mata já
+  // não está mais 'upcoming' (a mesma regra de CompetitionStatusCard).
+  // Nesse caso, o botão flutuante mostraria a mesma coisa duas vezes —
+  // então some. Em qualquer outra página, ou se ainda estiver nos grupos,
+  // continua aparecendo normalmente.
+  if (router.pathname === '/champion') {
+    const activePhase = detectActivePhase(matches)
+    const isBracketAlreadyShowing = bracketAtivo || activePhase !== 'Fase de Grupos'
+    if (isBracketAlreadyShowing) return null
+  }
 
   return (
     <>

@@ -419,11 +419,11 @@ export default function Layout({ children, title }: Props) {
       )}
 
       <div className="min-h-screen bg-gray-50 pb-[80px]">
-        {/* Botão flutuante do chaveamento — escondido na tela Campeão de
-            propósito, porque ali a chave já é o conteúdo principal (via
-            toggle bracket_ativo ou troca automática); nas outras abas
-            continua sendo o jeito rápido de espiar sem perder o contexto. */}
-        {router.pathname !== '/champion' && <BracketFab/>}
+        {/* Botão flutuante do chaveamento — ele mesmo decide se aparece ou
+            não na tela Campeão, checando se a chave já é o conteúdo
+            principal ali (toggle bracket_ativo ou troca automática). Nas
+            outras abas, sempre aparece. */}
+        <BracketFab/>
 
         {/* ── Notification activation banner ──────────────── */}
         {player && !notifyEnabled && !notifyBannerHidden && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
