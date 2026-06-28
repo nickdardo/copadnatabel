@@ -194,6 +194,15 @@ export default function OnboardingPage() {
                   ))}
                 </div>
 
+                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">🎯 Mata-mata</p>
+                  <p className="text-[12px] text-gray-600 leading-relaxed">
+                    A partir das Dezesseis Avos, vale só o placar dos <strong>90 minutos</strong>. Se o jogo terminou
+                    empatado no tempo normal, quem palpitou empate pontua normalmente — não importa quem avançou
+                    de fase na prorrogação ou nos pênaltis.
+                  </p>
+                </div>
+
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
                   <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wide mb-2">⚡ Limites</p>
                   {['Palpites fecham 2h antes de cada jogo','Máximo 3 alterações por dia','Palpite de campeão: 3 trocas até o início da Copa'].map(r => (

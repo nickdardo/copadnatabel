@@ -583,6 +583,14 @@ export default function PicksPage() {
                           </button>
                         </div>
                       )}
+                      {/* Aviso de regra — só nas fases eliminatórias (mata-mata), vale só os 90 minutos */}
+                      {m.fase !== 'Fase de Grupos' && (
+                        <div className="flex justify-center mb-2">
+                          <span className="text-[10px] font-medium text-gray-400 text-center px-2">
+                            🎯 Vale só os 90 minutos — empate é empate, mesmo com prorrogação/pênaltis
+                          </span>
+                        </div>
+                      )}
                       {/* Teams row */}
                       <div className="flex items-center justify-between gap-1 mb-2">
                         {/* Home */}
