@@ -153,19 +153,24 @@ export function AuthProvider({ children }: React.PropsWithChildren<{}>) {
     setPlayer(data)
     saveToStorage(data)
 
+    // Cookie de sessão — necessário pra qualquer rota autenticada do admin
+    // (fix-pick, finish-match, set-group-label, set-bracket-side etc).
+    // Antes só era criado quando "remember" estava marcado, o que deixava
+    // essas ferramentas inacessíveis pro próprio admin se ele logasse sem
+    // marcar essa caixinha. Agora todo login estabelece o cookie, sempre.
+    try {
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ player_id: data.id }),
+      })
+    } catch {}
+
     if (remember) {
       // Save username hint for next time
       try { localStorage.setItem('bolao_remember', '1') } catch {}
       try { localStorage.setItem('bolao_saved_user', clean) } catch {}
-      // Create session token (cookie-based — survives PWA install)
-      try {
-        await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ player_id: data.id }),
-        })
-      } catch {}
     }
 
     return {}
