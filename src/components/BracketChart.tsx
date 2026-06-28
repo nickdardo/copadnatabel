@@ -37,12 +37,13 @@ function fmtSlotDate(iso?: string | null, short?: boolean): string {
   if (!iso) return ''
   try {
     const d = new Date(iso)
-    const dd = String(d.getDate()).padStart(2, '0')
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    // Sempre horário de Brasília, independente do fuso do celular de quem
+    // está vendo — mesmo padrão usado no resto do app (fmtBRT em picks.tsx).
+    const dd = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit' })
+    const mm = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', month: '2-digit' })
     if (short) return `${dd}/${mm}`
-    const hh = String(d.getHours()).padStart(2, '0')
-    const min = String(d.getMinutes()).padStart(2, '0')
-    return `${dd}/${mm} ${hh}:${min}`
+    const time = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+    return `${dd}/${mm} ${time}`
   } catch { return '' }
 }
 
