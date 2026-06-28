@@ -42,7 +42,7 @@ export async function notifyGoalEvents(events: GoalEvent[]): Promise<{ notified:
     subs.forEach(s => { subMap[s.player_id] = s.subscription })
 
     const scoringTeamName = ev.scoringTeam === 'home' ? ev.homeTeam : ev.awayTeam
-    const title = `⚽ GOL DO ${scoringTeamName.toUpperCase()}!`
+    const title = `⚽ GOL ${scoringTeamName.toUpperCase()}!`
     const now = new Date().toISOString()
     const logEntries: { player_id: string; title: string; body: string; sent_at: string }[] = []
 
