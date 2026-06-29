@@ -144,6 +144,8 @@ export default function AdminPage() {
   const [travamentoJogos,setTravamentoJogos]= useState(true)
   const [watchAtivo,     setWatchAtivo]     = useState(false)
   const [bracketAtivo,   setBracketAtivo]   = useState(false)
+  const [tightSyncAt,    setTightSyncAt]    = useState<string | null>(null)
+  const [tightSyncOk,    setTightSyncOk]    = useState<boolean | null>(null)
   const [savingLock,     setSavingLock]     = useState(false)
 
   useEffect(() => {
@@ -318,7 +320,7 @@ export default function AdminPage() {
 
   // Load copa lock state
   useEffect(() => {
-    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos, watch_ativo, bracket_ativo').limit(1).then(({ data }) => {
+    supabase.from('pix_config').select('copa_bloqueada, champ_bloqueado, modo_visitante, lock_jogos, watch_ativo, bracket_ativo, last_tight_sync_at, last_tight_sync_ok').limit(1).then(({ data }) => {
       if (data?.[0]) {
         setCopaBloqueada(data[0].copa_bloqueada || false)
         setChampBloqueado(data[0].champ_bloqueado || false)
@@ -326,6 +328,8 @@ export default function AdminPage() {
         setTravamentoJogos(data[0].lock_jogos ?? true)
         setWatchAtivo(data[0].watch_ativo || false)
         setBracketAtivo(data[0].bracket_ativo || false)
+        setTightSyncAt(data[0].last_tight_sync_at || null)
+        setTightSyncOk(data[0].last_tight_sync_ok ?? null)
       }
     })
   }, [])
@@ -1752,6 +1756,26 @@ export default function AdminPage() {
                         <p className="text-[10px] text-[#0099CC] font-medium">Sync automático desativado — manual salva quota</p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Sync apertado (football-data.org) — disparado pelo cron externo,
+                      não tem botão manual aqui, só mostra o status. */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tightSyncOk === false ? 'bg-red-400' : 'bg-green-400'}`}/>
+                      <p className="text-[13px] font-semibold text-gray-800">Sync apertado (gol + 90min)</p>
+                    </div>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      Roda sozinho via cron externo, a cada 1min, só durante a janela de cada jogo (10min antes até 100min depois). Usa o football-data.org pra detectar gol mais rápido e corrigir automaticamente o placar de jogos que foram à prorrogação.
+                    </p>
+                    {tightSyncAt ? (
+                      <p className="text-[10px] text-gray-400 mt-1.5">
+                        Última checagem: {new Date(tightSyncAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                        {tightSyncOk === false && <span className="text-red-500 font-medium"> · com erro</span>}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-amber-600 font-medium mt-1.5">Ainda não rodou — confira se o cron externo está configurado</p>
+                    )}
                   </div>
 
                   {/* Recalculate */}

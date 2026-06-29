@@ -41,7 +41,7 @@ const EN_TO_PT: Record<string, string> = {
   'Cape Verde':'Cabo Verde','Cabo Verde':'Cabo Verde','Uzbekistan':'Uzbequistão',
 }
 
-function translateTeam(enName: string): string {
+export function translateTeam(enName: string): string {
   return EN_TO_PT[enName] || enName
 }
 
