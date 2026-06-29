@@ -451,42 +451,15 @@ export default function AdminPage() {
     // Active window = 10min before kickoff → until match ends (≈100min total)
     function scheduleNext() {
       if (cancelled) return
-      const now = Date.now()
-      const current = matchesRef.current // always up-to-date, avoids stale closure
-
-      // 1. Live match → sync every 1min until it ends (era 5min — encurtado
-      // pra dar mais precisão na notificação de gol em tempo real)
-      const liveMatch = current.find(m => m.status === 'live')
-      if (liveMatch) {
-        doSync(true)
-        syncTimer = setTimeout(scheduleNext, 1 * 60 * 1000)
-        return
-      }
-
-      // 2. Find the next upcoming match (only future matches, or started < 10min ago)
-      const upcoming = current
-        .filter(m => m.status === 'upcoming' && m.match_date)
-        .map(m => ({ m, start: new Date(m.match_date!).getTime() }))
-        .filter(x => x.start > now - 10 * 60 * 1000) // future OR started < 10min ago
-        .sort((a, b) => a.start - b.start)[0]
-
-      if (!upcoming) {
-        // No active or upcoming match — check again in 30min
-        syncTimer = setTimeout(scheduleNext, 30 * 60 * 1000)
-        return
-      }
-
-      const msUntilStart = upcoming.start - now
-      const tenMinBefore = msUntilStart - 10 * 60 * 1000
-
-      if (tenMinBefore > 0) {
-        // More than 10min until kickoff — wait silently, no API calls
-        syncTimer = setTimeout(() => { doSync(true); scheduleNext() }, tenMinBefore)
-      } else {
-        // Within the active window (T-10min to kickoff) — sync now, check in 5min
-        doSync(true)
-        syncTimer = setTimeout(scheduleNext, 5 * 60 * 1000)
-      }
+      // Cota muito menor agora (plano free, 500 req/mês) — a precisão de
+      // gol em tempo real e a confirmação de quando um jogo termina já
+      // são cobertas pelo sync-tight (football-data.org, via cron externo,
+      // a cada 1min só na janela do jogo). Esse sync da Odds API aqui só
+      // precisa descobrir jogos novos e servir de backup — não precisa
+      // mais ser frequente. Intervalo fixo de 4h, sem escalonar por jogo
+      // ao vivo/próximo, pra manter a cota previsível até o fim da Copa.
+      doSync(true)
+      syncTimer = setTimeout(scheduleNext, 4 * 60 * 60 * 1000)
     }
 
     // Initial sync on load
@@ -1736,7 +1709,7 @@ export default function AdminPage() {
                     </button>
                     <div className="space-y-1">
                       <p className="text-[11px] text-gray-500 leading-relaxed">
-                        Busca jogos e placares na The Odds API. <strong>Sync inteligente:</strong> sincroniza 10min antes do jogo, a cada 10min durante a partida e 10min após o fim. Recalcula o ranking 5min depois de cada sync.
+                        Busca jogos e placares na The Odds API (plano free, 500 req/mês). Roda a cada 4h — só pra descobrir jogos novos e servir de backup, já que a precisão de gol e a confirmação de "encerrado" agora ficam por conta do sync apertado (football-data.org).
                       </p>
                       {lastSyncTime && (
                         <p className="text-[10px] text-gray-400">Último: {lastSyncTime}</p>
