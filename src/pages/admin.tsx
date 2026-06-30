@@ -11,7 +11,7 @@ import OfficialBracketPanel from '@/components/OfficialBracketPanel'
 import CompetitionStatusCard from '@/components/CompetitionStatusCard'
 
 type Page = 'dashboard' | 'players' | 'matches' | 'pix' | 'logs' | 'notifications' | 'versao'
-type SyncResult = { ok: boolean; synced: number; updated: number; recalculated: boolean; quotaRemaining: number | null; goalsNotified?: number; goalEvents?: unknown[]; error?: string }
+type SyncResult = { ok: boolean; synced: number; updated: number; linkedManual?: number; recalculated: boolean; quotaRemaining: number | null; goalsNotified?: number; goalEvents?: unknown[]; error?: string }
 
 function fmtBRT(dateStr: string) {
   try {
@@ -1813,6 +1813,8 @@ export default function AdminPage() {
                   <div className={`rounded-xl px-4 py-3 text-[12px] ${syncResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
                     {syncResult.ok
                       ? `Sincronizado: +${syncResult.synced} novos · ${syncResult.updated} atualizados${
+                          (syncResult.linkedManual ?? 0) > 0 ? ` · 🔗 ${syncResult.linkedManual} jogo(s) manual(is) vinculado(s)` : ''
+                        }${
                           (syncResult.goalEvents?.length ?? 0) > 0
                             ? ` · ⚽ ${syncResult.goalEvents!.length} gol(s) detectado(s), ${syncResult.goalsNotified ?? 0} notificação(ões) enviada(s)`
                             : ''

@@ -77,11 +77,11 @@ export type GoalEvent = {
   matchId: string; homeTeam: string; awayTeam: string
   scoreHome: number; scoreAway: number; scoringTeam: 'home' | 'away'
 }
-export type SyncResult = { synced:number; updated:number; recalculated:boolean; quotaRemaining:number|null; goalEvents:GoalEvent[]; error?:string }
+export type SyncResult = { synced:number; updated:number; linkedManual:number; recalculated:boolean; quotaRemaining:number|null; goalEvents:GoalEvent[]; error?:string }
 
 export async function syncFromOddsAPI(): Promise<SyncResult> {
   const apiKey = process.env.ODDS_API_KEY
-  if (!apiKey) return { synced:0, updated:0, recalculated:false, quotaRemaining:null, goalEvents:[], error:'ODDS_API_KEY not set' }
+  if (!apiKey) return { synced:0, updated:0, linkedManual:0, recalculated:false, quotaRemaining:null, goalEvents:[], error:'ODDS_API_KEY not set' }
 
   let quotaRemaining: number | null = null
 
@@ -91,7 +91,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       { cache: 'no-store' }
     )
     quotaRemaining = Number(eventsRes.headers.get('x-requests-remaining') ?? null)
-    if (!eventsRes.ok) return { synced:0, updated:0, recalculated:false, quotaRemaining, goalEvents:[], error:`Events: ${await eventsRes.text()}` }
+    if (!eventsRes.ok) return { synced:0, updated:0, linkedManual:0, recalculated:false, quotaRemaining, goalEvents:[], error:`Events: ${await eventsRes.text()}` }
     const events: OddsEvent[] = await eventsRes.json()
 
     const scoresRes = await fetch(
@@ -106,23 +106,48 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
     }
 
     const { data: existingRows } = await supabaseAdmin
-      .from('matches').select('id, odds_event_id, status, score_home, score_away')
+      .from('matches').select('id, odds_event_id, status, score_home, score_away, home_team, away_team, fase')
     const existingMap: Record<string, any> = {}
     ;(existingRows || []).forEach((m: any) => { if (m.odds_event_id) existingMap[m.odds_event_id] = m })
 
-    let synced=0, updated=0, hasNewResults=false
+    // Jogos criados manualmente pelo admin (sem odds_event_id ainda — ex: os
+    // confrontos de mata-mata cadastrados via SQL ou pelo OfficialBracketPanel)
+    // precisam ser reconhecidos por nome dos times + fase, não só por
+    // odds_event_id. Sem isso, a Odds API não os encontra e cria uma CÓPIA
+    // duplicada do mesmo jogo — daí o jogo "oficial" (vinculado ao número da
+    // chave, J74 etc.) nunca recebe os updates de placar/status, enquanto a
+    // cópia solta fica recebendo tudo sozinha. A chave usa min/max dos nomes
+    // pra casar mesmo se home/away vierem invertidos entre as duas fontes.
+    const teamPairMap: Record<string, any> = {}
+    ;(existingRows || []).forEach((m: any) => {
+      if (m.odds_event_id) return
+      const key = [m.home_team, m.away_team].sort().join('|') + '|' + m.fase
+      teamPairMap[key] = m
+    })
+
+    let synced=0, updated=0, linkedManual=0, hasNewResults=false
     const goalEvents: GoalEvent[] = []
     const now = Date.now()
 
     for (const ev of events) {
       const score    = scoresMap[ev.id]
-      const existing = existingMap[ev.id]
+      let existing   = existingMap[ev.id]
 
       // Translate team names EN → PT
       const homeTeamPT = translateTeam(ev.home_team)
       const awayTeamPT = translateTeam(ev.away_team)
       const homeFlag   = getFlag(homeTeamPT)
       const awayFlag   = getFlag(awayTeamPT)
+
+      // Não achou por odds_event_id — tenta achar um jogo manual com os
+      // mesmos times antes de assumir que é um jogo novo de verdade.
+      let linkingManualMatch = false
+      if (!existing) {
+        const fase = detectPhase(ev.commence_time)
+        const key = [homeTeamPT, awayTeamPT].sort().join('|') + '|' + fase
+        const manual = teamPairMap[key]
+        if (manual) { existing = manual; linkingManualMatch = true }
+      }
 
       let scoreHome: number|null = null
       let scoreAway: number|null = null
@@ -168,6 +193,7 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
           || existing.score_away !== scoreAway
           || (scoreHome !== null && existing.score_home === null)
           || (scoreAway !== null && existing.score_away === null)
+          || linkingManualMatch // sempre atualiza pra gravar o odds_event_id, mesmo sem mudança de placar
         if (changed) {
           // Detecta gol de verdade: jogo já estava 'live' antes E depois, e o
           // placar subiu (em vez de ter ido de null→0 no apito inicial, que
@@ -182,9 +208,10 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
               scoreHome, scoreAway, scoringTeam: homeUp ? 'home' : 'away',
             })
           }
-          const { error } = await supabaseAdmin.from('matches').update(matchData).eq('odds_event_id', ev.id)
+          const { error } = await supabaseAdmin.from('matches').update(matchData).eq('id', existing.id)
           if (!error) {
             updated++
+            if (linkingManualMatch) linkedManual++
             if (status === 'done' && existing.status !== 'done') {
               hasNewResults = true
               // Quem esqueceu de palpitar nesse jogo recebe automaticamente
@@ -203,8 +230,8 @@ export async function syncFromOddsAPI(): Promise<SyncResult> {
       recalculated = !error
     }
 
-    return { synced, updated, recalculated, quotaRemaining, goalEvents }
+    return { synced, updated, linkedManual, recalculated, quotaRemaining, goalEvents }
   } catch (err: any) {
-    return { synced:0, updated:0, recalculated:false, quotaRemaining, goalEvents:[], error: err.message }
+    return { synced:0, updated:0, linkedManual:0, recalculated:false, quotaRemaining, goalEvents:[], error: err.message }
   }
 }
