@@ -17,6 +17,7 @@ export default function OfficialBracketPanel() {
   const [creatingMatch, setCreatingMatch] = useState<number | null>(null)
   const [pickedThird, setPickedThird] = useState<Record<number, string>>({})
   const [errMsg, setErrMsg] = useState<string | null>(null)
+  const [settingWinnerFor, setSettingWinnerFor] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -77,6 +78,20 @@ export default function OfficialBracketPanel() {
     setCreatingMatch(null)
   }
 
+  async function setKnockoutWinner(matchId: string, winner: 'home' | 'away') {
+    setSettingWinnerFor(matchId)
+    setErrMsg(null)
+    try {
+      const res = await fetch('/api/admin/set-knockout-winner', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match_id: matchId, knockout_winner: winner }),
+      })
+      if (res.ok) await load()
+      else { const j = await res.json(); setErrMsg(j.error || 'Erro ao salvar.') }
+    } catch { setErrMsg('Erro de conexão.') }
+    setSettingWinnerFor(null)
+  }
+
   return (
     <div className="bg-white border border-green-200 rounded-xl p-4 space-y-3">
       <div>
@@ -102,6 +117,8 @@ export default function OfficialBracketPanel() {
           onLink={linkMatch}
           creatingMatch={creatingMatch}
           findSyncedMatch={findSyncedMatch}
+          onSetKnockoutWinner={setKnockoutWinner}
+          settingWinnerFor={settingWinnerFor}
         />
       )}
     </div>

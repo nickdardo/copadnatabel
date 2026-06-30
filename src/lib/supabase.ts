@@ -50,6 +50,7 @@ export type Match = {
   sort_order: number; odds_event_id?: string; group_name?: string
   stream_url?: string; bracket_side?: 'A' | 'B' | null
   official_match_number?: number | null
+  knockout_winner?: 'home' | 'away' | null
 }
 export type Pick = {
   id: string; player_id: string; match_id: string

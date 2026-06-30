@@ -24,6 +24,7 @@ const WINDOW_BEFORE_MIN = 10   // começa a olhar 10min antes do jogo
 const WINDOW_AFTER_MIN  = 100  // continua olhando até 100min depois do início
 
 type FDScore = {
+  winner: 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
   duration: 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
   fullTime: { home: number | null; away: number | null }
   regularTime?: { home: number | null; away: number | null }
@@ -109,13 +110,21 @@ export async function syncTightWindow(): Promise<TightSyncResult> {
     let newScoreHome = fdHomeIsOurHome ? fd.score.fullTime.home : fd.score.fullTime.away
     let newScoreAway = fdHomeIsOurHome ? fd.score.fullTime.away : fd.score.fullTime.home
 
-    // Jogo terminou na prorrogação ou nos pênaltis — vale só os 90 minutos,
-    // por decisão do bolão. Troca pelo placar regulamentar automaticamente.
+    // Jogo terminou na prorrogação ou nos pênaltis — vale só os 90 minutos
+    // pra pontuação, por decisão do bolão. Troca o placar pelo regulamentar
+    // automaticamente. Mas quem AVANÇA na chave é quem ganhou de verdade —
+    // isso guarda separado em knockout_winner, já que o placar de 90min
+    // pode estar empatado (decidido nos pênaltis) e não serve pra saber
+    // quem segue na competição.
     let wasCorrected = false
+    let knockoutWinner: 'home' | 'away' | null = null
     if (fd.status === 'FINISHED' && fd.score.duration !== 'REGULAR' && fd.score.regularTime) {
       newScoreHome = fdHomeIsOurHome ? fd.score.regularTime.home : fd.score.regularTime.away
       newScoreAway = fdHomeIsOurHome ? fd.score.regularTime.away : fd.score.regularTime.home
       wasCorrected = true
+
+      if (fd.score.winner === 'HOME_TEAM') knockoutWinner = fdHomeIsOurHome ? 'home' : 'away'
+      else if (fd.score.winner === 'AWAY_TEAM') knockoutWinner = fdHomeIsOurHome ? 'away' : 'home'
     }
 
     if (newScoreHome == null || newScoreAway == null) continue
@@ -140,6 +149,7 @@ export async function syncTightWindow(): Promise<TightSyncResult> {
 
     await supabaseAdmin.from('matches').update({
       score_home: newScoreHome, score_away: newScoreAway, status: newStatus,
+      ...(knockoutWinner ? { knockout_winner: knockoutWinner } : {}),
     }).eq('id', row.id)
 
     updated++

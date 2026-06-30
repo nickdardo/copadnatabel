@@ -157,16 +157,27 @@ export function resolveSlot(
   if (ref.type === 'match_winner') {
     const m = matchesByOfficialNumber[ref.match]
     const label = `Vencedor Jogo ${ref.match}`
-    if (m?.status === 'done' && m.score_home != null && m.score_away != null && m.score_home !== m.score_away) {
-      return { team: m.score_home > m.score_away ? m.home_team : m.away_team, label, resolved: true }
+    if (m?.status === 'done') {
+      // Jogo decidido na prorrogação/pênaltis: o placar de 90min guardado
+      // pode estar empatado (é o que vale pra pontuação), mas alguém
+      // avançou de verdade — esse campo separado guarda quem foi.
+      if (m.knockout_winner === 'home') return { team: m.home_team, label, resolved: true }
+      if (m.knockout_winner === 'away') return { team: m.away_team, label, resolved: true }
+      if (m.score_home != null && m.score_away != null && m.score_home !== m.score_away) {
+        return { team: m.score_home > m.score_away ? m.home_team : m.away_team, label, resolved: true }
+      }
     }
     return { team: null, label, resolved: false }
   }
   // match_loser
   const m = matchesByOfficialNumber[ref.match]
   const label = `Perdedor Jogo ${ref.match}`
-  if (m?.status === 'done' && m.score_home != null && m.score_away != null && m.score_home !== m.score_away) {
-    return { team: m.score_home > m.score_away ? m.away_team : m.home_team, label, resolved: true }
+  if (m?.status === 'done') {
+    if (m.knockout_winner === 'home') return { team: m.away_team, label, resolved: true }
+    if (m.knockout_winner === 'away') return { team: m.home_team, label, resolved: true }
+    if (m.score_home != null && m.score_away != null && m.score_home !== m.score_away) {
+      return { team: m.score_home > m.score_away ? m.away_team : m.home_team, label, resolved: true }
+    }
   }
   return { team: null, label, resolved: false }
 }

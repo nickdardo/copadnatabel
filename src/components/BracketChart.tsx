@@ -24,6 +24,8 @@ type Props = {
   onLink?: (slot: OfficialSlot, match: Match) => void
   creatingMatch?: number | null
   findSyncedMatch?: (fase: string, home: string, away: string) => Match | undefined
+  onSetKnockoutWinner?: (matchId: string, winner: 'home' | 'away') => void
+  settingWinnerFor?: string | null
 }
 
 const PHASE_ABBR: Record<string, string> = {
@@ -47,7 +49,7 @@ function fmtSlotDate(iso?: string | null, short?: boolean): string {
   } catch { return '' }
 }
 
-function SlotBox({ slot, ctx, editable, pickedThird, onPickThird, onCreate, onLink, creatingMatch, findSyncedMatch, colWidth }: Props & { slot: OfficialSlot; colWidth: number }) {
+function SlotBox({ slot, ctx, editable, pickedThird, onPickThird, onCreate, onLink, creatingMatch, findSyncedMatch, onSetKnockoutWinner, settingWinnerFor, colWidth }: Props & { slot: OfficialSlot; colWidth: number }) {
   const existing = ctx.matchesByOfficialNumber[slot.match]
   const home = resolveSlot(slot.home, ctx.standingsByGroup, ctx.top8Thirds, ctx.matchesByOfficialNumber)
   const away = resolveSlot(slot.away, ctx.standingsByGroup, ctx.top8Thirds, ctx.matchesByOfficialNumber)
@@ -56,11 +58,33 @@ function SlotBox({ slot, ctx, editable, pickedThird, onPickThird, onCreate, onLi
 
   if (existing) {
     const dateStr = fmtSlotDate(existing.match_date, colWidth < 110)
+    // Jogo encerrado, placar de 90min empatado (foi decidido na prorrogação
+    // ou pênaltis) e ainda sem knockout_winner definido — sem isso, a chave
+    // não sabe quem avançou e o slot seguinte fica preso em "Vencedor Jogo X".
+    const needsWinnerPick = editable && existing.status === 'done' &&
+      existing.score_home != null && existing.score_away != null &&
+      existing.score_home === existing.score_away && !existing.knockout_winner
+
     return (
       <div style={{ width: colWidth }} className="bg-white rounded-lg border border-green-100 px-1.5 py-1.5 flex-shrink-0">
         <div className="text-[7.5px] font-semibold text-green-600 mb-1">J{slot.match} ✓{dateStr ? ` · ${dateStr}` : ''}</div>
         <div className="flex items-center gap-1 truncate" style={{ fontSize: nameSize, color: '#1f2937' }}><FlagImg team={existing.home_team} size={flagSize}/><span className="truncate">{existing.home_team}</span></div>
         <div className="flex items-center gap-1 truncate mt-0.5" style={{ fontSize: nameSize, color: '#1f2937' }}><FlagImg team={existing.away_team} size={flagSize}/><span className="truncate">{existing.away_team}</span></div>
+        {needsWinnerPick && (
+          <div className="mt-1.5 pt-1.5 border-t border-amber-100">
+            <p className="text-[7px] font-semibold text-amber-600 mb-1">Empate 90min — quem avançou?</p>
+            <div className="flex gap-1">
+              <button onClick={() => onSetKnockoutWinner?.(existing.id, 'home')} disabled={settingWinnerFor === existing.id}
+                className="flex-1 bg-amber-50 border border-amber-200 text-amber-700 text-[7.5px] font-semibold py-1 rounded disabled:opacity-50 truncate px-0.5">
+                {existing.home_team.length > 8 ? existing.home_team.slice(0, 7) + '.' : existing.home_team}
+              </button>
+              <button onClick={() => onSetKnockoutWinner?.(existing.id, 'away')} disabled={settingWinnerFor === existing.id}
+                className="flex-1 bg-amber-50 border border-amber-200 text-amber-700 text-[7.5px] font-semibold py-1 rounded disabled:opacity-50 truncate px-0.5">
+                {existing.away_team.length > 8 ? existing.away_team.slice(0, 7) + '.' : existing.away_team}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
