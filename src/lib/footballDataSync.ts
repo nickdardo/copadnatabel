@@ -61,12 +61,18 @@ export async function syncTightWindow(): Promise<TightSyncResult> {
 
   // 1) Só busca na própria base — se não tem nenhum jogo na janela agora,
   // nem chama o football-data.org (economiza cota o resto do dia).
+  //
+  // IMPORTANTE: jogos já marcados 'live' são incluídos SEMPRE, sem limite
+  // de tempo — não só os iniciados dentro da janela de 100min. Isso
+  // corrige um bug real: jogos que vão à prorrogação/pênaltis (mata-mata)
+  // facilmente passam de 150-180min do apito inicial até o fim de verdade,
+  // bem além da janela de 100min pensada pra um jogo "normal". Sem essa
+  // condição extra, o sync simplesmente parava de checar o jogo no meio da
+  // prorrogação e ele nunca era marcado como encerrado sozinho.
   const { data: candidates } = await supabaseAdmin
     .from('matches')
     .select('id, home_team, away_team, score_home, score_away, status, match_date')
-    .in('status', ['upcoming', 'live'])
-    .gte('match_date', windowStart)
-    .lte('match_date', windowEnd)
+    .or(`status.eq.live,and(status.eq.upcoming,match_date.gte.${windowStart},match_date.lte.${windowEnd})`)
 
   const rows = (candidates || []) as MatchRow[]
   if (rows.length === 0) return { checked: 0, updated: 0, goalEvents: [], correctedExtraTime: 0 }
