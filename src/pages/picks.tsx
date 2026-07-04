@@ -402,7 +402,7 @@ export default function PicksPage() {
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4" style={{scrollbarWidth:'none'}}>
             {phases.map(f => (
               <button key={f} onClick={() => { setActivePhase(f); setRound(0); setTab('upcoming'); setSaveError(false) }}
-                className={`px-3 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${activePhase===f?'bg-[#0099CC] text-white':'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'} ${f==='Dezesseis Avos de Final' ? 'bracket-fab-pulse' : ''}`}>
+                className={`px-3 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${activePhase===f?'bg-[#0099CC] text-white':'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'} ${f === activePhase && f !== 'Fase de Grupos' ? 'bracket-fab-pulse' : ''}`}>
                 {f === 'Fase de Grupos' ? 'Grupos' : f}
               </button>
             ))}
