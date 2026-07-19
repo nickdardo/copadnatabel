@@ -17,7 +17,7 @@ const ENTRY_FEE = 10
 const COPA_ENCERRADA = true
 const COPA_CAMPEA    = 'Espanha'
 const COPA_VICE      = 'Argentina'
-const COPA_TERCEIRO  = 'França'
+const COPA_TERCEIRO  = 'Inglaterra'
 
 function formatBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
@@ -106,7 +106,7 @@ export default function ChampionPage() {
             champion: p.pick_champion,
             runner: p.pick_runner,
             third: p.pick_third,
-            bonus: (p.pick_champion === 'Espanha' ? 50 : 0) + (p.pick_runner === 'Argentina' ? 25 : 0) + (p.pick_third === 'França' ? 10 : 0),
+            bonus: (p.pick_champion === 'Espanha' ? 50 : 0) + (p.pick_runner === 'Argentina' ? 25 : 0) + (p.pick_third === 'Inglaterra' ? 10 : 0),
           }))
           .filter(p => p.username)
           .sort((a, b) => b.bonus - a.bonus)
@@ -259,7 +259,7 @@ export default function ChampionPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] font-semibold text-gray-800 truncate">{p.username}</p>
                         <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                          {[{t:p.champion,c:'Espanha'},{t:p.runner,c:'Argentina'},{t:p.third,c:'França'}].map((item, j) => item.t ? (
+                          {[{t:p.champion,c:'Espanha'},{t:p.runner,c:'Argentina'},{t:p.third,c:'Inglaterra'}].map((item, j) => item.t ? (
                             <span key={j} className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md ${item.t===item.c ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
                               <FlagImg team={item.t} size={10}/>
                               {item.t}

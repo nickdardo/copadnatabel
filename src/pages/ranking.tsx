@@ -263,7 +263,7 @@ export default function RankingPage() {
                 </p>
                 <p className="text-white/70 text-[11px] mt-0.5 font-medium">
                   10pts: {me.f10_count} | 7pts: {me.f7_count} | 5pts: {me.f5_count} | 2pts: {me.f2_count}
-                  {((me.champ?.pick_champion==='Espanha'?50:0)+(me.champ?.pick_runner==='Argentina'?25:0)+(me.champ?.pick_third==='França'?10:0)) > 0 && ` · Bônus:+${ ((me.champ?.pick_champion==='Espanha'?50:0)+(me.champ?.pick_runner==='Argentina'?25:0)+(me.champ?.pick_third==='França'?10:0))}`}
+                  {((me.champ?.pick_champion==='Espanha'?50:0)+(me.champ?.pick_runner==='Argentina'?25:0)+(me.champ?.pick_third==='Inglaterra'?10:0)) > 0 && ` · Bônus:+${ ((me.champ?.pick_champion==='Espanha'?50:0)+(me.champ?.pick_runner==='Argentina'?25:0)+(me.champ?.pick_third==='Inglaterra'?10:0))}`}
                 </p>
                 {/* Champion picks */}
                 {me.champ && (
@@ -603,9 +603,9 @@ export default function RankingPage() {
                             )
                           })
                         })()}
-                        {((entry.champ?.pick_champion==='Espanha'?50:0)+(entry.champ?.pick_runner==='Argentina'?25:0)+(entry.champ?.pick_third==='França'?10:0)) > 0 && (
+                        {((entry.champ?.pick_champion==='Espanha'?50:0)+(entry.champ?.pick_runner==='Argentina'?25:0)+(entry.champ?.pick_third==='Inglaterra'?10:0)) > 0 && (
                           <p className="text-[10px] text-amber-600 font-medium pt-0.5">
-                            + {((entry.champ?.pick_champion==='Espanha'?50:0)+(entry.champ?.pick_runner==='Argentina'?25:0)+(entry.champ?.pick_third==='França'?10:0))} pts bônus campeão
+                            + {((entry.champ?.pick_champion==='Espanha'?50:0)+(entry.champ?.pick_runner==='Argentina'?25:0)+(entry.champ?.pick_third==='Inglaterra'?10:0))} pts bônus campeão
                           </p>
                         )}
                       </div>
