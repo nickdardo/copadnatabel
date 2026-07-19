@@ -61,15 +61,11 @@ export default function ChampionPage() {
   const [deadlinePassed, setDeadlinePassed] = useState(isDeadlinePassed())
   const [countdown, setCountdown] = useState(getCountdown())
   const [adminLocked, setAdminLocked] = useState(false)
-  const [bracketAtivo, setBracketAtivo] = useState(false)
 
   // Load admin lock state from pix_config
   useEffect(() => {
-    supabase.from('pix_config').select('champ_bloqueado, bracket_ativo').limit(1).then(({ data }) => {
-      if (data?.[0]) {
-        setAdminLocked(data[0].champ_bloqueado || false)
-        setBracketAtivo(data[0].bracket_ativo || false)
-      }
+    supabase.from('pix_config').select('champ_bloqueado').limit(1).then(({ data }) => {
+      if (data?.[0]) setAdminLocked(data[0].champ_bloqueado || false)
     })
   }, [])
 
@@ -89,6 +85,7 @@ export default function ChampionPage() {
   const [paidCount,setPaidCount]= useState(0)
   const [extraAmount,setExtraAmount]= useState(0)
   const [extraNote,  setExtraNote]  = useState('')
+  const [winners, setWinners]   = useState<{username:string;avatar?:string;pts:number}[]>([])
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
 
@@ -99,7 +96,9 @@ export default function ChampionPage() {
       supabase.from('players').select('id', { count:'exact', head:true }).eq('payment_ok', true).eq('is_admin', false),
       supabase.from('prize_config').select('*').limit(1),
       supabase.from('matches').select('*'),
-    ]).then(([{ data }, { count }, { data: prizeRows }, { data: matchRows }]) => {
+      supabase.from('scores').select('player_id,total_pts').order('total_pts',{ascending:false}).limit(3),
+      supabase.from('players').select('id,username,avatar'),
+    ]).then(([{ data }, { count }, { data: prizeRows }, { data: matchRows }, { data: topScores }, { data: allPlayers }]) => {
       if (data) {
         setChampion(data.pick_champion); setRunner(data.pick_runner); setThird(data.pick_third)
         setLocked(data.locked || (data.edit_count >= MAX_CHAMP_EDITS))
@@ -111,6 +110,15 @@ export default function ChampionPage() {
         setExtraNote(prizeRows[0].extra_note || '')
       }
       setMatches((matchRows || []) as Match[])
+      // Monta top 3 vencedores cruzando scores com players
+      if (topScores && allPlayers) {
+        const playerMap: Record<string, {username:string;avatar?:string}> = {}
+        ;(allPlayers as {id:string;username:string;avatar?:string}[]).forEach(p => { playerMap[p.id] = p })
+        const top = (topScores as {player_id:string;total_pts:number}[])
+          .map(s => ({ ...playerMap[s.player_id], pts: s.total_pts }))
+          .filter(w => w.username)
+        setWinners(top)
+      }
       setFetching(false)
     })
   }, [player])
@@ -241,11 +249,47 @@ export default function ChampionPage() {
         </div>
 
         {view === 'grupos' && (
-          <CompetitionStatusCard matches={matches} forceKnockoutView={bracketAtivo}/>
+          <CompetitionStatusCard matches={matches}/>
         )}
 
         {view === 'palpite' && (
         <>
+
+        {/* ── Vencedores do Bolão ──────────────────────────── */}
+        {winners.length > 0 && prizePool > 0 && (
+          <div className="rounded-2xl overflow-hidden shadow-sm border border-[#0099CC]/20"
+               style={{ background: 'linear-gradient(135deg, #003B5C 0%, #0099CC 100%)' }}>
+            <div className="px-4 py-3 flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9H4a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1h2"/><path d="M18 9h2a2 2 0 0 0 2-2V5a1 1 0 0 0-1-1h-2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M17 3H7v9a5 5 0 0 0 10 0V3Z"/></svg>
+              <p className="text-white font-bold text-[14px]">🏆 Vencedores do Bolão</p>
+            </div>
+            <div className="px-4 pb-4 flex flex-col gap-2">
+              {winners.map((w, i) => {
+                const prizes = [prizeFirst, prizeSecond, prizeThird]
+                const medals = ['🥇','🥈','🥉']
+                const initials = w.username?.split(' ').map((n:string) => n[0]).join('').slice(0,2).toUpperCase()
+                const colors = ['bg-amber-500','bg-slate-400','bg-orange-600']
+                return (
+                  <div key={i} className="bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2.5 flex items-center gap-3">
+                    <span className="text-[20px]">{medals[i]}</span>
+                    {w.avatar
+                      ? <img src={w.avatar} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white/40"/>
+                      : <div className={`w-9 h-9 rounded-full ${colors[i]} flex items-center justify-center text-white text-[12px] font-bold border-2 border-white/40`}>{initials}</div>
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-bold text-[13px] truncate">{w.username}</p>
+                      <p className="text-white/70 text-[11px]">{w.pts} pts</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-[#FFD700] font-black text-[15px]">{formatBRL(prizes[i])}</p>
+                      <p className="text-white/60 text-[10px]">{i===0?'1º':i===1?'2º':'3º'} lugar</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Prize pool ───────────────────────────────────── */}
         {prizePool > 0 && (
