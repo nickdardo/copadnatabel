@@ -1,123 +1,116 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/lib/auth'
 import { supabase, Match } from '@/lib/supabase'
 import Layout from '@/components/Layout'
-import TeamFormPopup from '@/components/TeamFormPopup'
+import FlagImg from '@/components/FlagImg'
 import CompetitionStatusCard from '@/components/CompetitionStatusCard'
+
 import { TEAMS_SELECT } from '@/lib/flags'
+import { detectActivePhase } from '@/lib/groupStandings'
 
 const MAX_CHAMP_EDITS = 3
 const PRIZE_PCT = { first: 60, second: 25, third: 15 }
 const ENTRY_FEE = 10
 
-// Prazo final para palpite de campeão — 11/06/2026 às 14h (horário de Brasília)
-const CHAMP_DEADLINE = new Date('2026-06-11T17:00:00Z') // 14h BRT = 17h UTC
+// Copa 2026 já encerrada — Espanha campeã
+const COPA_ENCERRADA = true
+const COPA_CAMPEA    = 'Espanha'
+const COPA_VICE      = 'Argentina'
+const COPA_TERCEIRO  = 'França'
 
-function isDeadlinePassed(): boolean {
-  return new Date() >= CHAMP_DEADLINE
+function formatBRL(n: number) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
 }
 
-function getCountdown(): string {
-  const diff = CHAMP_DEADLINE.getTime() - Date.now()
-  if (diff <= 0) return ''
-  const days  = Math.floor(diff / 86_400_000)
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000)
-  const mins  = Math.floor((diff % 3_600_000) / 60_000)
-  if (days > 0)  return `${days}d ${hours}h restantes`
-  if (hours > 0) return `${hours}h ${mins}min restantes`
-  return `${mins}min restantes`
+function getAvatarUrl(path?: string | null): string | null {
+  if (!path) return null
+  if (path.startsWith('http')) return path
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  return data?.publicUrl || null
 }
 
-const IcoLock  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-const IcoCheck = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-const IcoArrow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-const IcoInfo  = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-
-function MedalGold({ size=36 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 40 40" fill="none"><circle cx="20" cy="26" r="11" fill="#FFF8E1" stroke="#B8860B" strokeWidth="1.5"/><path d="M13 14 11 7l9 3 9-3-2 7" fill="#FFD700" stroke="#B8860B" strokeWidth="1.2" strokeLinejoin="round"/><text x="20" y="30" textAnchor="middle" fontSize="11" fontWeight="700" fill="#7a5800" fontFamily="sans-serif">1</text></svg>
-}
-function MedalSilver({ size=36 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 40 40" fill="none"><circle cx="20" cy="26" r="11" fill="#F5F5F5" stroke="#6C757D" strokeWidth="1.5"/><path d="M13 14 11 7l9 3 9-3-2 7" fill="#CED4DA" stroke="#6C757D" strokeWidth="1.2" strokeLinejoin="round"/><text x="20" y="30" textAnchor="middle" fontSize="11" fontWeight="700" fill="#495057" fontFamily="sans-serif">2</text></svg>
-}
-function MedalBronze({ size=36 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 40 40" fill="none"><circle cx="20" cy="26" r="11" fill="#FFF0E6" stroke="#A0522D" strokeWidth="1.5"/><path d="M13 14 11 7l9 3 9-3-2 7" fill="#E8A87C" stroke="#A0522D" strokeWidth="1.2" strokeLinejoin="round"/><text x="20" y="30" textAnchor="middle" fontSize="11" fontWeight="700" fill="#7B3F00" fontFamily="sans-serif">3</text></svg>
+function MedalIcon({ pos }: { pos: number }) {
+  const emojis = ['🥇','🥈','🥉']
+  return <span className="text-[22px]">{emojis[pos] || ''}</span>
 }
 
-function formatBRL(val: number) {
-  return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+type Winner = {
+  player_id: string
+  username: string
+  avatar?: string
+  pts: number
+  pick_champion?: string
+  pick_runner?: string
+  pick_third?: string
 }
 
 export default function ChampionPage() {
-  const { player, loading } = useAuth()
   const router = useRouter()
-  const [champion, setChampion] = useState('')
-  const [runner,   setRunner]   = useState('')
-  const [third,    setThird]    = useState('')
-  const [locked,   setLocked]   = useState(false)
-  const [editCount,setEditCount]= useState(0)
-  const [saving,   setSaving]   = useState(false)
-  const [saved,    setSaved]    = useState(false)
-  const [deadlinePassed, setDeadlinePassed] = useState(isDeadlinePassed())
-  const [countdown, setCountdown] = useState(getCountdown())
-  const [adminLocked, setAdminLocked] = useState(false)
-
-  // Load admin lock state from pix_config
-  useEffect(() => {
-    supabase.from('pix_config').select('champ_bloqueado').limit(1).then(({ data }) => {
-      if (data?.[0]) setAdminLocked(data[0].champ_bloqueado || false)
-    })
-  }, [])
-
-  // Update countdown every minute
-  useEffect(() => {
-    const tick = () => {
-      setDeadlinePassed(isDeadlinePassed())
-      setCountdown(getCountdown())
-    }
-    tick()
-    const interval = setInterval(tick, 30_000)
-    return () => clearInterval(interval)
-  }, [])
+  const { player, loading } = useAuth()
   const [fetching, setFetching] = useState(true)
   const [matches, setMatches] = useState<Match[]>([])
-  const [view, setView] = useState<'grupos'|'palpite'>('grupos')
-  const [paidCount,setPaidCount]= useState(0)
-  const [extraAmount,setExtraAmount]= useState(0)
-  const [extraNote,  setExtraNote]  = useState('')
-  const [winners, setWinners]   = useState<{username:string;avatar?:string;pts:number}[]>([])
+  const [bracketAtivo, setBracketAtivo] = useState(false)
+  const [paidCount, setPaidCount] = useState(0)
+  const [extraAmount, setExtraAmount] = useState(0)
+  const [winners, setWinners] = useState<Winner[]>([])
+  // palpite do próprio jogador logado
+  const [myPick, setMyPick] = useState<{champion?:string;runner?:string;third?:string} | null>(null)
+  const [allPicks, setAllPicks] = useState<{username:string;avatar?:string;champion?:string;runner?:string;third?:string;bonus:number}[]>([])
+  const [showAllPicks, setShowAllPicks] = useState(false)
 
   useEffect(() => { if (!loading && !player) router.push('/') }, [loading, player])
 
   useEffect(() => {
     if (!player) return
     Promise.all([
-      supabase.from('champion_picks').select('*').eq('player_id', player.id).maybeSingle(),
-      supabase.from('players').select('id', { count:'exact', head:true }).eq('payment_ok', true).eq('is_admin', false),
-      supabase.from('prize_config').select('*').limit(1),
       supabase.from('matches').select('*'),
-      supabase.from('scores').select('player_id,total_pts').order('total_pts',{ascending:false}).limit(3),
-      supabase.from('players').select('id,username,avatar'),
-    ]).then(([{ data }, { count }, { data: prizeRows }, { data: matchRows }, { data: topScores }, { data: allPlayers }]) => {
-      if (data) {
-        setChampion(data.pick_champion); setRunner(data.pick_runner); setThird(data.pick_third)
-        setLocked(data.locked || (data.edit_count >= MAX_CHAMP_EDITS))
-        setEditCount(data.edit_count || 0)
-      }
-      setPaidCount(count || 0)
-      if (prizeRows && prizeRows[0]) {
-        setExtraAmount(Number(prizeRows[0].extra_amount) || 0)
-        setExtraNote(prizeRows[0].extra_note || '')
-      }
+      supabase.from('pix_config').select('bracket_ativo').limit(1),
+      supabase.from('players').select('id', { count: 'exact', head: true }).eq('payment_ok', true).eq('is_admin', false),
+      supabase.from('prize_config').select('*').limit(1),
+      supabase.from('scores').select('player_id,total_pts').order('total_pts', { ascending: false }).limit(3),
+      supabase.from('players').select('id,username,avatar').eq('payment_ok', true).eq('is_admin', false),
+      supabase.from('champion_picks').select('player_id,pick_champion,pick_runner,pick_third'),
+      supabase.from('champion_picks').select('pick_champion,pick_runner,pick_third').eq('player_id', player.id).maybeSingle(),
+    ]).then(([{ data: matchRows }, { data: cfg }, { count }, { data: prizeRows }, { data: topScores }, { data: allPlayers }, { data: allPicks }, { data: myPickRow }]) => {
       setMatches((matchRows || []) as Match[])
-      // Monta top 3 vencedores cruzando scores com players
+      setBracketAtivo(cfg?.[0]?.bracket_ativo || false)
+      setPaidCount(count || 0)
+      if (prizeRows?.[0]) setExtraAmount(Number(prizeRows[0].extra_amount) || 0)
+      if (myPickRow) setMyPick({ champion: myPickRow.pick_champion, runner: myPickRow.pick_runner, third: myPickRow.pick_third })
+
+      // Monta top 3 cruzando scores + players + picks
       if (topScores && allPlayers) {
-        const playerMap: Record<string, {username:string;avatar?:string}> = {}
-        ;(allPlayers as {id:string;username:string;avatar?:string}[]).forEach(p => { playerMap[p.id] = p })
+        const pMap: Record<string, { username: string; avatar?: string }> = {}
+        ;(allPlayers as {id:string;username:string;avatar?:string}[]).forEach(p => { pMap[p.id] = p })
+        const pickMap: Record<string, {pick_champion?:string;pick_runner?:string;pick_third?:string}> = {}
+        ;(allPicks || []).forEach((p:any) => { pickMap[p.player_id] = p })
+
         const top = (topScores as {player_id:string;total_pts:number}[])
-          .map(s => ({ ...playerMap[s.player_id], pts: s.total_pts }))
+          .map(s => ({
+            player_id: s.player_id,
+            pts: s.total_pts,
+            ...(pMap[s.player_id] || {}),
+            ...(pickMap[s.player_id] || {}),
+          }))
           .filter(w => w.username)
-        setWinners(top)
+        setWinners(top as Winner[])
+      }
+      // Monta lista completa de palpites de campeão
+      if (allPlayers && allPicks) {
+        const pMap: Record<string, {username:string;avatar?:string}> = {}
+        ;(allPlayers as {id:string;username:string;avatar?:string}[]).forEach(p => { pMap[p.id] = p })
+        const full = (allPicks as {player_id:string;pick_champion?:string;pick_runner?:string;pick_third?:string}[])
+          .map(p => ({
+            ...(pMap[p.player_id] || {}),
+            champion: p.pick_champion,
+            runner: p.pick_runner,
+            third: p.pick_third,
+            bonus: (p.pick_champion === 'Espanha' ? 50 : 0) + (p.pick_runner === 'Argentina' ? 25 : 0) + (p.pick_third === 'França' ? 10 : 0),
+          }))
+          .filter(p => p.username)
+          .sort((a, b) => b.bonus - a.bonus)
+        setAllPicks(full)
       }
       setFetching(false)
     })
@@ -127,30 +120,10 @@ export default function ChampionPage() {
   const prizeFirst  = Math.floor(prizePool * PRIZE_PCT.first  / 100)
   const prizeSecond = Math.floor(prizePool * PRIZE_PCT.second / 100)
   const prizeThird  = Math.floor(prizePool * PRIZE_PCT.third  / 100)
-  const editsLeft   = MAX_CHAMP_EDITS - editCount
-  const isFirstSave = editCount === 0 && !champion
+  const prizes      = [prizeFirst, prizeSecond, prizeThird]
 
-  async function handleSave() {
-    if (!player || !champion || !runner || !third) return
-    if (champion === runner || champion === third || runner === third) return
-    if (locked || adminLocked) return
-    // Block saving for unpaid users
-    if (!player.payment_ok) { router.push('/onboarding'); return }
-    setSaving(true)
-    const isEdit = !!champion
-    const newEditCount = isEdit ? editCount + 1 : 0
-    await supabase.from('champion_picks').upsert({
-      player_id: player.id, pick_champion: champion, pick_runner: runner, pick_third: third,
-      edit_count: newEditCount, locked: newEditCount >= MAX_CHAMP_EDITS,
-    }, { onConflict: 'player_id' })
-    setEditCount(newEditCount)
-    if (newEditCount >= MAX_CHAMP_EDITS) setLocked(true)
-    setSaving(false); setSaved(true)
-    setTimeout(() => { setSaved(false); router.push('/picks') }, 1300)
-  }
-
-  const exclude = (e1: string, e2: string) => TEAMS_SELECT.filter(t => t !== e1 && t !== e2)
-  const canSave = champion && runner && third && champion !== runner && champion !== third && runner !== third
+  const activePhase = useMemo(() => detectActivePhase(matches), [matches])
+  const showBracket = bracketAtivo || activePhase !== 'Fase de Grupos'
 
   if (loading || fetching) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -158,131 +131,93 @@ export default function ChampionPage() {
     </div>
   )
 
+  function PickBadge({ label, team, correct }: { label: string; team?: string; correct: boolean }) {
+    return (
+      <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${correct ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100'}`}>
+        {team && <FlagImg team={team} size={14}/>}
+        <div>
+          <p className="text-[8.5px] text-gray-400 leading-none">{label}</p>
+          <p className={`text-[11px] font-semibold leading-tight ${correct ? 'text-green-700' : 'text-gray-600'}`}>{team || '—'}</p>
+        </div>
+        {correct && <span className="text-green-500 text-[10px]">✓</span>}
+      </div>
+    )
+  }
+
   return (
     <Layout title="Bolão Copa 2026 BEL">
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
 
-        {/* Payment gate banner */}
-        {!player?.payment_ok && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round">
-                  <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-                </svg>
+        {/* ── Hero da Copa encerrada ──────────────────────── */}
+        {COPA_ENCERRADA && (
+          <div className="rounded-2xl overflow-hidden shadow-lg"
+               style={{ background: 'linear-gradient(135deg, #002D55 0%, #0099CC 60%, #00C6FF 100%)' }}>
+            <div className="px-5 pt-5 pb-4 text-center">
+              <p className="text-white/70 text-[11px] font-semibold uppercase tracking-widest mb-1">Copa do Mundo 2026 · Encerrada</p>
+              <p className="text-white text-[26px] font-black leading-tight mb-3">🏆 Campeã do Mundo</p>
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <FlagImg team={COPA_CAMPEA} size={48}/>
+                <p className="text-white text-[28px] font-black">{COPA_CAMPEA}</p>
               </div>
-              <div className="flex-1">
-                <p className="text-[13px] font-bold text-amber-900">Pagamento necessário para salvar</p>
-                <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
-                  Você pode escolher seus favoritos, mas o palpite de campeão só será salvo após confirmar o pagamento.
-                </p>
+              <div className="flex justify-center gap-4 text-white/80 text-[12px]">
+                <div className="text-center"><p className="text-[10px] text-white/50">Vice</p><div className="flex items-center gap-1"><FlagImg team={COPA_VICE} size={14}/><span className="font-medium">{COPA_VICE}</span></div></div>
+                <div className="w-px bg-white/20"/>
+                <div className="text-center"><p className="text-[10px] text-white/50">3º lugar</p><div className="flex items-center gap-1"><FlagImg team={COPA_TERCEIRO} size={14}/><span className="font-medium">{COPA_TERCEIRO}</span></div></div>
               </div>
             </div>
-            <button
-              onClick={() => router.push('/onboarding')}
-              className="mt-3 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold flex items-center justify-center gap-2 transition-colors active:scale-[.98]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-              </svg>
-              Confirmar pagamento e liberar palpites
-            </button>
           </div>
         )}
 
-        {/* ── Hero header com tema Copa ─────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl shadow-md"
-          style={{ background: 'linear-gradient(135deg, #003a6e 0%, #0064a8 50%, #0099CC 100%)' }}>
-          {/* Decorative rings */}
-          <div className="absolute inset-0 pointer-events-none">
-            {[120,200,280].map(s => (
-              <div key={s} className="absolute rounded-full border border-white/10"
-                style={{ width:s, height:s, top:'50%', left:'50%', transform:'translate(-50%,-50%)' }}/>
-            ))}
-          </div>
-
-          <div className="relative px-5 py-5 flex items-center gap-4">
-            <img src="/copa2026-logo.jpg" alt="Copa 2026"
-              className="w-16 h-16 rounded-xl object-contain bg-white/10 flex-shrink-0"
-              style={{ backdropFilter:'blur(4px)' }}/>
-            <div>
-              <p className="text-white/70 text-[11px] font-semibold uppercase tracking-widest mb-0.5">
-                Bolão Copa 2026 BEL
-              </p>
-              <h2 className="text-white font-bold text-[20px] leading-tight">
-                Seu palpite de campeão
-              </h2>
-              <p className="text-white/60 text-[12px] mt-1">
-                Escolha campeão, vice e 3º lugar antes dos jogos!
-              </p>
+        {/* ── Palpite do jogador logado ───────────────────── */}
+        {myPick?.champion && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Seu palpite de campeão</p>
+            <div className="flex gap-2 flex-wrap">
+              <PickBadge label="Campeão" team={myPick.champion} correct={myPick.champion === COPA_CAMPEA}/>
+              <PickBadge label="Vice" team={myPick.runner} correct={myPick.runner === COPA_VICE}/>
+              <PickBadge label="3º lugar" team={myPick.third} correct={myPick.third === COPA_TERCEIRO}/>
             </div>
           </div>
-
-          {/* Points bar */}
-          <div className="relative grid grid-cols-3 border-t border-white/10">
-            {[
-              { label:'Campeão', pts:'+50 pts', color:'text-amber-300' },
-              { label:'Vice',    pts:'+25 pts', color:'text-slate-300'  },
-              { label:'3º lugar',pts:'+10 pts', color:'text-orange-300' },
-            ].map(({ label, pts, color }) => (
-              <div key={label} className="flex flex-col items-center py-3 border-r border-white/10 last:border-0">
-                <span className="text-white/60 text-[10px] font-medium">{label}</span>
-                <span className={`${color} text-[13px] font-bold mt-0.5`}>{pts}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Toggle: Grupos (padrão) vs Palpite de campeão ──────── */}
-        <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
-          <button onClick={() => setView('grupos')}
-            className={`flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
-              view === 'grupos' ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-500'
-            }`}>
-            Grupos da Copa
-          </button>
-          <button onClick={() => setView('palpite')}
-            className={`flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
-              view === 'palpite' ? 'bg-white text-[#0099CC] shadow-sm' : 'text-gray-500'
-            }`}>
-            Meu campeão
-          </button>
-        </div>
-
-        {view === 'grupos' && (
-          <CompetitionStatusCard matches={matches}/>
         )}
 
-        {view === 'palpite' && (
-        <>
-
-        {/* ── Vencedores do Bolão ──────────────────────────── */}
-        {winners.length > 0 && prizePool > 0 && (
-          <div className="rounded-2xl overflow-hidden shadow-sm border border-[#0099CC]/20"
-               style={{ background: 'linear-gradient(135deg, #003B5C 0%, #0099CC 100%)' }}>
-            <div className="px-4 py-3 flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9H4a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1h2"/><path d="M18 9h2a2 2 0 0 0 2-2V5a1 1 0 0 0-1-1h-2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M17 3H7v9a5 5 0 0 0 10 0V3Z"/></svg>
-              <p className="text-white font-bold text-[14px]">🏆 Vencedores do Bolão</p>
+        {/* ── Vencedores do Bolão ────────────────────────── */}
+        {winners.length > 0 && (
+          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9H4a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1h2"/><path d="M18 9h2a2 2 0 0 0 2-2V5a1 1 0 0 0-1-1h-2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M17 3H7v9a5 5 0 0 0 10 0V3Z"/></svg>
+              <p className="text-[13px] font-bold text-gray-800">Vencedores do Bolão</p>
+              {prizePool > 0 && <span className="ml-auto text-[11px] font-semibold text-[#0099CC]">Total: {formatBRL(prizePool)}</span>}
             </div>
-            <div className="px-4 pb-4 flex flex-col gap-2">
+            <div className="divide-y divide-gray-50">
               {winners.map((w, i) => {
-                const prizes = [prizeFirst, prizeSecond, prizeThird]
-                const medals = ['🥇','🥈','🥉']
-                const initials = w.username?.split(' ').map((n:string) => n[0]).join('').slice(0,2).toUpperCase()
-                const colors = ['bg-amber-500','bg-slate-400','bg-orange-600']
+                const initials = w.username?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                const avatarUrl = getAvatarUrl(w.avatar)
+                const ringColors = ['ring-amber-400','ring-slate-400','ring-orange-400']
+                const bgColors   = ['bg-amber-400','bg-slate-400','bg-orange-400']
                 return (
-                  <div key={i} className="bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2.5 flex items-center gap-3">
-                    <span className="text-[20px]">{medals[i]}</span>
-                    {w.avatar
-                      ? <img src={w.avatar} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white/40"/>
-                      : <div className={`w-9 h-9 rounded-full ${colors[i]} flex items-center justify-center text-white text-[12px] font-bold border-2 border-white/40`}>{initials}</div>
-                    }
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-bold text-[13px] truncate">{w.username}</p>
-                      <p className="text-white/70 text-[11px]">{w.pts} pts</p>
+                  <div key={w.player_id} className="px-4 py-3">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <MedalIcon pos={i}/>
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="" className={`w-10 h-10 rounded-full object-cover ring-2 ${ringColors[i]}`} loading="lazy"/>
+                        : <div className={`w-10 h-10 rounded-full ${bgColors[i]} flex items-center justify-center text-white text-[12px] font-bold ring-2 ${ringColors[i]}`}>{initials}</div>
+                      }
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[14px] text-gray-900 truncate">{w.username}</p>
+                        <p className="text-[11px] text-gray-400">{w.pts} pts</p>
+                      </div>
+                      {prizePool > 0 && prizes[i] > 0 && (
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[16px] font-black text-[#0099CC]">{formatBRL(prizes[i])}</p>
+                          <p className="text-[10px] text-gray-400">{i===0?'1º':i===1?'2º':'3º'} lugar</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[#FFD700] font-black text-[15px]">{formatBRL(prizes[i])}</p>
-                      <p className="text-white/60 text-[10px]">{i===0?'1º':i===1?'2º':'3º'} lugar</p>
+                    {/* Palpites do vencedor */}
+                    <div className="flex gap-1.5 flex-wrap">
+                      <PickBadge label="Campeão" team={w.pick_champion} correct={w.pick_champion === COPA_CAMPEA}/>
+                      <PickBadge label="Vice" team={w.pick_runner} correct={w.pick_runner === COPA_VICE}/>
+                      <PickBadge label="3º lugar" team={w.pick_third} correct={w.pick_third === COPA_TERCEIRO}/>
                     </div>
                   </div>
                 )
@@ -291,141 +226,67 @@ export default function ChampionPage() {
           </div>
         )}
 
-        {/* ── Prize pool ───────────────────────────────────── */}
-        {prizePool > 0 && (
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-              <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Premiação confirmada</span>
-              <div className="text-right">
-                <span className="text-[12px] font-semibold text-[#0099CC]">{paidCount} pagtos · {formatBRL(paidCount * ENTRY_FEE)}</span>
-                {extraAmount > 0 && (
-                  <div className="text-[11px] text-green-600 font-semibold">+ {formatBRL(extraAmount)}{extraNote ? ` · ${extraNote}` : ' patrocínio'}</div>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-3 divide-x divide-gray-100">
-              {[
-                { pos:'1º', Icon:MedalGold,   prize:prizeFirst,  bg:'bg-amber-50'  },
-                { pos:'2º', Icon:MedalSilver, prize:prizeSecond, bg:'bg-slate-50'  },
-                { pos:'3º', Icon:MedalBronze, prize:prizeThird,  bg:'bg-orange-50' },
-              ].map(({ pos, Icon, prize, bg }) => (
-                <div key={pos} className={`${bg} flex flex-col items-center py-4 px-2`}>
-                  <Icon size={34}/>
-                  <p className="text-[11px] font-semibold text-gray-500 mt-1.5">{pos}</p>
-                  <p className="text-[15px] font-bold text-gray-900 mt-0.5">{formatBRL(prize)}</p>
-                </div>
-              ))}
-            </div>
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0099CC] opacity-50"/>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#0099CC]"/>
-              </span>
-              <p className="text-[15px] font-bold text-[#0099CC] tracking-tight">
-                Total: {formatBRL(prizePool)}
-              </p>
-            </div>
-          </div>
-        )}
 
-        {/* Status banner — admin lock takes priority over deadline */}
-        {adminLocked ? (
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-red-50 border-red-200">
-            <IcoLock/>
-            <div className="flex-1">
-              <p className="text-[12px] font-semibold text-red-700">Prazo encerrado — palpite bloqueado</p>
-              <p className="text-[11px] text-red-500 mt-0.5">O prazo para escolher campeão, vice e 3º lugar encerrou em 11/06/2026 às 14h.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3 border bg-green-50 border-green-200">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <div className="flex-1">
-              <p className="text-[12px] font-semibold text-green-800">Palpite de campeão aberto</p>
-              <p className="text-[11px] text-green-600 mt-0.5">
-                {editCount > 0 ? `${editsLeft} alteração${editsLeft !== 1 ? 'ões' : ''} restante${editsLeft !== 1 ? 's' : ''}` : 'Escolha seu campeão, vice e 3º lugar.'}
-              </p>
-            </div>
-            {editCount > 0 && (
-              <div className="flex gap-1 flex-shrink-0">
-                {Array.from({length:MAX_CHAMP_EDITS}).map((_,i)=>(
-                  <div key={i} className={`w-2 h-2 rounded-full ${i<editCount?'bg-green-400':'bg-gray-200'}`}/>
-                ))}
+        {/* ── Palpites de campeão de todos ──────────────── */}
+        {allPicks.length > 0 && (
+          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+            <button onClick={() => setShowAllPicks(v => !v)}
+              className="w-full px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0099CC" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <p className="text-[13px] font-bold text-gray-800">Palpites de campeão — todos</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{transform: showAllPicks ? 'rotate(180deg)' : 'none', transition:'transform 0.2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {showAllPicks && (
+              <div className="border-t border-gray-50 divide-y divide-gray-50 max-h-96 overflow-y-auto">
+                {/* Cabeçalho */}
+                <div className="grid grid-cols-[1fr_auto] px-4 py-2 bg-gray-50">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Jogador · Palpites</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Bônus</p>
+                </div>
+                {allPicks.map((p, i) => {
+                  const avatarUrl = getAvatarUrl(p.avatar)
+                  const initials = p.username?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                  return (
+                    <div key={i} className="flex items-center gap-2.5 px-4 py-2.5">
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" loading="lazy"/>
+                        : <div className="w-8 h-8 rounded-full bg-[#0099CC]/10 flex items-center justify-center text-[#0099CC] text-[11px] font-bold flex-shrink-0">{initials}</div>
+                      }
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-gray-800 truncate">{p.username}</p>
+                        <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                          {[{t:p.champion,c:'Espanha'},{t:p.runner,c:'Argentina'},{t:p.third,c:'França'}].map((item, j) => item.t ? (
+                            <span key={j} className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md ${item.t===item.c ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
+                              <FlagImg team={item.t} size={10}/>
+                              {item.t}
+                              {item.t===item.c && <span className="text-green-500">✓</span>}
+                            </span>
+                          ) : null)}
+                        </div>
+                      </div>
+                      <span className={`text-[13px] font-black flex-shrink-0 ${p.bonus > 0 ? 'text-amber-500' : 'text-gray-300'}`}>
+                        {p.bonus > 0 ? `+${p.bonus}` : '0'}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* ── Selects ──────────────────────────────────────── */}
-        <div className="space-y-3">
-          {[
-            {state:champion,set:setChampion,ex1:runner,  ex2:third,  label:'Campeão',     pts:'+50 pts',ptColor:'text-amber-700', Medal:MedalGold   },
-            {state:runner,  set:setRunner,  ex1:champion,ex2:third,  label:'Vice-campeão',pts:'+25 pts',ptColor:'text-slate-600', Medal:MedalSilver },
-            {state:third,   set:setThird,   ex1:champion,ex2:runner, label:'3º lugar',    pts:'+10 pts',ptColor:'text-orange-700',Medal:MedalBronze },
-          ].map(({ state, set, ex1, ex2, label, pts, ptColor, Medal }) => (
-            <div key={label} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-                <div className="flex items-center gap-2">
-                  <Medal size={22}/>
-                  <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">{label}</span>
-                </div>
-                <span className={`text-[12px] font-bold ${ptColor}`}>{pts}</span>
-              </div>
-
-              {state ? (
-                <div className="mx-4 mb-2 flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
-                  <TeamFormPopup team={state} size={36} className="rounded"/>
-                  <div className="flex-1">
-                    <p className="text-[14px] font-bold text-gray-900">{state}</p>
-                    <p className="text-[11px] text-gray-400">Selecionado</p>
-                  </div>
-                  {!locked && !adminLocked && (
-                    <button onClick={()=>set('')} className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Trocar</button>
-                  )}
-                </div>
-              ) : (
-                <p className="mx-4 mb-2 text-[12px] text-gray-400 italic">Nenhuma seleção escolhida</p>
-              )}
-
-              <div className="px-4 pb-3.5">
-                <select
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0099CC]/20 focus:border-[#0099CC] transition-all"
-                  value={state} onChange={e=>set(e.target.value)} disabled={locked || adminLocked || !player?.payment_ok}>
-                  <option value="">Selecione a seleção...</option>
-                  {exclude(ex1,ex2).map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
-          ))}
-        </div>
-
-
-
-        {!locked && !adminLocked && (
-          <button onClick={handleSave} disabled={!canSave||saving||saved}
-            className="w-full py-4 rounded-xl font-bold text-[15px] text-white flex items-center justify-center gap-2 transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed bg-[#0099CC] hover:bg-[#007aa8] shadow-sm">
-            {saved?<><IcoCheck/> Salvo! Abrindo palpites...</>
-             :saving?<span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-             :isFirstSave?<>Salvar palpite de campeão <IcoArrow/></>
-             :<>Atualizar ({editsLeft}/{MAX_CHAMP_EDITS} alt. restantes) <IcoArrow/></>}
-          </button>
-        )}
-        {locked && (
-          <button onClick={()=>router.push('/picks')}
-            className="w-full py-4 rounded-xl font-bold text-[15px] text-white flex items-center justify-center gap-2 bg-[#0099CC] hover:bg-[#007aa8] transition-all">
-            Ver palpites dos jogos <IcoArrow/>
-          </button>
-        )}
-        <div className="text-center">
-          <button onClick={()=>router.push('/picks')} className="text-[13px] text-gray-400 hover:text-gray-500 underline underline-offset-2">
-            Pular por agora
+        {/* ── Chaveamento / Grupos ────────────────────────── */}
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+          <button onClick={() => {}}
+            className="flex-1 py-1.5 text-[12px] font-semibold rounded-lg bg-white text-[#0099CC] shadow-sm">
+            {showBracket ? 'Chaveamento' : 'Grupos da Copa'}
           </button>
         </div>
-
-        </>
-        )}
+        <CompetitionStatusCard matches={matches}/>
 
       </div>
     </Layout>

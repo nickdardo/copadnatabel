@@ -263,7 +263,7 @@ export default function RankingPage() {
                 </p>
                 <p className="text-white/70 text-[11px] mt-0.5 font-medium">
                   10pts: {me.f10_count} | 7pts: {me.f7_count} | 5pts: {me.f5_count} | 2pts: {me.f2_count}
-                  {me.champion_pts > 0 && ` · Bônus:+${me.champion_pts}`}
+                  {((me.champ?.pick_champion==='Espanha'?50:0)+(me.champ?.pick_runner==='Argentina'?25:0)+(me.champ?.pick_third==='França'?10:0)) > 0 && ` · Bônus:+${ ((me.champ?.pick_champion==='Espanha'?50:0)+(me.champ?.pick_runner==='Argentina'?25:0)+(me.champ?.pick_third==='França'?10:0))}`}
                 </p>
                 {/* Champion picks */}
                 {me.champ && (
@@ -521,7 +521,7 @@ export default function RankingPage() {
                   </div>
 
                   {photo
-                    ? <img src={photo} alt={name} loading="lazy" className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm"/>
+                    ? <img src={photo} alt={name} className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm"/>
                     : <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white border-2 border-white shadow-sm"
                         style={{ background: color }}>
                         {initials(name)}
@@ -603,9 +603,9 @@ export default function RankingPage() {
                             )
                           })
                         })()}
-                        {entry.champion_pts > 0 && (
+                        {((entry.champ?.pick_champion==='Espanha'?50:0)+(entry.champ?.pick_runner==='Argentina'?25:0)+(entry.champ?.pick_third==='França'?10:0)) > 0 && (
                           <p className="text-[10px] text-amber-600 font-medium pt-0.5">
-                            + {entry.champion_pts} pts bônus campeão
+                            + {((entry.champ?.pick_champion==='Espanha'?50:0)+(entry.champ?.pick_runner==='Argentina'?25:0)+(entry.champ?.pick_third==='França'?10:0))} pts bônus campeão
                           </p>
                         )}
                       </div>
